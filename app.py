@@ -27,6 +27,8 @@ WINDOW_GEOMETRY = f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}"
 WINDOW_MIN_WIDTH = 400
 WINDOW_MIN_HEIGHT = 300
 
+HISTORY_LIMIT = 100  # Maximum number of items in history list
+
 
 #endregion
 #region - FolderFunnelApp
@@ -49,6 +51,7 @@ class FolderFunnelApp:
         self.database_path = os.path.join(self.app_path, "database") # The database folder
         self.watch_path = "" # The duplicate folder that will be watched
         self.messages = [] # Log messages
+        self.history_items = {}  # Store history of moved files as {filename: full_path}
         self.database_thread = None
 
         # Set up close handler
@@ -133,8 +136,18 @@ class FolderFunnelApp:
         self.main_pane.add(self.list_frame, stretch="never")
         self.main_pane.paneconfigure(self.list_frame, minsize=200, width=200)
         tk.Label(self.list_frame, text="History").pack()
-        self.list_widget = tk.Listbox(self.list_frame, width=1, height=1)
-        self.list_widget.pack(fill="both", expand=True)
+        self.history_listbox = tk.Listbox(self.list_frame, width=1, height=1)
+        self.history_listbox.pack(fill="both", expand=True)
+
+        # Create context menu
+        self.list_context_menu = tk.Menu(self.history_listbox, tearoff=0)
+        self.list_context_menu.add_command(label="Open", command=self.open_selected_file)
+        self.list_context_menu.add_command(label="Show in File Explorer", command=self.show_selected_in_explorer)
+        self.list_context_menu.add_separator()
+        self.list_context_menu.add_command(label="Delete", command=self.delete_selected_file)
+
+        # Bind right-click event
+        self.history_listbox.bind("<Button-3>", self.show_context_menu)
 
 
     def create_message_row(self):
@@ -177,22 +190,75 @@ class FolderFunnelApp:
 
 
 #endregion
-#region - File/Folder Logic
+#region - Listbox Logic
 
 
-    def select_working_dir(self, path=None):
-        if not path:
-            path = os.path.normpath(filedialog.askdirectory())
-        if os.path.exists(path):
-            self.working_dir_var.set(path)
-            self.log(f"Selected folder: {path}")
+    def update_history_list(self, filename, filepath):
+        """Update the history list with a new filename and its full path."""
+        # Add new item to dictionary
+        self.history_items[filename] = filepath
+        # Remove oldest items if limit is reached
+        while len(self.history_items) > HISTORY_LIMIT:
+            oldest_key = next(iter(self.history_items))
+            del self.history_items[oldest_key]
+        # Clear and repopulate the list widget
+        self.history_listbox.delete(0, "end")
+        for filename in self.history_items:
+            # Insert at top to show newest first
+            self.history_listbox.insert(0, filename)
 
 
-    def open_folder(self, path=None):
-        if not path:
-            path = self.working_dir_var.get()
-        if os.path.exists(path):
-            os.startfile(path)
+    def show_context_menu(self, event):
+        clicked_index = self.history_listbox.nearest(event.y)
+        if clicked_index >= 0:
+            self.history_listbox.selection_clear(0, "end")
+            self.history_listbox.selection_set(clicked_index)
+            self.history_listbox.activate(clicked_index)
+            self.list_context_menu.post(event.x_root, event.y_root)
+
+
+    def get_selected_filepath(self):
+        selection = self.history_listbox.curselection()
+        if not selection:
+            return None
+        filename = self.history_listbox.get(selection[0])
+        return self.history_items.get(filename)
+
+
+    def open_selected_file(self):
+        filepath = self.get_selected_filepath()
+        if filepath and os.path.exists(filepath):
+            os.startfile(filepath)
+        else:
+            messagebox.showerror("Error", "File not found")
+
+
+    def show_selected_in_explorer(self):
+        filepath = self.get_selected_filepath()
+        if filepath and os.path.exists(filepath):
+            os.system(f'explorer /select,"{filepath}"')
+        else:
+            messagebox.showerror("Error", "File not found")
+
+
+    def delete_selected_file(self):
+        filepath = self.get_selected_filepath()
+        if not filepath or not os.path.exists(filepath):
+            messagebox.showerror("Error", "File not found")
+            return
+        filename = os.path.basename(filepath)
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{filename}'?"):
+            try:
+                os.remove(filepath)
+                del self.history_items[filename]
+                self.history_listbox.delete(self.history_listbox.curselection())
+                self.log(f"Deleted file: {filename}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not delete file: {str(e)}")
+
+
+#endregion
+#region - Folder Watcher Logic
 
 
     def start_folder_watcher(self):
@@ -269,6 +335,28 @@ class FolderFunnelApp:
             messagebox.showerror("Error: create_watch_folders()", f"{str(e)}")
 
 
+#endregion
+#region - File Logic
+
+
+    def select_working_dir(self, path=None):
+        if not path:
+            path = filedialog.askdirectory()
+            if not path:  # Cancelled dialog
+                return
+            path = os.path.normpath(path)
+        if os.path.exists(path):
+            self.working_dir_var.set(path)
+            self.log(f"Selected folder: {path}")
+
+
+    def open_folder(self, path=None):
+        if not path:
+            path = self.working_dir_var.get()
+        if os.path.exists(path):
+            os.startfile(path)
+
+
     def move_file(self, source_path):
         """Move a file from watch folder to source folder, handling filename conflicts."""
         try:
@@ -287,6 +375,8 @@ class FolderFunnelApp:
             # Move the file
             shutil.move(source_path, dest_path)
             self.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}")
+            # Update history list with the new filename and full path
+            self.update_history_list(os.path.basename(dest_path), dest_path)
             return True
         except Exception as e:
             self.log(f"Error moving file {source_path}: {str(e)}")

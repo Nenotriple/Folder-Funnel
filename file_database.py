@@ -202,7 +202,8 @@ class FolderChangeHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         self.parent.log(f"Created: {event.src_path}")
-        if not event.is_directory:  # Only handle files, not directories
+        # Only handle files, not directories
+        if not event.is_directory:
             # Move the file if it's in the watch folder
             if os.path.exists(event.src_path):
                 self.parent.queue_move_file(event.src_path)
@@ -218,6 +219,8 @@ class FolderChangeHandler(FileSystemEventHandler):
 
 
     def on_moved(self, event):
+        # Inform the app that a file was renamed/moved
+        self.parent.handle_rename_event(event.src_path, event.dest_path)
         self.db_manager.update_database(event)
 
 

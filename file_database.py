@@ -1,11 +1,20 @@
+#region - Imports
+
+
+# Standard imports
 import os
 import json
-import shutil
 import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
+
+# Third-party imports
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
+
+
+#endregion
+#region - cls FileEntry
 
 
 class FileEntry:
@@ -24,6 +33,10 @@ class FileEntry:
     @classmethod
     def from_dict(cls, data: dict) -> 'FileEntry':
         return cls(data['path'], data['modified'])
+
+
+#endregion
+#region - cls FolderDatabase
 
 
 class FolderDatabase:
@@ -97,31 +110,8 @@ class FolderDatabase:
         return db
 
 
-class FolderChangeHandler(FileSystemEventHandler):
-    def __init__(self, parent, db_manager):
-        self.parent = parent
-        self.db_manager = db_manager
-
-
-    def on_created(self, event):
-        self.parent.log(f"Created: {event.src_path}")
-        if not event.is_directory:  # Only handle files, not directories
-            # Move the file if it's in the watch folder
-            if os.path.exists(event.src_path):
-                self.parent.queue_move_file(event.src_path)
-        self.db_manager.update_database(event)
-
-
-    def on_deleted(self, event):
-        self.db_manager.update_database(event)
-
-
-    def on_modified(self, event):
-        self.db_manager.update_database(event)
-
-
-    def on_moved(self, event):
-        self.db_manager.update_database(event)
+#endregion
+#region - cls DatabaseManager
 
 
 class DatabaseManager:
@@ -198,3 +188,37 @@ class DatabaseManager:
         # Save changes
         db_file = self.database_dir / f"{db_name}.json"
         folder_db.save_to_file(str(db_file))
+
+
+#endregion
+#region - cls FolderChangeHandler
+
+
+class FolderChangeHandler(FileSystemEventHandler):
+    def __init__(self, parent, db_manager):
+        self.parent = parent
+        self.db_manager = db_manager
+
+
+    def on_created(self, event):
+        self.parent.log(f"Created: {event.src_path}")
+        if not event.is_directory:  # Only handle files, not directories
+            # Move the file if it's in the watch folder
+            if os.path.exists(event.src_path):
+                self.parent.queue_move_file(event.src_path)
+        self.db_manager.update_database(event)
+
+
+    def on_deleted(self, event):
+        self.db_manager.update_database(event)
+
+
+    def on_modified(self, event):
+        self.db_manager.update_database(event)
+
+
+    def on_moved(self, event):
+        self.db_manager.update_database(event)
+
+
+#endregion

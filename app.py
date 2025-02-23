@@ -13,6 +13,7 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 
 # Custom
 from file_database import DatabaseManager
+import hashlib
 
 
 #endregion
@@ -27,7 +28,8 @@ WINDOW_GEOMETRY = f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}"
 WINDOW_MIN_WIDTH = 400
 WINDOW_MIN_HEIGHT = 300
 
-HISTORY_LIMIT = 100  # Maximum number of items in history list
+HISTORY_LIMIT = 100
+MOVE_QUEUE_TIMER = 5000  # 5 seconds in milliseconds
 
 
 #endregion
@@ -43,21 +45,29 @@ class FolderFunnelApp:
         self.root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
 
         # GUI Variables
-        self.working_dir_var = tk.StringVar(value="") # The source folder
-        self.status_label_var = tk.StringVar(value="Status: Idle")
+        self.working_dir_var = tk.StringVar(value="")  # The source folder
+        self.status_label_var = tk.StringVar(value="Status: Idle")  # App status
+        self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
+        self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
+        self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
 
         # Other Variables
-        self.app_path = os.path.dirname(os.path.abspath(__file__)) # The application folder
-        self.database_path = os.path.join(self.app_path, "database") # The database folder
-        self.watch_path = "" # The duplicate folder that will be watched
-        self.messages = [] # Log messages
+        self.app_path = os.path.dirname(os.path.abspath(__file__))  # The application folder
+        self.database_path = os.path.join(self.app_path, "database")  # The database folder
+        self.watch_path = ""  # The duplicate folder that will be watched
+        self.messages = []  # Log messages
         self.history_items = {}  # Store history of moved files as {filename: full_path}
-        self.database_thread = None
+        self.move_count = 0  # Number of files moved
+
+        # Queue related variables
+        self.move_queue = []  # List of files waiting to be moved
+        self.queue_timer = None  # Timer for batch processing
 
         # Set up close handler
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
 
         # Initialize database
+        self.database_thread = None  # Thread for initializing databases
         self.database_manager = DatabaseManager(self, self.database_path)
 
 
@@ -158,6 +168,15 @@ class FolderFunnelApp:
         # Status label
         self.status_label = tk.Label(message_frame, textvariable=self.status_label_var, relief="groove", width=15, anchor="w")
         self.status_label.pack(side="left")
+        # Foldercount label
+        self.Foldercount_label = tk.Label(message_frame, textvariable=self.foldercount_var, relief="groove", width=15, anchor="w")
+        self.Foldercount_label.pack(side="left")
+        # Filecount label
+        self.filecount_label = tk.Label(message_frame, textvariable=self.filecount_var, relief="groove", width=15, anchor="w")
+        self.filecount_label.pack(side="left")
+        # Movecount label
+        self.movecount_label = tk.Label(message_frame, textvariable=self.movecount_var, relief="groove", width=15, anchor="w")
+        self.movecount_label.pack(side="left")
         # Progress bar
         self.progress_bar = ttk.Progressbar(message_frame, mode="indeterminate")
         self.progress_bar.pack(side="left", fill="x", expand=True)
@@ -274,6 +293,9 @@ class FolderFunnelApp:
         self.database_manager.start_watching(self.watch_path)
         self.status_label_var.set("Status: Initializing")
         self.toggle_button_state(state="running")
+        self.count_folders_and_files()
+        self.move_count = 0
+        self.movecount_var.set("Moved: 0")
 
 
     def initialize_databases(self):
@@ -348,6 +370,7 @@ class FolderFunnelApp:
         if os.path.exists(path):
             self.working_dir_var.set(path)
             self.log(f"Selected folder: {path}")
+            self.count_folders_and_files()
 
 
     def open_folder(self, path=None):
@@ -357,8 +380,81 @@ class FolderFunnelApp:
             os.startfile(path)
 
 
-    def move_file(self, source_path):
-        """Move a file from watch folder to source folder, handling filename conflicts."""
+    def queue_move_file(self, source_path):
+        """Add a file or folder to the move queue and start/restart the timer."""
+        if os.path.isdir(source_path):
+            self._handle_new_folder(source_path)
+        elif source_path not in self.move_queue:
+            self.move_queue.append(source_path)
+            self.log(f"Queued file: {os.path.basename(source_path)}")
+        # Cancel existing timer if there is one
+        if self.queue_timer:
+            self.root.after_cancel(self.queue_timer)
+        # Start new timer
+        self.queue_timer = self.root.after(MOVE_QUEUE_TIMER, self.process_move_queue)
+
+
+    def _handle_new_folder(self, source_path):
+        """Handle a new folder being created in the watch directory."""
+        try:
+            # Get relative path from watch folder
+            rel_path = os.path.relpath(source_path, self.watch_path)
+            dest_path = os.path.join(self.working_dir_var.get(), rel_path)
+            # Create folder structure in both locations
+            os.makedirs(dest_path, exist_ok=True)
+            self.log(f"Created folder: {rel_path}")
+            # Walk through the source directory and handle all contents
+            for dirpath, dirnames, filenames in os.walk(source_path):
+                # Calculate relative paths
+                rel_dirpath = os.path.relpath(dirpath, source_path)
+                # Create subdirectories in both locations
+                for dirname in dirnames:
+                    rel_dir = os.path.join(rel_path, rel_dirpath, dirname)
+                    watch_dir = os.path.join(self.watch_path, rel_dir)
+                    dest_dir = os.path.join(self.working_dir_var.get(), rel_dir)
+
+                    os.makedirs(watch_dir, exist_ok=True)
+                    os.makedirs(dest_dir, exist_ok=True)
+                    self.log(f"Created subfolder: {rel_dir}")
+                # Queue all files for moving
+                for filename in filenames:
+                    file_path = os.path.join(dirpath, filename)
+                    if file_path not in self.move_queue:
+                        self.move_queue.append(file_path)
+                        self.log(f"Queued file: {os.path.join(rel_path, rel_dirpath, filename)}")
+            # Update the databases
+            source_db = self.database_manager.get_database("source")
+            watch_db = self.database_manager.get_database("watch")
+            if source_db and watch_db:
+                # Update folder lists
+                rel_path = os.path.relpath(source_path, self.watch_path)
+                if rel_path not in source_db.folders:
+                    source_db.folders.append(rel_path)
+                if rel_path not in watch_db.folders:
+                    watch_db.folders.append(rel_path)
+                # Save database changes
+                source_db.save_to_file(str(self.database_manager.database_dir / "source.json"))
+                watch_db.save_to_file(str(self.database_manager.database_dir / "watch.json"))
+        except Exception as e:
+            self.log(f"Error handling new folder {source_path}: {str(e)}")
+
+
+    def process_move_queue(self):
+        """Process all queued file moves."""
+        self.queue_timer = None  # Reset timer
+        if not self.move_queue:
+            return
+        self.log(f"Processing {len(self.move_queue)} queued files...")
+        success_count = 0
+        for source_path in self.move_queue:
+            if self._move_file(source_path):
+                success_count += 1
+        self.log(f"Batch move complete: {success_count}/{len(self.move_queue)} files moved successfully")
+        self.move_queue.clear()
+
+
+    def _move_file(self, source_path):
+        """Internal method to actually move a file. Used by process_move_queue."""
         try:
             # Get the relative path from the watch folder
             rel_path = os.path.relpath(source_path, self.watch_path)
@@ -366,21 +462,95 @@ class FolderFunnelApp:
             dest_path = os.path.join(self.working_dir_var.get(), rel_path)
             # Ensure the destination directory exists
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            # Handle filename conflicts
-            base, ext = os.path.splitext(dest_path)
-            counter = 1
-            while os.path.exists(dest_path):
-                dest_path = f"{base}_{counter}{ext}"
-                counter += 1
+            # If file exists, check if it's a duplicate
+            if os.path.exists(dest_path):
+                # Compare file sizes first (quick check)
+                if os.path.getsize(source_path) == os.path.getsize(dest_path):
+                    # Compare file contents
+                    if self._are_files_identical(source_path, dest_path):
+                        # Files are identical, delete the duplicate
+                        os.remove(source_path)
+                        self.log(f"Deleted duplicate file: {rel_path}")
+                        return True
+                # Not a duplicate, find new name
+                base, ext = os.path.splitext(dest_path)
+                counter = 1
+                while os.path.exists(dest_path):
+                    dest_path = f"{base}_{counter}{ext}"
+                    counter += 1
             # Move the file
             shutil.move(source_path, dest_path)
             self.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}")
             # Update history list with the new filename and full path
             self.update_history_list(os.path.basename(dest_path), dest_path)
+            # Update counts
+            self.move_count += 1
+            self.movecount_var.set(f"Moved: {self.move_count}")
+            self.count_folders_and_files()
             return True
         except Exception as e:
             self.log(f"Error moving file {source_path}: {str(e)}")
             return False
+
+    def _are_files_identical(self, file1, file2, chunk_size=8192):
+        """Compare two files using MD5 hashes. Also checks for similar files in target directory."""
+        def get_md5(filename):
+            md5 = hashlib.md5()
+            with open(filename, 'rb') as f:
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    md5.update(chunk)
+            return md5.hexdigest()
+
+        def find_similar_files(filename, target_dir):
+            # Get base name without unique counter suffix
+            base_name = os.path.basename(filename)
+            base_name = '_'.join(base_name.split('_')[:-1]) if '_' in base_name else os.path.splitext(base_name)[0]
+
+            # Only search within the target directory
+            similar_files = []
+            for f in os.listdir(target_dir):
+                if os.path.isfile(os.path.join(target_dir, f)) and base_name in f.lower():
+                    similar_files.append(os.path.join(target_dir, f))
+
+            # Sort by filename similarity and limit to top 100
+            from difflib import SequenceMatcher
+            similar_files.sort(
+                key=lambda x: SequenceMatcher(None, base_name.lower(),
+                                            os.path.basename(x).lower()).ratio(),
+                reverse=True
+            )
+            return similar_files[:100]
+
+        try:
+            # First check the direct comparison
+            if os.path.exists(file2) and get_md5(file1) == get_md5(file2):
+                return True
+
+            # Check similar files in the same directory as file2
+            target_dir = os.path.dirname(file2)
+            similar_files = find_similar_files(file1, target_dir)
+            file1_md5 = get_md5(file1)
+
+            for similar_file in similar_files:
+                if get_md5(similar_file) == file1_md5:
+                    return True
+
+            return False
+        except Exception:
+            return False
+
+
+    def count_folders_and_files(self):
+        folder_count = 0
+        file_count = 0
+        for root, dirs, files in os.walk(self.working_dir_var.get()):
+            folder_count += len(dirs)
+            file_count += len(files)
+        self.foldercount_var.set(f"Folders: {folder_count}")
+        self.filecount_var.set(f"Files: {file_count}")
 
 
 #endregion
@@ -389,6 +559,12 @@ class FolderFunnelApp:
 
     def on_closing(self):
         """Handle cleanup when closing the application"""
+        # Cancel any pending timer
+        if self.queue_timer:
+            self.root.after_cancel(self.queue_timer)
+            # Process any remaining files
+            if self.move_queue:
+                self.process_move_queue()
         self.stop_folder_watcher()
         self.root.quit()
 

@@ -166,7 +166,7 @@ class DatabaseManager:
         if self.observer:
             self.stop_watching()
         self.observer = Observer()
-        handler = FolderChangeHandler(self, self.parent)
+        handler = FolderChangeHandler(self.parent, self)
         self.observer.schedule(handler, path=path_to_watch, recursive=True)
         self.observer.start()
 

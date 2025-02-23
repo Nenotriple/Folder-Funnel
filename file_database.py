@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 import datetime
 from typing import Dict, List, Optional
 from pathlib import Path
@@ -61,7 +62,8 @@ class FolderDatabase:
             if path in self.files:
                 del self.files[path]
             elif path in self.folders:
-                self.folders.remove(path)
+                # Remove this folder and all subfolders
+                self.folders = [f for f in self.folders if not (f == path or f.startswith(path + os.sep))]
         elif event_type == 'modified':
             if path in self.files and full_path.exists():
                 stats = full_path.stat()
@@ -106,7 +108,7 @@ class FolderChangeHandler(FileSystemEventHandler):
         if not event.is_directory:  # Only handle files, not directories
             # Move the file if it's in the watch folder
             if os.path.exists(event.src_path):
-                self.parent.move_file(event.src_path)
+                self.parent.queue_move_file(event.src_path)
         self.db_manager.update_database(event)
 
 

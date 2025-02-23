@@ -1,10 +1,10 @@
-#endregion
 #region - Imports
 
 
 # Standard
 import os
 import shutil
+import hashlib
 import threading
 from difflib import SequenceMatcher
 
@@ -14,7 +14,6 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 
 # Custom
 from file_database import DatabaseManager
-import hashlib
 
 
 #endregion
@@ -30,7 +29,7 @@ WINDOW_MIN_WIDTH = 400
 WINDOW_MIN_HEIGHT = 300
 
 HISTORY_LIMIT = 100
-MOVE_QUEUE_TIMER = 5000  # 5 seconds in milliseconds
+MOVE_QUEUE_TIMER = 5000  # 5 seconds
 
 
 #endregion
@@ -70,16 +69,6 @@ class FolderFunnelApp:
         # Initialize database
         self.database_thread = None  # Thread for initializing databases
         self.database_manager = DatabaseManager(self, self.database_path)
-
-
-    def center_window(self):
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        window_width = WINDOW_WIDTH
-        window_height = WINDOW_HEIGHT
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-        self.root.geometry(f'{window_width}x{window_height}+{x}+{y}')
 
 
 #endregion
@@ -450,7 +439,10 @@ class FolderFunnelApp:
         for source_path in self.move_queue:
             if self._move_file(source_path):
                 success_count += 1
-        self.log(f"Batch move complete: {success_count}/{len(self.move_queue)} files moved successfully")
+        if success_count == 1:
+            self.log(f"Move complete: 1 file moved successfully")
+        else:
+            self.log(f"Batch move complete: {success_count}/{len(self.move_queue)} files moved successfully")
         self.move_queue.clear()
 
 
@@ -547,6 +539,16 @@ class FolderFunnelApp:
 
 #endregion
 #region - Framework
+
+
+    def center_window(self):
+        screen_width = self.root.winfo_screenwidth()
+        screen_height = self.root.winfo_screenheight()
+        window_width = WINDOW_WIDTH
+        window_height = WINDOW_HEIGHT
+        x = (screen_width - window_width) // 2
+        y = (screen_height - window_height) // 2
+        self.root.geometry(f'{window_width}x{window_height}+{x}+{y}')
 
 
     def on_closing(self):

@@ -6,6 +6,7 @@
 import os
 import shutil
 import threading
+from difflib import SequenceMatcher
 
 # Standard GUI
 import tkinter as tk
@@ -492,6 +493,7 @@ class FolderFunnelApp:
             self.log(f"Error moving file {source_path}: {str(e)}")
             return False
 
+
     def _are_files_identical(self, file1, file2, chunk_size=8192):
         """Compare two files using MD5 hashes. Also checks for similar files in target directory."""
         def get_md5(filename):
@@ -504,40 +506,30 @@ class FolderFunnelApp:
                     md5.update(chunk)
             return md5.hexdigest()
 
+
         def find_similar_files(filename, target_dir):
             # Get base name without unique counter suffix
             base_name = os.path.basename(filename)
             base_name = '_'.join(base_name.split('_')[:-1]) if '_' in base_name else os.path.splitext(base_name)[0]
-
             # Only search within the target directory
             similar_files = []
             for f in os.listdir(target_dir):
                 if os.path.isfile(os.path.join(target_dir, f)) and base_name in f.lower():
                     similar_files.append(os.path.join(target_dir, f))
-
             # Sort by filename similarity and limit to top 100
-            from difflib import SequenceMatcher
-            similar_files.sort(
-                key=lambda x: SequenceMatcher(None, base_name.lower(),
-                                            os.path.basename(x).lower()).ratio(),
-                reverse=True
-            )
+            similar_files.sort(key=lambda x: SequenceMatcher(None, base_name.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
             return similar_files[:100]
-
         try:
             # First check the direct comparison
             if os.path.exists(file2) and get_md5(file1) == get_md5(file2):
                 return True
-
             # Check similar files in the same directory as file2
             target_dir = os.path.dirname(file2)
             similar_files = find_similar_files(file1, target_dir)
             file1_md5 = get_md5(file1)
-
             for similar_file in similar_files:
                 if get_md5(similar_file) == file1_md5:
                     return True
-
             return False
         except Exception:
             return False

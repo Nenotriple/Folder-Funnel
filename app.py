@@ -48,7 +48,7 @@ class FolderFunnelApp:
         self.root.geometry(WINDOW_GEOMETRY)
         self.root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
 
-        # GUI Variables
+        # tk Variables
         self.working_dir_var = tk.StringVar(value="")  # The source folder
         self.status_label_var = tk.StringVar(value="Status: Idle")  # App status
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
@@ -391,7 +391,7 @@ class FolderFunnelApp:
         self.toggle_progressbar(state="start")
         self.sync_watch_folders()
         self.initialize_databases()
-        self.database_manager.start_watching(self.watch_path)
+        self.database_manager.start_watching(self.watch_path, self.working_dir_var.get())
         self.status_label_var.set("Status: Initializing")
         self.toggle_button_state(state="running")
         self.count_folders_and_files()
@@ -430,7 +430,7 @@ class FolderFunnelApp:
         self.toggle_progressbar(state="stop")
 
 
-    def sync_watch_folders(self):
+    def sync_watch_folders(self, silent=False):
         source_path = self.working_dir_var.get()
         if not self.check_working_dir_exists():
             return
@@ -443,7 +443,8 @@ class FolderFunnelApp:
         try:
             # Create watch folder
             os.makedirs(self.watch_path, exist_ok=True)
-            self.log(f"Using watch folder: {self.watch_path}")
+            if not silent:
+                self.log(f"Using watch folder: {self.watch_path}")
             # Walk through the source directory and create corresponding directories in the watch folder
             for dirpath, dirnames, filenames in os.walk(source_path):
                 relpath = os.path.relpath(dirpath, source_path)
@@ -460,8 +461,9 @@ class FolderFunnelApp:
                 if not os.path.exists(source_dirpath):
                     os.rmdir(dirpath)
                     counter_removed += 1
-            self.log(f"Created {counter_created} new directories in {self.watch_path}")
-            self.log(f"Removed {counter_removed} directories from {self.watch_path}")
+            if silent in [False, "semi"]:
+                self.log(f"Created {counter_created} new directories in {self.watch_path}")
+                self.log(f"Removed {counter_removed} directories from {self.watch_path}")
         except Exception as e:
             messagebox.showerror("Error: create_watch_folders()", f"{str(e)}")
 

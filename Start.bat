@@ -6,7 +6,7 @@ REM Set up a Python virtual environment and run a specified Python script.
 
 
 REM Variables
-set "PYTHON_SCRIPT="
+set "PYTHON_SCRIPT=app.py"
 set "VENV_DIR=venv"
 set "SCRIPT_DIR=%~dp0"
 set "FAST_START=FALSE"

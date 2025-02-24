@@ -154,12 +154,16 @@ class DatabaseManager:
         return FolderDatabase.load_from_file(str(db_file))
 
 
-    def start_watching(self, path_to_watch: str):
+    def start_watching(self, watch_path: str, source_path: str = None):
         if self.observer:
             self.stop_watching()
         self.observer = Observer()
         handler = FolderChangeHandler(self.parent, self)
-        self.observer.schedule(handler, path=path_to_watch, recursive=True)
+        # Always watch the 'watch' folder
+        self.observer.schedule(handler, path=watch_path, recursive=True)
+        # Also watch the source folder if provided
+        if source_path:
+            self.observer.schedule(handler, path=source_path, recursive=True)
         self.observer.start()
 
 
@@ -173,17 +177,24 @@ class DatabaseManager:
     def update_database(self, event):
         # Identify which database is affected
         db_name = None
-        for name, root in self.databases.items():
-            if str(self.database_dir / f"{name}.json") in event.src_path:
+        p_event = Path(event.src_path)
+        for name, root_str in self.databases.items():
+            p_root = Path(root_str)
+            try:
+                p_event.relative_to(p_root)
                 db_name = name
                 break
+            except ValueError:
+                continue
+        # If no database is affected, return
         if not db_name:
             return
         folder_db = self.get_database(db_name)
         if not folder_db:
             return
+        # Update the database
         event_type = event.event_type
-        rel_path = str(Path(event.src_path).relative_to(folder_db.root_path))
+        rel_path = str(p_event.relative_to(folder_db.root_path))
         folder_db.partial_update(rel_path, event_type)
         # Save changes
         db_file = self.database_dir / f"{db_name}.json"
@@ -202,15 +213,18 @@ class FolderChangeHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         self.parent.log(f"Created: {event.src_path}")
-        # Only handle files, not directories
-        if not event.is_directory:
-            # Move the file if it's in the watch folder
+        # If a new folder is created, sync the watch folders
+        if event.is_directory:
+            self.parent.sync_watch_folders(silent="semi")
+        # Else, queue the file for moving
+        else:
             if os.path.exists(event.src_path):
                 self.parent.queue_move_file(event.src_path)
         self.db_manager.update_database(event)
 
 
     def on_deleted(self, event):
+        self.parent.sync_watch_folders(silent="silent")
         self.db_manager.update_database(event)
 
 

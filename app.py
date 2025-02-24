@@ -3,6 +3,7 @@
 
 # Standard
 import os
+import re
 import shutil
 import hashlib
 import threading
@@ -30,7 +31,6 @@ WINDOW_MIN_WIDTH = 400
 WINDOW_MIN_HEIGHT = 300
 
 HISTORY_LIMIT = 100
-MOVE_QUEUE_TIMER = 10000  # 10 seconds
 
 
 #endregion
@@ -51,7 +51,10 @@ class FolderFunnelApp:
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
         self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
-        self.rigorous_duplicate_check_var = tk.BooleanVar(value=False)  # More thorough duplicate check
+        self.rigorous_duplicate_check_var = tk.BooleanVar(value=True)  # More thorough duplicate check
+        self.rigorous_dupe_max_files_var = tk.IntVar(value=25)  # Max files to check for duplicates
+        self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for filtering duplicates (Flexible/Strict)
+        self.move_queue_timer_length = tk.IntVar(value=15000)  # Timer length (ms) for move queue
 
         # Other Variables
         self.app_path = os.path.dirname(os.path.abspath(__file__))  # The application folder
@@ -110,8 +113,34 @@ class FolderFunnelApp:
         # Options menu
         self.options_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Options", menu=self.options_menu)
-        self.options_menu.add_radiobutton(label="Duplicate Check: Rigorous", variable=self.rigorous_duplicate_check_var, value=True)
-        self.options_menu.add_radiobutton(label="Duplicate Check: Simple", variable=self.rigorous_duplicate_check_var, value=False)
+        # Queue Timer submenu
+        self.queue_timer_menu = tk.Menu(self.options_menu, tearoff=0)
+        self.options_menu.add_cascade(label="Queue Timer", menu=self.queue_timer_menu)
+        self.queue_timer_menu.add_command(label="Queue Timer Length", state="disabled")
+        self.queue_timer_menu.add_radiobutton(label="5 seconds", variable=self.move_queue_timer_length, value=5000)
+        self.queue_timer_menu.add_radiobutton(label="15 seconds", variable=self.move_queue_timer_length, value=15000)
+        self.queue_timer_menu.add_radiobutton(label="30 seconds", variable=self.move_queue_timer_length, value=30000)
+        self.queue_timer_menu.add_radiobutton(label="1 minute", variable=self.move_queue_timer_length, value=60000)
+        self.queue_timer_menu.add_radiobutton(label="5 minutes", variable=self.move_queue_timer_length, value=300000)
+        # Duplicate handling submenu
+        self.duplicate_handling_menu = tk.Menu(self.options_menu, tearoff=0)
+        self.options_menu.add_cascade(label="Duplicate Handling", menu=self.duplicate_handling_menu)
+        self.duplicate_handling_menu.add_command(label="Duplicate Checking Mode", state="disabled")
+        self.duplicate_handling_menu.add_radiobutton(label="Rigorous", variable=self.rigorous_duplicate_check_var, value=True)
+        self.duplicate_handling_menu.add_radiobutton(label="Simple", variable=self.rigorous_duplicate_check_var, value=False)
+        self.duplicate_handling_menu.add_separator()
+        # Rigorous Check
+        self.duplicate_handling_menu.add_command(label="Rigorous Check: Max Files", state="disabled")
+        self.duplicate_handling_menu.add_radiobutton(label="10", variable=self.rigorous_dupe_max_files_var, value=10)
+        self.duplicate_handling_menu.add_radiobutton(label="25", variable=self.rigorous_dupe_max_files_var, value=25)
+        self.duplicate_handling_menu.add_radiobutton(label="50", variable=self.rigorous_dupe_max_files_var, value=50)
+        self.duplicate_handling_menu.add_radiobutton(label="100", variable=self.rigorous_dupe_max_files_var, value=100)
+        self.duplicate_handling_menu.add_radiobutton(label="1000", variable=self.rigorous_dupe_max_files_var, value=1000)
+        self.duplicate_handling_menu.add_separator()
+        # Dupe Filter Mode
+        self.duplicate_handling_menu.add_command(label="Duplicate Matching Mode", state="disabled")
+        self.duplicate_handling_menu.add_radiobutton(label="Strict", variable=self.dupe_filter_mode_var, value="Strict")
+        self.duplicate_handling_menu.add_radiobutton(label="Flexible", variable=self.dupe_filter_mode_var, value="Flexible")
         # Help menu
         self.menubar.add_command(label="Help", command=self.open_help_window)
 
@@ -418,7 +447,7 @@ class FolderFunnelApp:
         self.queue_start_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
         self.queue_progressbar['value'] = 0
         self._update_queue_progress()
-        self.queue_timer_id = self.root.after(MOVE_QUEUE_TIMER, self.process_move_queue)
+        self.queue_timer_id = self.root.after(self.move_queue_timer_length.get(), self.process_move_queue)
 
 
     def _handle_new_folder(self, source_path):
@@ -474,7 +503,7 @@ class FolderFunnelApp:
 
         current_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
         elapsed = current_time - self.queue_start_time
-        progress = (elapsed / MOVE_QUEUE_TIMER) * 100
+        progress = (elapsed / self.move_queue_timer_length.get()) * 100
 
         if progress <= 100:
             self.queue_progressbar['value'] = progress
@@ -512,16 +541,20 @@ class FolderFunnelApp:
             dest_path = os.path.join(self.working_dir_var.get(), rel_path)
             # Ensure the destination directory exists
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+            watch_db = self.database_manager.get_database("watch")
+            source_db = self.database_manager.get_database("source")
             # If file exists, check if it's a duplicate
             if os.path.exists(dest_path):
-                # Compare file sizes first (quick check)
-                if os.path.getsize(source_path) == os.path.getsize(dest_path):
-                    # Compare file contents
-                    if self._are_files_identical(source_path, dest_path):
-                        # Files are identical, delete the duplicate
-                        os.remove(source_path)
-                        self.log(f"Deleted duplicate file: {rel_path}")
-                        return True
+                # Compare file contents
+                if self._are_files_identical(source_path, dest_path):
+                    # Files are identical, delete the duplicate
+                    os.remove(source_path)
+                    self.log(f"Deleted duplicate file: {rel_path}")
+                    # Update watch DB to show file removal
+                    if watch_db:
+                        watch_db.partial_update(rel_path, "deleted")
+                        watch_db.save_to_file(str(self.database_manager.database_dir / "watch.json"))
+                    return True
                 # Not a duplicate, find new name
                 base, ext = os.path.splitext(dest_path)
                 counter = 1
@@ -531,6 +564,15 @@ class FolderFunnelApp:
             # Move the file
             shutil.move(source_path, dest_path)
             self.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}")
+            # Update watch DB: file no longer resides in watch folder
+            if watch_db:
+                watch_db.partial_update(rel_path, "deleted")
+                watch_db.save_to_file(str(self.database_manager.database_dir / "watch.json"))
+            # Update source DB: file was created in source folder
+            if source_db:
+                new_rel_path = os.path.relpath(dest_path, source_db.root_path)
+                source_db.partial_update(new_rel_path, "created")
+                source_db.save_to_file(str(self.database_manager.database_dir / "source.json"))
             # Update history list with the new filename and full path
             self.update_history_list(os.path.basename(dest_path), dest_path)
             # Update counts
@@ -571,34 +613,64 @@ class FolderFunnelApp:
             return md5.hexdigest()
 
         try:
-            # First check the direct comparison
-            if os.path.exists(file2) and get_md5(file1) == get_md5(file2):
-                return True
-            # Check similar files in the same directory as file2
-            target_dir = os.path.dirname(file2)
-            similar_files = self._find_similar_files(file1, target_dir)
-            print(similar_files)
-            file1_md5 = get_md5(file1)
-            for similar_file in similar_files:
-                if get_md5(similar_file) == file1_md5:
+            if not self.rigorous_duplicate_check_var.get():
+                # First check the file size (fast)
+                if os.path.getsize(file1) == os.path.getsize(file2):
                     return True
-            return False
+                # Then check the MD5 hash
+                elif os.path.exists(file2) and get_md5(file1) == get_md5(file2):
+                    return True
+            else:
+                # Check similar files in the same directory as file2
+                target_dir = os.path.dirname(file2)
+                similar_files = self._find_similar_files(file1, target_dir)
+                file1_md5 = get_md5(file1)
+                for similar_file in similar_files:
+                    if get_md5(similar_file) == file1_md5:
+                        return True
+                return False
         except Exception:
             return False
 
 
     def _find_similar_files(self, filename, target_dir):
-        # Get base name without unique counter suffix
+        method = self.dupe_filter_mode_var.get()
+        # Get base name and extension
         base_name = os.path.basename(filename)
-        base_name = '_'.join(base_name.split('_')[:-1]) if '_' in base_name else os.path.splitext(base_name)[0]
-        # Only search within the target directory
+        base_name_without_ext, ext = os.path.splitext(base_name)
+        ext = ext.lower()
         similar_files = []
-        for f in os.listdir(target_dir):
-            if os.path.isfile(os.path.join(target_dir, f)) and base_name in f.lower():
-                similar_files.append(os.path.join(target_dir, f))
-        # Sort by filename similarity and limit to top 100
-        similar_files.sort(key=lambda x: SequenceMatcher(None, base_name.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
-        return similar_files[:100]
+        if method == 'Strict':
+            # Method B: Use regex to match base names with potential counters
+            base_name_pattern = re.escape(base_name_without_ext) + r'([ _\-]\(\d+\)|[ _\-]\d+)?$'
+            for f in os.listdir(target_dir):
+                full_path = os.path.join(target_dir, f)
+                if os.path.isfile(full_path):
+                    f_base, f_ext = os.path.splitext(f)
+                    if f_ext.lower() != ext:
+                        continue
+                    if re.match(base_name_pattern, f_base, re.IGNORECASE):
+                        similar_files.append(full_path)
+            similar_files.sort(key=lambda x: SequenceMatcher(None, base_name_without_ext.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
+        elif method == 'Flexible':
+            # Method A: Remove unique counter suffix if applicable
+            if '_' in base_name_without_ext:
+                base_name_clean = '_'.join(base_name_without_ext.split('_')[:-1])
+            else:
+                base_name_clean = base_name_without_ext
+            for f in os.listdir(target_dir):
+                full_path = os.path.join(target_dir, f)
+                if os.path.isfile(full_path):
+                    f_base, f_ext = os.path.splitext(f)
+                    if f_ext.lower() != ext:
+                        continue
+                    if base_name_clean.lower() in f_base.lower():
+                        similar_files.append(full_path)
+            similar_files.sort(key=lambda x: SequenceMatcher(None, base_name_clean.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
+        else:
+            self.log(f"Invalid method '{method}' provided to _find_similar_files")
+            return []
+        return similar_files[:self.rigorous_dupe_max_files_var.get()]
 
 
 #endregion
@@ -656,19 +728,28 @@ class FolderFunnelApp:
                 "The primary goal is to remove the need for manual filename conflict resolution by automatically renaming files to avoid duplicates, and by checking if files are identical before moving them.",
 
             "Basic Steps:":
-                "**1) Select** a folder to watch from 'File' > 'Select source path...' or via the 'Watch Folder' field.\n"
+                "**1) Select** a folder to watch from *'File' > 'Select source path...'* or via the *'Browse...'* button.\n"
                 "**2) Click 'Start'** to duplicate the folder structure and begin monitoring changes.\n"
                 "**3) Click 'Stop'** to remove the duplicate folder and end the process.",
 
-            "Using the Queue:":
-                "New files and folders in the watch folder are queued for moving after a brief delay. This prevents partial file moves and ensures changes are grouped together.",
+            "Duplicate Handling:":
+                "• **Rigorous Check**: Compares file contents using MD5 hashes to ensure files are identical.\n"
+                "• **Simple Check**: Compares file sizes before moving.\n"
+                "• **Duplicate Matching Mode**: Choose *'Strict'* to match filenames exactly, or *'Flexible'* to match similar filenames.",
+
+            "Queue Timer:":
+                "• New files and folders in the watch folder are queued for moving after a brief delay. This prevents partial file moves and ensures changes are grouped together.\n"
+                "• The queue timer length can be adjusted under *'Options' > 'Queue Timer'*. This is the delay between moving files in the queue.\n"
+                "• The timer progress bar shows the time remaining before the next batch move.\n"
+                "• The timer is reset each time a new file is added to the queue.",
+
 
             "Tips & Tricks:":
-                "• Right-click items in 'History' to open or locate them quickly.\n"
-                "• Clear logs or history anytime under the 'Edit' menu.\n"
+                "• Right-click items in *'History'* to open or locate them quickly.\n"
+                "• Clear logs or history anytime under the *Edit'* menu.\n"
                 "• Check the status bar at the bottom to see progress and queue details."
         }
-        self.help_window.open_window(geometry="550x700", help_text=help_text)
+        self.help_window.open_window(geometry="800x700", help_text=help_text)
 
 
 #endregion

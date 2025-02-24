@@ -3,11 +3,8 @@
 
 # Standard
 import os
-import re
 import shutil
-import hashlib
 import threading
-from difflib import SequenceMatcher
 
 # Standard GUI
 import tkinter as tk
@@ -17,7 +14,7 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 from TkToolTip.TkToolTip import TkToolTip as ToolTip
 
 # Custom
-from file_database import DatabaseManager
+from file_database import DatabaseManager, are_files_identical
 from help_window import HelpWindow
 
 
@@ -415,7 +412,7 @@ class FolderFunnelApp:
 
 
     def stop_folder_watcher(self):
-        if not self.database_manager.observer:
+        if not (self.database_manager.watch_observer or self.database_manager.source_observer):
             return
         confirm = messagebox.askokcancel("Stop Process?", "This will stop the Folder-Funnel process and remove the duplicate folder.\n\nContinue?")
         if not confirm:
@@ -585,7 +582,7 @@ class FolderFunnelApp:
             # If file exists, check if it's a duplicate
             if os.path.exists(dest_path):
                 # Compare file contents
-                if self._are_files_identical(source_path, dest_path):
+                if are_files_identical(file1=source_path, file2=dest_path, rigorous_check=self.rigorous_duplicate_check_var.get(), method=self.dupe_filter_mode_var.get(), max_files=self.rigorous_dupe_max_files_var.get()):
                     # Files are identical, delete the duplicate
                     os.remove(source_path)
                     self.log(f"Deleted duplicate file: {rel_path}")
@@ -637,79 +634,6 @@ class FolderFunnelApp:
                 self.log(f"Queued renamed file: {os.path.basename(new_path)}")
         except Exception as e:
             self.log(f"Error handling rename event: {str(e)}")
-
-
-    def _are_files_identical(self, file1, file2, chunk_size=8192):
-        """Compare two files using MD5 hashes. Also checks for similar files in target directory."""
-        def get_md5(filename):
-            md5 = hashlib.md5()
-            with open(filename, 'rb') as f:
-                while True:
-                    chunk = f.read(chunk_size)
-                    if not chunk:
-                        break
-                    md5.update(chunk)
-            return md5.hexdigest()
-
-        try:
-            if not self.rigorous_duplicate_check_var.get():
-                # First check the file size (fast)
-                if os.path.getsize(file1) == os.path.getsize(file2):
-                    return True
-                # Then check the MD5 hash
-                elif os.path.exists(file2) and get_md5(file1) == get_md5(file2):
-                    return True
-            else:
-                # Check similar files in the same directory as file2
-                target_dir = os.path.dirname(file2)
-                similar_files = self._find_similar_files(file1, target_dir)
-                file1_md5 = get_md5(file1)
-                for similar_file in similar_files:
-                    if get_md5(similar_file) == file1_md5:
-                        return True
-                return False
-        except Exception:
-            return False
-
-
-    def _find_similar_files(self, filename, target_dir):
-        method = self.dupe_filter_mode_var.get()
-        # Get base name and extension
-        base_name = os.path.basename(filename)
-        base_name_without_ext, ext = os.path.splitext(base_name)
-        ext = ext.lower()
-        similar_files = []
-        if method == 'Strict':
-            # Method B: Use regex to match base names with potential counters
-            base_name_pattern = re.escape(base_name_without_ext) + r'([ _\-]\(\d+\)|[ _\-]\d+)?$'
-            for f in os.listdir(target_dir):
-                full_path = os.path.join(target_dir, f)
-                if os.path.isfile(full_path):
-                    f_base, f_ext = os.path.splitext(f)
-                    if f_ext.lower() != ext:
-                        continue
-                    if re.match(base_name_pattern, f_base, re.IGNORECASE):
-                        similar_files.append(full_path)
-            similar_files.sort(key=lambda x: SequenceMatcher(None, base_name_without_ext.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
-        elif method == 'Flexible':
-            # Method A: Remove unique counter suffix if applicable
-            if '_' in base_name_without_ext:
-                base_name_clean = '_'.join(base_name_without_ext.split('_')[:-1])
-            else:
-                base_name_clean = base_name_without_ext
-            for f in os.listdir(target_dir):
-                full_path = os.path.join(target_dir, f)
-                if os.path.isfile(full_path):
-                    f_base, f_ext = os.path.splitext(f)
-                    if f_ext.lower() != ext:
-                        continue
-                    if base_name_clean.lower() in f_base.lower():
-                        similar_files.append(full_path)
-            similar_files.sort(key=lambda x: SequenceMatcher(None, base_name_clean.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
-        else:
-            self.log(f"Invalid method '{method}' provided to _find_similar_files")
-            return []
-        return similar_files[:self.rigorous_dupe_max_files_var.get()]
 
 
 #endregion

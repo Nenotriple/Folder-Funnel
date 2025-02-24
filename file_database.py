@@ -3,10 +3,13 @@
 
 # Standard imports
 import os
+import re
 import json
+import hashlib
 import datetime
-from typing import Dict, List, Optional
 from pathlib import Path
+from difflib import SequenceMatcher
+from typing import Dict, List, Optional
 
 # Third-party imports
 from watchdog.observers import Observer
@@ -122,7 +125,8 @@ class DatabaseManager:
         self.databases: Dict[str, str] = {}
         self.master_file = self.database_dir / 'master.json'
         self.load_master()
-        self.observer = None
+        self.watch_observer = None
+        self.source_observer = None
 
 
     def load_master(self) -> None:
@@ -155,23 +159,30 @@ class DatabaseManager:
 
 
     def start_watching(self, watch_path: str, source_path: str = None):
-        if self.observer:
-            self.stop_watching()
-        self.observer = Observer()
-        handler = FolderChangeHandler(self.parent, self)
-        # Always watch the 'watch' folder
-        self.observer.schedule(handler, path=watch_path, recursive=True)
-        # Also watch the source folder if provided
+        # Stop any existing observers
+        self.stop_watching()
+        # Set up watch path observer
+        self.watch_observer = Observer()
+        watch_handler = WatchFolderHandler(self.parent, self)
+        self.watch_observer.schedule(watch_handler, path=watch_path, recursive=True)
+        self.watch_observer.start()
+        # Set up source path observer (if provided)
         if source_path:
-            self.observer.schedule(handler, path=source_path, recursive=True)
-        self.observer.start()
+            self.source_observer = Observer()
+            source_handler = SourceFolderHandler(self.parent)
+            self.source_observer.schedule(source_handler, path=source_path, recursive=True)
+            self.source_observer.start()
 
 
     def stop_watching(self):
-        if self.observer:
-            self.observer.stop()
-            self.observer.join()
-            self.observer = None
+        if self.watch_observer:
+            self.watch_observer.stop()
+            self.watch_observer.join()
+            self.watch_observer = None
+        if self.source_observer:
+            self.source_observer.stop()
+            self.source_observer.join()
+            self.source_observer = None
 
 
     def update_database(self, event):
@@ -205,7 +216,7 @@ class DatabaseManager:
 #region - cls FolderChangeHandler
 
 
-class FolderChangeHandler(FileSystemEventHandler):
+class WatchFolderHandler(FileSystemEventHandler):
     def __init__(self, parent, db_manager):
         self.parent = parent
         self.db_manager = db_manager
@@ -239,3 +250,86 @@ class FolderChangeHandler(FileSystemEventHandler):
 
 
 #endregion
+#region - cls SourceFolderHandler
+
+
+class SourceFolderHandler(FileSystemEventHandler):
+    def __init__(self, parent):
+        self.parent = parent
+
+
+    def on_created(self, event):
+        if event.is_directory:
+            # Only sync folders when a directory is created in source
+            self.parent.sync_watch_folders(silent="semi")
+
+
+    def on_deleted(self, event):
+        if event.is_directory:
+            # Only sync folders when a directory is deleted in source
+            self.parent.sync_watch_folders(silent="silent")
+
+
+    def on_moved(self, event):
+        if event.is_directory:
+            # Only sync folders when a directory is moved/renamed in source
+            self.parent.sync_watch_folders(silent="semi")
+
+
+#endregion
+#region - Helper Functions
+
+
+def are_files_identical(file1, file2, rigorous_check=False, method='Strict', max_files=10, chunk_size=8192):
+    """Compare files by size/MD5 or find similar files if rigorous_check is True."""
+    def get_md5(filename):
+        m = hashlib.md5()
+        with open(filename, 'rb') as f:
+            while True:
+                chunk = f.read(chunk_size)
+                if not chunk:
+                    break
+                m.update(chunk)
+        return m.hexdigest()
+    try:
+        if not rigorous_check:
+            if os.path.getsize(file1) == os.path.getsize(file2):
+                return True
+            elif os.path.exists(file2) and get_md5(file1) == get_md5(file2):
+                return True
+        else:
+            target_dir = os.path.dirname(file2)
+            similar = find_similar_files(file1, target_dir, method, max_files)
+            file1_md5 = get_md5(file1)
+            for sf in similar:
+                if get_md5(sf) == file1_md5:
+                    return True
+        return False
+    except Exception:
+        return False
+
+
+def find_similar_files(filename, target_dir, method='Strict', max_files=10):
+    """Return a list of files in target_dir similar to filename based on 'method'."""
+    base_name = os.path.splitext(os.path.basename(filename))[0]
+    ext = os.path.splitext(filename)[1].lower()
+    similar_files = []
+    if method == 'Strict':
+        pattern = re.escape(base_name) + r'([ _\-]\(\d+\)|[ _\-]\d+)?$'
+        for f in os.listdir(target_dir):
+            full_path = os.path.join(target_dir, f)
+            if os.path.isfile(full_path):
+                f_base, f_ext = os.path.splitext(f)
+                if f_ext.lower() == ext and re.match(pattern, f_base, re.IGNORECASE):
+                    similar_files.append(full_path)
+        similar_files.sort(key=lambda x: SequenceMatcher(None, base_name.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
+    elif method == 'Flexible':
+        base_name_clean = base_name.rsplit('_', 1)[0] if '_' in base_name else base_name
+        for f in os.listdir(target_dir):
+            full_path = os.path.join(target_dir, f)
+            if os.path.isfile(full_path):
+                f_base, f_ext = os.path.splitext(f)
+                if f_ext.lower() == ext and base_name_clean.lower() in f_base.lower():
+                    similar_files.append(full_path)
+        similar_files.sort(key=lambda x: SequenceMatcher(None, base_name_clean.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
+    return similar_files[:max_files]

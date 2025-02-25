@@ -3,6 +3,7 @@
 
 # Standard
 import os
+import time
 import shutil
 import threading
 
@@ -402,12 +403,14 @@ class FolderFunnelApp:
 
 
     def _initialize_databases(self):
+        start_time = time.time()
         self.log("Initializing databases...")
         self.toggle_entry_state(state="disabled")
         self.database_manager.add_database("source", self.working_dir_var.get())
         self.database_manager.add_database("watch", self.watch_path)
         self.toggle_entry_state(state="normal")
-        self.log("Ready!")
+        end_time = f"{time.time() - start_time:.2f}"
+        self.log(f"Time to initialize databases: {end_time} seconds\nReady!")
         self.status_label_var.set("Status: Running")
 
 

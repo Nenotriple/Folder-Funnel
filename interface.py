@@ -1,5 +1,6 @@
 #region - Imports
 
+
 # Standard
 import tkinter as tk
 from tkinter import ttk, scrolledtext
@@ -12,17 +13,21 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app import FolderFunnelApp
 
+
 #endregion
 #region - Entry point
 
-def UI(app: 'FolderFunnelApp'):
+
+def create_interface(app: 'FolderFunnelApp'):
     create_menubar(app)
     create_control_row(app)
     create_main_frame(app)
     create_message_row(app)
 
+
 #endregion
 #region - Menubar
+
 
 def create_menubar(app: 'FolderFunnelApp'):
     # Create menubar
@@ -34,6 +39,7 @@ def create_menubar(app: 'FolderFunnelApp'):
     _create_options_menu(app, menubar)
     menubar.add_command(label="Help", command=app.open_help_window)
 
+
 def _create_file_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     file_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="File", menu=file_menu)
@@ -42,6 +48,7 @@ def _create_file_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=app.on_closing)
 
+
 def _create_edit_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     edit_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Edit", menu=edit_menu)
@@ -49,6 +56,7 @@ def _create_edit_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     edit_menu.add_separator()
     edit_menu.add_command(label="Clear log", command=app.clear_log)
     edit_menu.add_command(label="Clear history", command=app.clear_history)
+
 
 def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     options_menu = tk.Menu(menubar, tearoff=0)
@@ -86,8 +94,10 @@ def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     options_menu.add_cascade(label="Text Log", menu=text_log_menu)
     text_log_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
 
+
 #endregion
 #region - Control row
+
 
 def create_control_row(app: 'FolderFunnelApp'):
     # Create control row
@@ -98,6 +108,7 @@ def create_control_row(app: 'FolderFunnelApp'):
     # Widgets
     _create_dir_entry(app, control_frame)
     _create_buttons(app, control_frame)
+
 
 def _create_dir_entry(app: 'FolderFunnelApp', control_frame: tk.Frame):
     dir_selection_frame = tk.Frame(control_frame)
@@ -119,6 +130,7 @@ def _create_dir_entry(app: 'FolderFunnelApp', control_frame: tk.Frame):
     open_button.pack(side="left")
     Tip(open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
 
+
 def _create_buttons(app: 'FolderFunnelApp', control_frame: tk.Frame):
     app.start_button = ttk.Button(control_frame, text="Start", command=app.start_folder_watcher)
     app.start_button.pack(side="left")
@@ -128,8 +140,10 @@ def _create_buttons(app: 'FolderFunnelApp', control_frame: tk.Frame):
     app.stop_button.pack(side="left")
     Tip(app.stop_button, "Stop watching the folder and remove the duplicate", delay=250, pady=25, origin="widget")
 
+
 #endregion
 #region - Main frame
+
 
 def create_main_frame(app: 'FolderFunnelApp'):
     # Create main frame
@@ -141,6 +155,7 @@ def create_main_frame(app: 'FolderFunnelApp'):
     # Widgets
     _create_text_log(app, main_pane)
     _create_history_list(app, main_pane)
+
 
 def _create_text_log(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     # Frame
@@ -154,6 +169,7 @@ def _create_text_log(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1)
     app.text_log.pack(fill="both", expand=True)
+
 
 def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     # Frame
@@ -175,8 +191,10 @@ def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     app.list_context_menu.add_separator()
     app.list_context_menu.add_command(label="Delete", command=app.delete_selected_file)
 
+
 #endregion
 #region - Message row
+
 
 def create_message_row(app: 'FolderFunnelApp'):
     # Message row

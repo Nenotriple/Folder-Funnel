@@ -1,6 +1,7 @@
 #region - Imports
 
 
+# Standard
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 
@@ -12,7 +13,7 @@ from TkToolTip.TkToolTip import TkToolTip as Tip
 #region - Entry point
 
 
-def ui(self):
+def create_interface(self):
     create_menubar(self)
     create_control_row(self)
     create_main_frame(self)

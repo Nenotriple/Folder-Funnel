@@ -401,12 +401,10 @@ class FolderFunnelApp:
         self.watch_observer.schedule(watch_handler, path=self.watch_path, recursive=True)
         self.watch_observer.start()
         # Set up source folder observer
-        source_path = self.working_dir_var.get()
-        if source_path:
-            self.source_observer = Observer()
-            source_handler = SourceFolderHandler(self)
-            self.source_observer.schedule(source_handler, path=source_path, recursive=True)
-            self.source_observer.start()
+        self.source_observer = Observer()
+        source_handler = SourceFolderHandler(self)
+        self.source_observer.schedule(source_handler, path=self.working_dir_var.get(), recursive=True)
+        self.source_observer.start()
         self.log("Ready!\n")
 
 

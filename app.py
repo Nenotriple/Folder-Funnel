@@ -8,15 +8,13 @@ import shutil
 
 # Standard GUI
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, scrolledtext
+from tkinter import filedialog, messagebox
 
 # Third-party
-from TkToolTip.TkToolTip import TkToolTip as Tip
-
-# For file watching
 from watchdog.observers import Observer
 
 # Custom
+from interface import ui
 from event_handler import WatchFolderHandler, SourceFolderHandler, are_files_identical
 from help_window import HelpWindow
 
@@ -26,12 +24,10 @@ from help_window import HelpWindow
 
 
 WINDOW_TITLE = "Folder-Funnel"
-
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 480
 WINDOW_MIN_WIDTH = 400
 WINDOW_MIN_HEIGHT = 300
-
 HISTORY_LIMIT = 100
 
 
@@ -80,178 +76,6 @@ class FolderFunnelApp:
 
 
 #endregion
-#region - Interface Setup
-
-
-    def create_interface(self):
-        self.create_menubar()
-        self.create_control_row()
-        self.create_main_frame()
-        self.create_message_row()
-
-
-    def create_menubar(self):
-        # Create menubar
-        self.menubar = tk.Menu(self.root)
-        self.root.config(menu=self.menubar)
-        # File menu
-        self.file_menu = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="File", menu=self.file_menu)
-        self.file_menu.add_command(label="Select source path...", command=self.select_working_dir)
-        self.file_menu.add_command(label="Open selected path", command=self.open_folder)
-        self.file_menu.add_separator()
-        self.file_menu.add_command(label="Exit", command=self.on_closing)
-        # Edit Menu
-        self.edit_menu = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Edit", menu=self.edit_menu)
-        self.edit_menu.add_command(label="Sync Folders", command=self.sync_watch_folders)
-        self.edit_menu.add_separator()
-        self.edit_menu.add_command(label="Clear log", command=self.clear_log)
-        self.edit_menu.add_command(label="Clear history", command=self.clear_history)
-        # Options menu
-        self.options_menu = tk.Menu(self.menubar, tearoff=0)
-        self.menubar.add_cascade(label="Options", menu=self.options_menu)
-        # Queue Timer submenu
-        self.queue_timer_menu = tk.Menu(self.options_menu, tearoff=0)
-        self.options_menu.add_cascade(label="Queue Timer", menu=self.queue_timer_menu)
-        self.queue_timer_menu.add_command(label="Queue Timer Length", state="disabled")
-        self.queue_timer_menu.add_radiobutton(label="5 seconds", variable=self.move_queue_timer_length_var, value=5000)
-        self.queue_timer_menu.add_radiobutton(label="15 seconds", variable=self.move_queue_timer_length_var, value=15000)
-        self.queue_timer_menu.add_radiobutton(label="30 seconds", variable=self.move_queue_timer_length_var, value=30000)
-        self.queue_timer_menu.add_radiobutton(label="1 minute", variable=self.move_queue_timer_length_var, value=60000)
-        self.queue_timer_menu.add_radiobutton(label="5 minutes", variable=self.move_queue_timer_length_var, value=300000)
-        # Duplicate handling submenu
-        self.duplicate_handling_menu = tk.Menu(self.options_menu, tearoff=0)
-        self.options_menu.add_cascade(label="Duplicate Handling", menu=self.duplicate_handling_menu)
-        self.duplicate_handling_menu.add_command(label="Duplicate Checking Mode", state="disabled")
-        self.duplicate_handling_menu.add_radiobutton(label="Rigorous", variable=self.rigorous_duplicate_check_var, value=True)
-        self.duplicate_handling_menu.add_radiobutton(label="Simple", variable=self.rigorous_duplicate_check_var, value=False)
-        self.duplicate_handling_menu.add_separator()
-        # Rigorous Check
-        self.duplicate_handling_menu.add_command(label="Rigorous Check: Max Files", state="disabled")
-        self.duplicate_handling_menu.add_radiobutton(label="10", variable=self.rigorous_dupe_max_files_var, value=10)
-        self.duplicate_handling_menu.add_radiobutton(label="25", variable=self.rigorous_dupe_max_files_var, value=25)
-        self.duplicate_handling_menu.add_radiobutton(label="50", variable=self.rigorous_dupe_max_files_var, value=50)
-        self.duplicate_handling_menu.add_radiobutton(label="100", variable=self.rigorous_dupe_max_files_var, value=100)
-        self.duplicate_handling_menu.add_radiobutton(label="1000", variable=self.rigorous_dupe_max_files_var, value=1000)
-        self.duplicate_handling_menu.add_separator()
-        # Dupe Filter Mode
-        self.duplicate_handling_menu.add_command(label="Duplicate Matching Mode", state="disabled")
-        self.duplicate_handling_menu.add_radiobutton(label="Strict", variable=self.dupe_filter_mode_var, value="Strict")
-        self.duplicate_handling_menu.add_radiobutton(label="Flexible", variable=self.dupe_filter_mode_var, value="Flexible")
-        # Text Log submenu
-        self.text_log_menu = tk.Menu(self.options_menu, tearoff=0)
-        self.options_menu.add_cascade(label="Text Log", menu=self.text_log_menu)
-        self.text_log_menu.add_checkbutton(label="Wrap Text", variable=self.text_log_wrap_var, command=self.toggle_text_wrap)
-        # Help menu
-        self.menubar.add_command(label="Help", command=self.open_help_window)
-
-
-    def create_control_row(self):
-        # Create control row
-        control_frame = tk.Frame(self.root)
-        control_frame.pack(side="top", fill="x")
-        # Separator
-        ttk.Separator(control_frame, orient="horizontal").pack(side="bottom", fill="x")
-        # Frame
-        dir_selection_frame = tk.Frame(control_frame)
-        dir_selection_frame.pack(side="left", fill="x", expand=True)
-        #Label
-        dir_label = tk.Label(dir_selection_frame, text="Watch Folder:")
-        dir_label.pack(side="left")
-        Tip(dir_label, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
-        # Entry
-        self.dir_entry = ttk.Entry(dir_selection_frame, textvariable=self.working_dir_var)
-        self.dir_entry.pack(side="left", fill="x", expand=True)
-        self.dir_entry_tooltip = Tip(self.dir_entry, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
-        # Browse
-        self.browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=self.select_working_dir)
-        self.browse_button.pack(side="left")
-        Tip(self.browse_button, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
-        # Open
-        self.open_button = ttk.Button(dir_selection_frame, text="Open", command=self.open_folder)
-        self.open_button.pack(side="left")
-        Tip(self.open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
-        # Start
-        self.start_button = ttk.Button(control_frame, text="Start", command=self.start_folder_watcher)
-        self.start_button.pack(side="left")
-        Tip(self.start_button, "Begin watching the selected folder", delay=250, pady=25, origin="widget")
-        # Stop
-        self.stop_button = ttk.Button(control_frame, text="Stop", state="disabled", command=self.stop_folder_watcher)
-        self.stop_button.pack(side="left")
-        Tip(self.stop_button, "Stop watching the folder and remove the duplicate", delay=250, pady=25, origin="widget")
-
-
-    def create_main_frame(self):
-        # Create main frame
-        self.main_frame = tk.Frame(self.root)
-        self.main_frame.pack(fill="both", expand=True)
-        # paned window
-        self.main_pane = tk.PanedWindow(self.main_frame, orient="horizontal", sashwidth=6, bg="#d0d0d0", bd=0)
-        self.main_pane.pack(fill="both", expand=True)
-        # Frame
-        self.text_frame = tk.Frame(self.main_pane)
-        self.main_pane.add(self.text_frame, stretch="always")
-        self.main_pane.paneconfigure(self.text_frame, minsize=200, width=400)
-        # Label
-        log_label = tk.Label(self.text_frame, text="Log")
-        log_label.pack(fill="x")
-        Tip(log_label, "Log of events and actions", delay=250, pady=25, origin="widget")
-        # Text
-        self.text_log = scrolledtext.ScrolledText(self.text_frame, wrap="word", state="disable", width=1, height=1)
-        self.text_log.pack(fill="both", expand=True)
-        # Frame
-        self.list_frame = tk.Frame(self.main_pane)
-        self.main_pane.add(self.list_frame, stretch="never")
-        self.main_pane.paneconfigure(self.list_frame, minsize=200, width=200)
-        # Label
-        history_label = tk.Label(self.list_frame, text="History")
-        history_label.pack(fill="x")
-        Tip(history_label, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
-        # Listbox
-        self.history_listbox = tk.Listbox(self.list_frame, width=1, height=1)
-        self.history_listbox.pack(fill="both", expand=True)
-        self.history_listbox.bind("<Button-3>", self.show_context_menu)
-        # Context menu
-        self.list_context_menu = tk.Menu(self.history_listbox, tearoff=0)
-        self.list_context_menu.add_command(label="Open", command=self.open_selected_file)
-        self.list_context_menu.add_command(label="Show in File Explorer", command=self.show_selected_in_explorer)
-        self.list_context_menu.add_separator()
-        self.list_context_menu.add_command(label="Delete", command=self.delete_selected_file)
-
-
-    def create_message_row(self):
-        # Message row
-        message_frame = tk.Frame(self.root)
-        message_frame.pack(side="bottom", fill="x")
-        ttk.Separator(message_frame, orient="horizontal").pack(fill="x")
-        # Status label
-        self.status_label = tk.Label(message_frame, textvariable=self.status_label_var, relief="groove", width=15, anchor="w")
-        self.status_label.pack(side="left")
-        Tip(self.status_label, "Current status of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
-        # Foldercount label
-        self.Foldercount_label = tk.Label(message_frame, textvariable=self.foldercount_var, relief="groove", width=15, anchor="w")
-        self.Foldercount_label.pack(side="left")
-        Tip(self.Foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
-        # Filecount label
-        self.filecount_label = tk.Label(message_frame, textvariable=self.filecount_var, relief="groove", width=15, anchor="w")
-        self.filecount_label.pack(side="left")
-        Tip(self.filecount_label, "Number of files in the source folder", delay=250, pady=-25, origin="widget")
-        # Movecount label
-        self.movecount_label = tk.Label(message_frame, textvariable=self.movecount_var, relief="groove", width=15, anchor="w")
-        self.movecount_label.pack(side="left")
-        Tip(self.movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
-        # Progress bar
-        self.progressbar = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
-        self.progressbar.pack(side="left", fill="x", expand=True)
-        Tip(self.progressbar, "Running indicator of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
-        # Queue Timer
-        self.queue_progressbar = ttk.Progressbar(message_frame, mode="determinate")
-        self.queue_progressbar.pack(side="left", fill="x", expand=True)
-        Tip(self.queue_progressbar, "Progress of the move queue timer", delay=250, pady=-25, origin="widget")
-
-
-#endregion
 #region - GUI Logic
 
 
@@ -259,31 +83,31 @@ class FolderFunnelApp:
         if self.messages and self.messages[-1] == message:
             return
         self.messages.append(message)
-        self.text_log.configure(state="normal")
-        self.text_log.insert("end", f"{message}\n")
-        self.text_log.configure(state="disable")
-        self.text_log.see("end")
+        ui.text_log.configure(state="normal")
+        ui.text_log.insert("end", f"{message}\n")
+        ui.text_log.configure(state="disable")
+        ui.text_log.see("end")
 
 
     def clear_log(self):
-        self.text_log.configure(state="normal")
-        self.text_log.delete(1.0, "end")
-        self.text_log.configure(state="disable")
+        ui.text_log.configure(state="normal")
+        ui.text_log.delete(1.0, "end")
+        ui.text_log.configure(state="disable")
 
 
     def clear_history(self):
-        self.history_listbox.delete(0, "end")
+        ui.history_listbox.delete(0, "end")
         self.history_items.clear()
 
 
     def toggle_text_wrap(self):
         wrap = self.text_log_wrap_var.get()
-        self.text_log.configure(wrap="word" if wrap else "none")
+        ui.text_log.configure(wrap="word" if wrap else "none")
 
 
     def toggle_button_state(self, state="idle"):
-        start = self.start_button
-        stop = self.stop_button
+        start = ui.start_button
+        stop = ui.stop_button
         if state == "running":
             start.configure(state="disabled")
             stop.configure(state="normal")
@@ -297,11 +121,11 @@ class FolderFunnelApp:
 
     def toggle_progressbar(self, state=None):
         if state == "start":
-            self.progressbar.configure(mode="indeterminate")
-            self.progressbar.start()
+            ui.progressbar.configure(mode="indeterminate")
+            ui.progressbar.start()
         else:
-            self.progressbar.configure(mode="determinate")
-            self.progressbar.stop()
+            ui.progressbar.configure(mode="determinate")
+            ui.progressbar.stop()
 
 
 #endregion
@@ -317,26 +141,26 @@ class FolderFunnelApp:
             oldest_key = next(iter(self.history_items))
             del self.history_items[oldest_key]
         # Clear and repopulate the list widget
-        self.history_listbox.delete(0, "end")
+        ui.history_listbox.delete(0, "end")
         for filename in self.history_items:
             # Insert at top to show newest first
-            self.history_listbox.insert(0, filename)
+            ui.history_listbox.insert(0, filename)
 
 
     def show_context_menu(self, event):
-        clicked_index = self.history_listbox.nearest(event.y)
+        clicked_index = ui.history_listbox.nearest(event.y)
         if clicked_index >= 0:
-            self.history_listbox.selection_clear(0, "end")
-            self.history_listbox.selection_set(clicked_index)
-            self.history_listbox.activate(clicked_index)
-            self.list_context_menu.post(event.x_root, event.y_root)
+            ui.history_listbox.selection_clear(0, "end")
+            ui.history_listbox.selection_set(clicked_index)
+            ui.history_listbox.activate(clicked_index)
+            ui.list_context_menu.post(event.x_root, event.y_root)
 
 
     def get_selected_filepath(self):
-        selection = self.history_listbox.curselection()
+        selection = ui.history_listbox.curselection()
         if not selection:
             return None
-        filename = self.history_listbox.get(selection[0])
+        filename = ui.history_listbox.get(selection[0])
         return self.history_items.get(filename)
 
 
@@ -366,7 +190,7 @@ class FolderFunnelApp:
             try:
                 os.remove(filepath)
                 del self.history_items[filename]
-                self.history_listbox.delete(self.history_listbox.curselection())
+                ui.history_listbox.delete(ui.history_listbox.curselection())
                 self.log(f"Deleted file: {filename}")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not delete file: {str(e)}")
@@ -493,7 +317,7 @@ class FolderFunnelApp:
             self.root.after_cancel(self.queue_timer_id)
         # Start new timer
         self.queue_start_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
-        self.queue_progressbar['value'] = 0
+        ui.queue_progressbar['value'] = 0
         self._update_queue_progress()
         self.queue_timer_id = self.root.after(self.move_queue_timer_length_var.get(), self.process_move_queue)
 
@@ -532,24 +356,24 @@ class FolderFunnelApp:
     def _update_queue_progress(self):
         """Update the queue progress bar."""
         if not self.queue_start_time or not self.move_queue:
-            self.queue_progressbar['value'] = 0
+            ui.queue_progressbar['value'] = 0
             return
         current_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
         elapsed = current_time - self.queue_start_time
         progress = (elapsed / self.move_queue_timer_length_var.get()) * 100
         if progress <= 100:
-            self.queue_progressbar['value'] = progress
+            ui.queue_progressbar['value'] = progress
             # Update every 50ms
             self.root.after(50, self._update_queue_progress)
         else:
-            self.queue_progressbar['value'] = 100
+            ui.queue_progressbar['value'] = 100
 
 
     def process_move_queue(self):
         """Process all queued file moves."""
         self.queue_timer_id = None  # Reset timer ID
         self.queue_start_time = None  # Reset start time
-        self.queue_progressbar['value'] = 0  # Reset progress bar
+        ui.queue_progressbar['value'] = 0  # Reset progress bar
         if not self.move_queue:
             return
         self.log(f"Processing {len(self.move_queue)} queued files...")
@@ -626,7 +450,7 @@ class FolderFunnelApp:
             path = os.path.normpath(path)
         if os.path.exists(path):
             self.working_dir_var.set(path)
-            self.dir_entry_tooltip.config(text=path)
+            ui.dir_entry_tooltip.config(text=path)
             self.log(f"\nSelected folder: {path}\n")
             self.count_folders_and_files()
 
@@ -724,8 +548,13 @@ class FolderFunnelApp:
         self.root.quit()
 
 
+# Setup Tkinter
 root = tk.Tk()
+# Setup app
 app = FolderFunnelApp(root)
-app.create_interface()
+# Create app interface
+ui(app)
+# Setup app window
 app.setup_window()
+# Start Tkinter mainloop
 root.mainloop()

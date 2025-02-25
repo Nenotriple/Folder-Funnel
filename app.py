@@ -17,7 +17,7 @@ from TkToolTip.TkToolTip import TkToolTip as Tip
 from watchdog.observers import Observer
 
 # Custom
-from file_database import WatchFolderHandler, SourceFolderHandler, are_files_identical
+from event_handler import WatchFolderHandler, SourceFolderHandler, are_files_identical
 from help_window import HelpWindow
 
 
@@ -107,7 +107,7 @@ class FolderFunnelApp:
         self.edit_menu.add_command(label="Sync Folders", command=self.sync_watch_folders)
         self.edit_menu.add_separator()
         self.edit_menu.add_command(label="Clear log", command=self.clear_log)
-        self.edit_menu.add_command(label="Clear history")
+        self.edit_menu.add_command(label="Clear history", command=self.clear_history)
         # Options menu
         self.options_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Options", menu=self.options_menu)
@@ -293,11 +293,6 @@ class FolderFunnelApp:
         elif state == "disabled":
             start.configure(state=state)
             stop.configure(state=state)
-
-
-    def toggle_entry_state(self, state="normal"):
-        self.dir_entry.configure(state=state)
-        self.browse_button.configure(state=state)
 
 
     def toggle_progressbar(self, state=None):

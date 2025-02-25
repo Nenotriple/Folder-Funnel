@@ -4,11 +4,13 @@
 # Standard
 import os
 import re
+import time
 import shutil
+from typing import Optional
 
 # Standard GUI
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import ttk, filedialog, messagebox, scrolledtext
 
 # Third-party
 from watchdog.observers import Observer
@@ -52,15 +54,15 @@ class FolderFunnelApp:
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
 
         # Initialize UI objects
-        self.dir_entry = None
-        self.dir_entry_tooltip = None
-        self.start_button = None
-        self.stop_button = None
-        self.text_log = None
-        self.history_listbox = None
-        self.list_context_menu = None
-        self.progressbar = None
-        self.queue_progressbar = None
+        self.dir_entry: Optional[ttk.Entry] = None
+        self.dir_entry_tooltip: Optional[tk.Widget] = None
+        self.start_button: Optional[ttk.Button] = None
+        self.stop_button: Optional[ttk.Button] = None
+        self.text_log: Optional[scrolledtext.ScrolledText] = None
+        self.history_listbox: Optional[tk.Listbox] = None
+        self.list_context_menu: Optional[tk.Menu] = None
+        self.progressbar: Optional[ttk.Progressbar] = None
+        self.queue_progressbar: Optional[ttk.Progressbar] = None
 
         # Other Variables
         self.app_path = os.path.dirname(os.path.abspath(__file__))  # The application folder
@@ -328,7 +330,7 @@ class FolderFunnelApp:
         if self.queue_timer_id:
             self.root.after_cancel(self.queue_timer_id)
         # Start new timer
-        self.queue_start_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
+        self.queue_start_time = time.time() * 1000
         self.queue_progressbar['value'] = 0
         self._update_queue_progress()
         self.queue_timer_id = self.root.after(self.move_queue_timer_length_var.get(), self.process_move_queue)
@@ -370,7 +372,7 @@ class FolderFunnelApp:
         if not self.queue_start_time or not self.move_queue:
             self.queue_progressbar['value'] = 0
             return
-        current_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
+        current_time = time.time() * 1000
         elapsed = current_time - self.queue_start_time
         progress = (elapsed / self.move_queue_timer_length_var.get()) * 100
         if progress <= 100:

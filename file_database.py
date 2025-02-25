@@ -21,21 +21,23 @@ from watchdog.events import FileSystemEventHandler
 
 
 class FileEntry:
-    def __init__(self, path: str, modified: float):
+    def __init__(self, path: str, modified: float, size: float):
         self.path = path
         self.modified = modified
+        self.size = size
 
 
     def to_dict(self) -> dict:
         return {
             'path': self.path,
-            'modified': self.modified
+            'modified': self.modified,
+            'size': self.size
         }
 
 
     @classmethod
     def from_dict(cls, data: dict) -> 'FileEntry':
-        return cls(data['path'], data['modified'])
+        return cls(data['path'], data['modified'], data.get('size', 0))
 
 
 #endregion
@@ -62,7 +64,8 @@ class FolderDatabase:
                 stats = full_path.stat()
                 self.files[rel_path] = FileEntry(
                     rel_path,
-                    stats.st_mtime
+                    stats.st_mtime,
+                    stats.st_size
                 )
 
 
@@ -71,7 +74,11 @@ class FolderDatabase:
         if event_type == 'created':
             if full_path.is_file():
                 stats = full_path.stat()
-                self.files[path] = FileEntry(path, stats.st_mtime)
+                self.files[path] = FileEntry(
+                    path,
+                    stats.st_mtime,
+                    stats.st_size
+                )
             else:
                 self.folders.append(path)
         elif event_type == 'deleted':
@@ -84,6 +91,7 @@ class FolderDatabase:
             if path in self.files and full_path.exists():
                 stats = full_path.stat()
                 self.files[path].modified = stats.st_mtime
+                self.files[path].size = stats.st_size
         elif event_type == 'moved':
             # Handle rename/move logic
             pass
@@ -280,7 +288,7 @@ class SourceFolderHandler(FileSystemEventHandler):
 #region - Helper Functions
 
 
-def are_files_identical(file1, file2, rigorous_check=False, method='Strict', max_files=10, chunk_size=8192):
+def are_files_identical(file1, file2, rigorous_check=False, method='Strict', max_files=10, chunk_size=8192, db_manager=None):
     """Compare files by size/MD5 or find similar files if rigorous_check is True."""
     def get_md5(filename):
         m = hashlib.md5()
@@ -291,21 +299,46 @@ def are_files_identical(file1, file2, rigorous_check=False, method='Strict', max
                     break
                 m.update(chunk)
         return m.hexdigest()
+
+    def get_file_size(filepath, db_manager=None):
+        """Get file size from database if available, otherwise from filesystem"""
+        if db_manager:
+            # Try to find the file in any known database
+            for db_name in db_manager.databases:
+                db = db_manager.get_database(db_name)
+                if not db:
+                    continue
+                # Check if file is in this database's root path
+                try:
+                    rel_path = str(Path(filepath).relative_to(db.root_path))
+                    if rel_path in db.files:
+                        return db.files[rel_path].size
+                except (ValueError, KeyError):
+                    # File not in this database, continue to next one
+                    pass
+        # Fallback to direct filesystem access
+        return os.path.getsize(filepath) if os.path.exists(filepath) else None
+
     try:
-        if not rigorous_check:
-            if os.path.getsize(file1) == os.path.getsize(file2):
+        target_dir = os.path.dirname(file2)
+        similar = find_similar_files(file1, target_dir, method, max_files)
+        print(f"Similar files: {similar}")
+        for sf in similar:
+            file1_size = get_file_size(file1, db_manager)
+            sf_size = get_file_size(sf, db_manager)
+            if file1_size is not None and sf_size is not None and file1_size == sf_size:
                 return True
-            elif os.path.exists(file2) and get_md5(file1) == get_md5(file2):
-                return True
-        else:
-            target_dir = os.path.dirname(file2)
-            similar = find_similar_files(file1, target_dir, method, max_files)
+        if rigorous_check:
             file1_md5 = get_md5(file1)
             for sf in similar:
                 if get_md5(sf) == file1_md5:
                     return True
+        else:
+            if os.path.exists(file2) and get_md5(file1) == get_md5(file2):
+                return True
         return False
-    except Exception:
+    except Exception as e:
+        print(f"Error comparing files: {e}")
         return False
 
 

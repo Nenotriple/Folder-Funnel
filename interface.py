@@ -25,68 +25,68 @@ def ui(self):
 
 def create_menubar(self):
     # Create menubar
-    self.menubar = tk.Menu(self.root)
-    self.root.config(menu=self.menubar)
+    menubar = tk.Menu(self.root)
+    self.root.config(menu=menubar)
     # Menus
-    _create_file_menu(self)
-    _create_edit_menu(self)
-    _create_options_menu(self)
-    self.menubar.add_command(label="Help", command=self.open_help_window)
+    _create_file_menu(self, menubar)
+    _create_edit_menu(self, menubar)
+    _create_options_menu(self, menubar)
+    menubar.add_command(label="Help", command=self.open_help_window)
 
 
-def _create_file_menu(self):
-    self.file_menu = tk.Menu(self.menubar, tearoff=0)
-    self.menubar.add_cascade(label="File", menu=self.file_menu)
-    self.file_menu.add_command(label="Select source path...", command=self.select_working_dir)
-    self.file_menu.add_command(label="Open selected path", command=self.open_folder)
-    self.file_menu.add_separator()
-    self.file_menu.add_command(label="Exit", command=self.on_closing)
+def _create_file_menu(self, menubar):
+    file_menu = tk.Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="File", menu=file_menu)
+    file_menu.add_command(label="Select source path...", command=self.select_working_dir)
+    file_menu.add_command(label="Open selected path", command=self.open_folder)
+    file_menu.add_separator()
+    file_menu.add_command(label="Exit", command=self.on_closing)
 
 
-def _create_edit_menu(self):
-    self.edit_menu = tk.Menu(self.menubar, tearoff=0)
-    self.menubar.add_cascade(label="Edit", menu=self.edit_menu)
-    self.edit_menu.add_command(label="Sync Folders", command=self.sync_watch_folders)
-    self.edit_menu.add_separator()
-    self.edit_menu.add_command(label="Clear log", command=self.clear_log)
-    self.edit_menu.add_command(label="Clear history", command=self.clear_history)
+def _create_edit_menu(self, menubar):
+    edit_menu = tk.Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="Edit", menu=edit_menu)
+    edit_menu.add_command(label="Sync Folders", command=self.sync_watch_folders)
+    edit_menu.add_separator()
+    edit_menu.add_command(label="Clear log", command=self.clear_log)
+    edit_menu.add_command(label="Clear history", command=self.clear_history)
 
 
-def _create_options_menu(self):
-    self.options_menu = tk.Menu(self.menubar, tearoff=0)
-    self.menubar.add_cascade(label="Options", menu=self.options_menu)
+def _create_options_menu(self, menubar):
+    options_menu = tk.Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="Options", menu=options_menu)
     # Queue Timer submenu
-    self.queue_timer_menu = tk.Menu(self.options_menu, tearoff=0)
-    self.options_menu.add_cascade(label="Queue Timer", menu=self.queue_timer_menu)
-    self.queue_timer_menu.add_command(label="Queue Timer Length", state="disabled")
-    self.queue_timer_menu.add_radiobutton(label="5 seconds", variable=self.move_queue_timer_length_var, value=5000)
-    self.queue_timer_menu.add_radiobutton(label="15 seconds", variable=self.move_queue_timer_length_var, value=15000)
-    self.queue_timer_menu.add_radiobutton(label="30 seconds", variable=self.move_queue_timer_length_var, value=30000)
-    self.queue_timer_menu.add_radiobutton(label="1 minute", variable=self.move_queue_timer_length_var, value=60000)
-    self.queue_timer_menu.add_radiobutton(label="5 minutes", variable=self.move_queue_timer_length_var, value=300000)
+    queue_timer_menu = tk.Menu(options_menu, tearoff=0)
+    options_menu.add_cascade(label="Queue Timer", menu=queue_timer_menu)
+    queue_timer_menu.add_command(label="Queue Timer Length", state="disabled")
+    queue_timer_menu.add_radiobutton(label="5 seconds", variable=self.move_queue_timer_length_var, value=5000)
+    queue_timer_menu.add_radiobutton(label="15 seconds", variable=self.move_queue_timer_length_var, value=15000)
+    queue_timer_menu.add_radiobutton(label="30 seconds", variable=self.move_queue_timer_length_var, value=30000)
+    queue_timer_menu.add_radiobutton(label="1 minute", variable=self.move_queue_timer_length_var, value=60000)
+    queue_timer_menu.add_radiobutton(label="5 minutes", variable=self.move_queue_timer_length_var, value=300000)
     # Duplicate handling submenu
-    self.duplicate_handling_menu = tk.Menu(self.options_menu, tearoff=0)
-    self.options_menu.add_cascade(label="Duplicate Handling", menu=self.duplicate_handling_menu)
-    self.duplicate_handling_menu.add_command(label="Duplicate Checking Mode", state="disabled")
-    self.duplicate_handling_menu.add_radiobutton(label="Rigorous", variable=self.rigorous_duplicate_check_var, value=True)
-    self.duplicate_handling_menu.add_radiobutton(label="Simple", variable=self.rigorous_duplicate_check_var, value=False)
-    self.duplicate_handling_menu.add_separator()
+    duplicate_handling_menu = tk.Menu(options_menu, tearoff=0)
+    options_menu.add_cascade(label="Duplicate Handling", menu=duplicate_handling_menu)
+    duplicate_handling_menu.add_command(label="Duplicate Checking Mode", state="disabled")
+    duplicate_handling_menu.add_radiobutton(label="Rigorous", variable=self.rigorous_duplicate_check_var, value=True)
+    duplicate_handling_menu.add_radiobutton(label="Simple", variable=self.rigorous_duplicate_check_var, value=False)
+    duplicate_handling_menu.add_separator()
     # Rigorous Check
-    self.duplicate_handling_menu.add_command(label="Rigorous Check: Max Files", state="disabled")
-    self.duplicate_handling_menu.add_radiobutton(label="10", variable=self.rigorous_dupe_max_files_var, value=10)
-    self.duplicate_handling_menu.add_radiobutton(label="25", variable=self.rigorous_dupe_max_files_var, value=25)
-    self.duplicate_handling_menu.add_radiobutton(label="50", variable=self.rigorous_dupe_max_files_var, value=50)
-    self.duplicate_handling_menu.add_radiobutton(label="100", variable=self.rigorous_dupe_max_files_var, value=100)
-    self.duplicate_handling_menu.add_radiobutton(label="1000", variable=self.rigorous_dupe_max_files_var, value=1000)
-    self.duplicate_handling_menu.add_separator()
+    duplicate_handling_menu.add_command(label="Rigorous Check: Max Files", state="disabled")
+    duplicate_handling_menu.add_radiobutton(label="10", variable=self.rigorous_dupe_max_files_var, value=10)
+    duplicate_handling_menu.add_radiobutton(label="25", variable=self.rigorous_dupe_max_files_var, value=25)
+    duplicate_handling_menu.add_radiobutton(label="50", variable=self.rigorous_dupe_max_files_var, value=50)
+    duplicate_handling_menu.add_radiobutton(label="100", variable=self.rigorous_dupe_max_files_var, value=100)
+    duplicate_handling_menu.add_radiobutton(label="1000", variable=self.rigorous_dupe_max_files_var, value=1000)
+    duplicate_handling_menu.add_separator()
     # Dupe Filter Mode
-    self.duplicate_handling_menu.add_command(label="Duplicate Matching Mode", state="disabled")
-    self.duplicate_handling_menu.add_radiobutton(label="Strict", variable=self.dupe_filter_mode_var, value="Strict")
-    self.duplicate_handling_menu.add_radiobutton(label="Flexible", variable=self.dupe_filter_mode_var, value="Flexible")
+    duplicate_handling_menu.add_command(label="Duplicate Matching Mode", state="disabled")
+    duplicate_handling_menu.add_radiobutton(label="Strict", variable=self.dupe_filter_mode_var, value="Strict")
+    duplicate_handling_menu.add_radiobutton(label="Flexible", variable=self.dupe_filter_mode_var, value="Flexible")
     # Text Log submenu
-    self.text_log_menu = tk.Menu(self.options_menu, tearoff=0)
-    self.options_menu.add_cascade(label="Text Log", menu=self.text_log_menu)
-    self.text_log_menu.add_checkbutton(label="Wrap Text", variable=self.text_log_wrap_var, command=self.toggle_text_wrap)
+    text_log_menu = tk.Menu(options_menu, tearoff=0)
+    options_menu.add_cascade(label="Text Log", menu=text_log_menu)
+    text_log_menu.add_checkbutton(label="Wrap Text", variable=self.text_log_wrap_var, command=self.toggle_text_wrap)
 
 
 #endregion
@@ -116,13 +116,13 @@ def _create_dir_entry(self, control_frame):
     self.dir_entry.pack(side="left", fill="x", expand=True)
     self.dir_entry_tooltip = Tip(self.dir_entry, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
     # Browse
-    self.browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=self.select_working_dir)
-    self.browse_button.pack(side="left")
-    Tip(self.browse_button, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
+    browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=self.select_working_dir)
+    browse_button.pack(side="left")
+    Tip(browse_button, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
     # Open
-    self.open_button = ttk.Button(dir_selection_frame, text="Open", command=self.open_folder)
-    self.open_button.pack(side="left")
-    Tip(self.open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
+    open_button = ttk.Button(dir_selection_frame, text="Open", command=self.open_folder)
+    open_button.pack(side="left")
+    Tip(open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
 
 
 def _create_buttons(self, control_frame):
@@ -141,41 +141,41 @@ def _create_buttons(self, control_frame):
 
 def create_main_frame(self):
     # Create main frame
-    self.main_frame = tk.Frame(self.root)
-    self.main_frame.pack(fill="both", expand=True)
+    main_frame = tk.Frame(self.root)
+    main_frame.pack(fill="both", expand=True)
     # paned window
-    self.main_pane = tk.PanedWindow(self.main_frame, orient="horizontal", sashwidth=6, bg="#d0d0d0", bd=0)
-    self.main_pane.pack(fill="both", expand=True)
+    main_pane = tk.PanedWindow(main_frame, orient="horizontal", sashwidth=6, bg="#d0d0d0", bd=0)
+    main_pane.pack(fill="both", expand=True)
     # Widgets
-    _create_text_log(self)
-    _create_history_list(self)
+    _create_text_log(self, main_pane)
+    _create_history_list(self, main_pane)
 
 
-def _create_text_log(self):
+def _create_text_log(self, main_pane):
     # Frame
-    self.text_frame = tk.Frame(self.main_pane)
-    self.main_pane.add(self.text_frame, stretch="always")
-    self.main_pane.paneconfigure(self.text_frame, minsize=200, width=400)
+    text_frame = tk.Frame(main_pane)
+    main_pane.add(text_frame, stretch="always")
+    main_pane.paneconfigure(text_frame, minsize=200, width=400)
     # Label
-    log_label = tk.Label(self.text_frame, text="Log")
+    log_label = tk.Label(text_frame, text="Log")
     log_label.pack(fill="x")
     Tip(log_label, "Log of events and actions", delay=250, pady=25, origin="widget")
     # Text
-    self.text_log = scrolledtext.ScrolledText(self.text_frame, wrap="word", state="disable", width=1, height=1)
+    self.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1)
     self.text_log.pack(fill="both", expand=True)
 
 
-def _create_history_list(self):
+def _create_history_list(self, main_pane):
     # Frame
-    self.list_frame = tk.Frame(self.main_pane)
-    self.main_pane.add(self.list_frame, stretch="never")
-    self.main_pane.paneconfigure(self.list_frame, minsize=200, width=200)
+    list_frame = tk.Frame(main_pane)
+    main_pane.add(list_frame, stretch="never")
+    main_pane.paneconfigure(list_frame, minsize=200, width=200)
     # Label
-    history_label = tk.Label(self.list_frame, text="History")
+    history_label = tk.Label(list_frame, text="History")
     history_label.pack(fill="x")
     Tip(history_label, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
     # Listbox
-    self.history_listbox = tk.Listbox(self.list_frame, width=1, height=1)
+    self.history_listbox = tk.Listbox(list_frame, width=1, height=1)
     self.history_listbox.pack(fill="both", expand=True)
     self.history_listbox.bind("<Button-3>", self.show_context_menu)
     # Context menu
@@ -196,21 +196,21 @@ def create_message_row(self):
     message_frame.pack(side="bottom", fill="x")
     ttk.Separator(message_frame, orient="horizontal").pack(fill="x")
     # Status label
-    self.status_label = tk.Label(message_frame, textvariable=self.status_label_var, relief="groove", width=15, anchor="w")
-    self.status_label.pack(side="left")
-    Tip(self.status_label, "Current status of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
+    status_label = tk.Label(message_frame, textvariable=self.status_label_var, relief="groove", width=15, anchor="w")
+    status_label.pack(side="left")
+    Tip(status_label, "Current status of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
     # Foldercount label
-    self.Foldercount_label = tk.Label(message_frame, textvariable=self.foldercount_var, relief="groove", width=15, anchor="w")
-    self.Foldercount_label.pack(side="left")
-    Tip(self.Foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
+    Foldercount_label = tk.Label(message_frame, textvariable=self.foldercount_var, relief="groove", width=15, anchor="w")
+    Foldercount_label.pack(side="left")
+    Tip(Foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
     # Filecount label
-    self.filecount_label = tk.Label(message_frame, textvariable=self.filecount_var, relief="groove", width=15, anchor="w")
-    self.filecount_label.pack(side="left")
-    Tip(self.filecount_label, "Number of files in the source folder", delay=250, pady=-25, origin="widget")
+    filecount_label = tk.Label(message_frame, textvariable=self.filecount_var, relief="groove", width=15, anchor="w")
+    filecount_label.pack(side="left")
+    Tip(filecount_label, "Number of files in the source folder", delay=250, pady=-25, origin="widget")
     # Movecount label
-    self.movecount_label = tk.Label(message_frame, textvariable=self.movecount_var, relief="groove", width=15, anchor="w")
-    self.movecount_label.pack(side="left")
-    Tip(self.movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
+    movecount_label = tk.Label(message_frame, textvariable=self.movecount_var, relief="groove", width=15, anchor="w")
+    movecount_label.pack(side="left")
+    Tip(movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
     # Progress bar
     self.progressbar = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
     self.progressbar.pack(side="left", fill="x", expand=True)

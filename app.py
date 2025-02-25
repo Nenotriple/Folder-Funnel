@@ -11,7 +11,8 @@ import tkinter as tk
 from tkinter import ttk, filedialog, messagebox, scrolledtext
 
 # Third-party
-from TkToolTip.TkToolTip import TkToolTip as ToolTip
+from TkToolTip.TkToolTip import TkToolTip as Tip
+
 # For file watching
 from watchdog.observers import Observer
 
@@ -28,7 +29,6 @@ WINDOW_TITLE = "Folder-Funnel"
 
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 480
-WINDOW_GEOMETRY = f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}"
 WINDOW_MIN_WIDTH = 400
 WINDOW_MIN_HEIGHT = 300
 
@@ -41,11 +41,7 @@ HISTORY_LIMIT = 100
 
 class FolderFunnelApp:
     def __init__(self, root):
-        # Window setup
         self.root = root
-        self.root.title(WINDOW_TITLE)
-        self.root.geometry(WINDOW_GEOMETRY)
-        self.root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
 
         # tk Variables
         self.working_dir_var = tk.StringVar(value="")  # The source folder
@@ -163,27 +159,27 @@ class FolderFunnelApp:
         #Label
         dir_label = tk.Label(dir_selection_frame, text="Watch Folder:")
         dir_label.pack(side="left")
-        ToolTip.create(dir_label, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
+        Tip(dir_label, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
         # Entry
         self.dir_entry = ttk.Entry(dir_selection_frame, textvariable=self.working_dir_var)
         self.dir_entry.pack(side="left", fill="x", expand=True)
-        self.dir_entry_tooltip = ToolTip.create(self.dir_entry, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
+        self.dir_entry_tooltip = Tip(self.dir_entry, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
         # Browse
         self.browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=self.select_working_dir)
         self.browse_button.pack(side="left")
-        ToolTip.create(self.browse_button, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
+        Tip(self.browse_button, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
         # Open
         self.open_button = ttk.Button(dir_selection_frame, text="Open", command=self.open_folder)
         self.open_button.pack(side="left")
-        ToolTip.create(self.open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
+        Tip(self.open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
         # Start
         self.start_button = ttk.Button(control_frame, text="Start", command=self.start_folder_watcher)
         self.start_button.pack(side="left")
-        ToolTip.create(self.start_button, "Begin watching the selected folder", delay=250, pady=25, origin="widget")
+        Tip(self.start_button, "Begin watching the selected folder", delay=250, pady=25, origin="widget")
         # Stop
         self.stop_button = ttk.Button(control_frame, text="Stop", state="disabled", command=self.stop_folder_watcher)
         self.stop_button.pack(side="left")
-        ToolTip.create(self.stop_button, "Stop watching the folder and remove the duplicate", delay=250, pady=25, origin="widget")
+        Tip(self.stop_button, "Stop watching the folder and remove the duplicate", delay=250, pady=25, origin="widget")
 
 
     def create_main_frame(self):
@@ -200,7 +196,7 @@ class FolderFunnelApp:
         # Label
         log_label = tk.Label(self.text_frame, text="Log")
         log_label.pack(fill="x")
-        ToolTip.create(log_label, "Log of events and actions", delay=250, pady=25, origin="widget")
+        Tip(log_label, "Log of events and actions", delay=250, pady=25, origin="widget")
         # Text
         self.text_log = scrolledtext.ScrolledText(self.text_frame, wrap="word", state="disable", width=1, height=1)
         self.text_log.pack(fill="both", expand=True)
@@ -211,7 +207,7 @@ class FolderFunnelApp:
         # Label
         history_label = tk.Label(self.list_frame, text="History")
         history_label.pack(fill="x")
-        ToolTip.create(history_label, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
+        Tip(history_label, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
         # Listbox
         self.history_listbox = tk.Listbox(self.list_frame, width=1, height=1)
         self.history_listbox.pack(fill="both", expand=True)
@@ -232,27 +228,27 @@ class FolderFunnelApp:
         # Status label
         self.status_label = tk.Label(message_frame, textvariable=self.status_label_var, relief="groove", width=15, anchor="w")
         self.status_label.pack(side="left")
-        ToolTip.create(self.status_label, "Current status of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
+        Tip(self.status_label, "Current status of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
         # Foldercount label
         self.Foldercount_label = tk.Label(message_frame, textvariable=self.foldercount_var, relief="groove", width=15, anchor="w")
         self.Foldercount_label.pack(side="left")
-        ToolTip.create(self.Foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
+        Tip(self.Foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
         # Filecount label
         self.filecount_label = tk.Label(message_frame, textvariable=self.filecount_var, relief="groove", width=15, anchor="w")
         self.filecount_label.pack(side="left")
-        ToolTip.create(self.filecount_label, "Number of files in the source folder", delay=250, pady=-25, origin="widget")
+        Tip(self.filecount_label, "Number of files in the source folder", delay=250, pady=-25, origin="widget")
         # Movecount label
         self.movecount_label = tk.Label(message_frame, textvariable=self.movecount_var, relief="groove", width=15, anchor="w")
         self.movecount_label.pack(side="left")
-        ToolTip.create(self.movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
+        Tip(self.movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
         # Progress bar
         self.progressbar = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
         self.progressbar.pack(side="left", fill="x", expand=True)
-        ToolTip.create(self.progressbar, "Running indicator of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
+        Tip(self.progressbar, "Running indicator of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
         # Queue Timer
         self.queue_progressbar = ttk.Progressbar(message_frame, mode="determinate")
         self.queue_progressbar.pack(side="left", fill="x", expand=True)
-        ToolTip.create(self.queue_progressbar, "Progress of the move queue timer", delay=250, pady=-25, origin="widget")
+        Tip(self.queue_progressbar, "Progress of the move queue timer", delay=250, pady=-25, origin="widget")
 
 
 #endregion
@@ -709,7 +705,9 @@ class FolderFunnelApp:
 #region - Framework
 
 
-    def center_window(self):
+    def setup_window(self):
+        self.root.title(WINDOW_TITLE)
+        self.root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         screen_width = self.root.winfo_screenwidth()
         screen_height = self.root.winfo_screenheight()
         window_width = WINDOW_WIDTH
@@ -737,5 +735,5 @@ class FolderFunnelApp:
 root = tk.Tk()
 app = FolderFunnelApp(root)
 app.create_interface()
-app.center_window()
+app.setup_window()
 root.mainloop()

@@ -14,7 +14,7 @@ from tkinter import filedialog, messagebox
 from watchdog.observers import Observer
 
 # Custom
-from interface import ui
+from interface import create_interface
 from event_handler import WatchFolderHandler, SourceFolderHandler, are_files_identical
 from help_window import HelpWindow
 
@@ -565,7 +565,7 @@ root = tk.Tk()
 # Setup app
 app = FolderFunnelApp(root)
 # Create app interface
-ui(app)
+create_interface(app)
 # Setup app window
 app.setup_window()
 # Start Tkinter mainloop

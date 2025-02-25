@@ -70,6 +70,8 @@ def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     queue_timer_menu.add_radiobutton(label="30 seconds", variable=app.move_queue_timer_length_var, value=30000)
     queue_timer_menu.add_radiobutton(label="1 minute", variable=app.move_queue_timer_length_var, value=60000)
     queue_timer_menu.add_radiobutton(label="5 minutes", variable=app.move_queue_timer_length_var, value=300000)
+    queue_timer_menu.add_radiobutton(label="10 minutes", variable=app.move_queue_timer_length_var, value=600000)
+    queue_timer_menu.add_radiobutton(label="1 hour", variable=app.move_queue_timer_length_var, value=3600000)
     # Duplicate handling submenu
     duplicate_handling_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="Duplicate Handling", menu=duplicate_handling_menu)
@@ -84,6 +86,7 @@ def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     duplicate_handling_menu.add_radiobutton(label="50", variable=app.rigorous_dupe_max_files_var, value=50)
     duplicate_handling_menu.add_radiobutton(label="100", variable=app.rigorous_dupe_max_files_var, value=100)
     duplicate_handling_menu.add_radiobutton(label="1000", variable=app.rigorous_dupe_max_files_var, value=1000)
+    duplicate_handling_menu.add_radiobutton(label="10000", variable=app.rigorous_dupe_max_files_var, value=10000)
     duplicate_handling_menu.add_separator()
     # Dupe Filter Mode
     duplicate_handling_menu.add_command(label="Duplicate Matching Mode", state="disabled")

@@ -51,6 +51,17 @@ class FolderFunnelApp:
         self.move_queue_timer_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
 
+        # Initialize UI objects
+        self.dir_entry = None
+        self.dir_entry_tooltip = None
+        self.start_button = None
+        self.stop_button = None
+        self.text_log = None
+        self.history_listbox = None
+        self.list_context_menu = None
+        self.progressbar = None
+        self.queue_progressbar = None
+
         # Other Variables
         self.app_path = os.path.dirname(os.path.abspath(__file__))  # The application folder
         self.watch_path = ""  # The duplicate folder that will be watched
@@ -75,6 +86,7 @@ class FolderFunnelApp:
         self.help_window = HelpWindow(self.root)
 
 
+
 #endregion
 #region - GUI Logic
 
@@ -83,31 +95,31 @@ class FolderFunnelApp:
         if self.messages and self.messages[-1] == message:
             return
         self.messages.append(message)
-        ui.text_log.configure(state="normal")
-        ui.text_log.insert("end", f"{message}\n")
-        ui.text_log.configure(state="disable")
-        ui.text_log.see("end")
+        self.text_log.configure(state="normal")
+        self.text_log.insert("end", f"{message}\n")
+        self.text_log.configure(state="disable")
+        self.text_log.see("end")
 
 
     def clear_log(self):
-        ui.text_log.configure(state="normal")
-        ui.text_log.delete(1.0, "end")
-        ui.text_log.configure(state="disable")
+        self.text_log.configure(state="normal")
+        self.text_log.delete(1.0, "end")
+        self.text_log.configure(state="disable")
 
 
     def clear_history(self):
-        ui.history_listbox.delete(0, "end")
+        self.history_listbox.delete(0, "end")
         self.history_items.clear()
 
 
     def toggle_text_wrap(self):
         wrap = self.text_log_wrap_var.get()
-        ui.text_log.configure(wrap="word" if wrap else "none")
+        self.text_log.configure(wrap="word" if wrap else "none")
 
 
     def toggle_button_state(self, state="idle"):
-        start = ui.start_button
-        stop = ui.stop_button
+        start = self.start_button
+        stop = self.stop_button
         if state == "running":
             start.configure(state="disabled")
             stop.configure(state="normal")
@@ -121,11 +133,11 @@ class FolderFunnelApp:
 
     def toggle_progressbar(self, state=None):
         if state == "start":
-            ui.progressbar.configure(mode="indeterminate")
-            ui.progressbar.start()
+            self.progressbar.configure(mode="indeterminate")
+            self.progressbar.start()
         else:
-            ui.progressbar.configure(mode="determinate")
-            ui.progressbar.stop()
+            self.progressbar.configure(mode="determinate")
+            self.progressbar.stop()
 
 
 #endregion
@@ -141,26 +153,26 @@ class FolderFunnelApp:
             oldest_key = next(iter(self.history_items))
             del self.history_items[oldest_key]
         # Clear and repopulate the list widget
-        ui.history_listbox.delete(0, "end")
+        self.history_listbox.delete(0, "end")
         for filename in self.history_items:
             # Insert at top to show newest first
-            ui.history_listbox.insert(0, filename)
+            self.history_listbox.insert(0, filename)
 
 
     def show_context_menu(self, event):
-        clicked_index = ui.history_listbox.nearest(event.y)
+        clicked_index = self.history_listbox.nearest(event.y)
         if clicked_index >= 0:
-            ui.history_listbox.selection_clear(0, "end")
-            ui.history_listbox.selection_set(clicked_index)
-            ui.history_listbox.activate(clicked_index)
-            ui.list_context_menu.post(event.x_root, event.y_root)
+            self.history_listbox.selection_clear(0, "end")
+            self.history_listbox.selection_set(clicked_index)
+            self.history_listbox.activate(clicked_index)
+            self.list_context_menu.post(event.x_root, event.y_root)
 
 
     def get_selected_filepath(self):
-        selection = ui.history_listbox.curselection()
+        selection = self.history_listbox.curselection()
         if not selection:
             return None
-        filename = ui.history_listbox.get(selection[0])
+        filename = self.history_listbox.get(selection[0])
         return self.history_items.get(filename)
 
 
@@ -190,7 +202,7 @@ class FolderFunnelApp:
             try:
                 os.remove(filepath)
                 del self.history_items[filename]
-                ui.history_listbox.delete(ui.history_listbox.curselection())
+                self.history_listbox.delete(self.history_listbox.curselection())
                 self.log(f"Deleted file: {filename}")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not delete file: {str(e)}")
@@ -317,7 +329,7 @@ class FolderFunnelApp:
             self.root.after_cancel(self.queue_timer_id)
         # Start new timer
         self.queue_start_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
-        ui.queue_progressbar['value'] = 0
+        self.queue_progressbar['value'] = 0
         self._update_queue_progress()
         self.queue_timer_id = self.root.after(self.move_queue_timer_length_var.get(), self.process_move_queue)
 
@@ -356,24 +368,24 @@ class FolderFunnelApp:
     def _update_queue_progress(self):
         """Update the queue progress bar."""
         if not self.queue_start_time or not self.move_queue:
-            ui.queue_progressbar['value'] = 0
+            self.queue_progressbar['value'] = 0
             return
         current_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
         elapsed = current_time - self.queue_start_time
         progress = (elapsed / self.move_queue_timer_length_var.get()) * 100
         if progress <= 100:
-            ui.queue_progressbar['value'] = progress
+            self.queue_progressbar['value'] = progress
             # Update every 50ms
             self.root.after(50, self._update_queue_progress)
         else:
-            ui.queue_progressbar['value'] = 100
+            self.queue_progressbar['value'] = 100
 
 
     def process_move_queue(self):
         """Process all queued file moves."""
         self.queue_timer_id = None  # Reset timer ID
         self.queue_start_time = None  # Reset start time
-        ui.queue_progressbar['value'] = 0  # Reset progress bar
+        self.queue_progressbar['value'] = 0  # Reset progress bar
         if not self.move_queue:
             return
         self.log(f"Processing {len(self.move_queue)} queued files...")
@@ -450,7 +462,7 @@ class FolderFunnelApp:
             path = os.path.normpath(path)
         if os.path.exists(path):
             self.working_dir_var.set(path)
-            ui.dir_entry_tooltip.config(text=path)
+            self.dir_entry_tooltip.config(text=path)
             self.log(f"\nSelected folder: {path}\n")
             self.count_folders_and_files()
 

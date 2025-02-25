@@ -88,7 +88,6 @@ class FolderFunnelApp:
         self.help_window = HelpWindow(self.root)
 
 
-
 #endregion
 #region - GUI Logic
 
@@ -232,7 +231,8 @@ class FolderFunnelApp:
 
     def _start_folder_watcher(self):
         """Start watching both the watch folder and source folder for changes"""
-        self._stop_folder_watcher()  # Stop any existing observers
+        # Stop any existing observers
+        self._stop_folder_watcher()
         # Set up watch folder observer
         self.watch_observer = Observer()
         watch_handler = WatchFolderHandler(self)

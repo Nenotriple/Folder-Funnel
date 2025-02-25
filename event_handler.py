@@ -11,14 +11,19 @@ from difflib import SequenceMatcher
 # Third-party
 from watchdog.events import FileSystemEventHandler
 
+# Type checking
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app import FolderFunnelApp
+
 
 #endregion
 #region - cls WatchFolderHandler
 
 
 class WatchFolderHandler(FileSystemEventHandler):
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, app: 'FolderFunnelApp'):
+        self.parent = app
 
 
     def on_created(self, event):
@@ -50,8 +55,8 @@ class WatchFolderHandler(FileSystemEventHandler):
 
 
 class SourceFolderHandler(FileSystemEventHandler):
-    def __init__(self, parent):
-        self.parent = parent
+    def __init__(self, app: 'FolderFunnelApp'):
+        self.parent = app
 
 
     def on_created(self, event):

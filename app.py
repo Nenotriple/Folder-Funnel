@@ -3,9 +3,8 @@
 
 # Standard
 import os
-import time
+import re
 import shutil
-import threading
 
 # Standard GUI
 import tkinter as tk
@@ -13,9 +12,11 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 
 # Third-party
 from TkToolTip.TkToolTip import TkToolTip as ToolTip
+# For file watching
+from watchdog.observers import Observer
 
 # Custom
-from file_database import DatabaseManager, are_files_identical
+from file_database import WatchFolderHandler, SourceFolderHandler, are_files_identical
 from help_window import HelpWindow
 
 
@@ -60,24 +61,23 @@ class FolderFunnelApp:
 
         # Other Variables
         self.app_path = os.path.dirname(os.path.abspath(__file__))  # The application folder
-        self.database_path = os.path.join(self.app_path, "database")  # The database folder
         self.watch_path = ""  # The duplicate folder that will be watched
+        self.watch_folder_name = ""  # The name of the duplicate folder
         self.messages = []  # Log messages
         self.history_items = {}  # Store history of moved files as {filename: full_path}
         self.move_count = 0  # Number of files moved
 
         # Queue related variables
         self.move_queue = []  # List of files waiting to be moved
-        self.queue_timer = None  # Timer for batch processing
         self.queue_timer_id = None  # Store timer ID for cancellation
         self.queue_start_time = None  # Store when the queue timer started
 
+        # Observers for file watching
+        self.watch_observer = None
+        self.source_observer = None
+
         # Set up close handler
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-
-        # Initialize database
-        self.database_thread = None  # Thread for initializing databases
-        self.database_manager = DatabaseManager(self, self.database_path)
 
         # Help window
         self.help_window = HelpWindow(self.root)
@@ -111,7 +111,7 @@ class FolderFunnelApp:
         self.edit_menu.add_command(label="Sync Folders", command=self.sync_watch_folders)
         self.edit_menu.add_separator()
         self.edit_menu.add_command(label="Clear log", command=self.clear_log)
-        self.edit_menu.add_command(label="Clear history", command=self.clear_history)
+        self.edit_menu.add_command(label="Clear history")
         # Options menu
         self.options_menu = tk.Menu(self.menubar, tearoff=0)
         self.menubar.add_cascade(label="Options", menu=self.options_menu)
@@ -286,12 +286,17 @@ class FolderFunnelApp:
 
 
     def toggle_button_state(self, state="idle"):
+        start = self.start_button
+        stop = self.stop_button
         if state == "running":
-            self.start_button.configure(state="disabled")
-            self.stop_button.configure(state="normal")
+            start.configure(state="disabled")
+            stop.configure(state="normal")
         elif state == "idle":
-            self.start_button.configure(state="normal")
-            self.stop_button.configure(state="disabled")
+            start.configure(state="normal")
+            stop.configure(state="disabled")
+        elif state == "disabled":
+            start.configure(state=state)
+            stop.configure(state=state)
 
 
     def toggle_entry_state(self, state="normal"):
@@ -387,40 +392,40 @@ class FolderFunnelApp:
         if not confirm:
             return
         self.toggle_progressbar(state="start")
-        self.sync_watch_folders()
-        self.initialize_databases()
-        self.database_manager.start_watching(self.watch_path, self.working_dir_var.get())
-        self.status_label_var.set("Status: Initializing")
-        self.toggle_button_state(state="running")
+        self.sync_watch_folders(silent="initial")
+        self._start_folder_watcher()
+        self.status_label_var.set("Status: Running")
         self.count_folders_and_files()
         self.move_count = 0
         self.movecount_var.set("Moved: 0")
+        self.toggle_button_state(state="running")
 
 
-    def initialize_databases(self):
-        self.database_thread = threading.Thread(target=self._initialize_databases)
-        self.database_thread.start()
-
-
-    def _initialize_databases(self):
-        start_time = time.time()
-        self.log("Initializing databases...")
-        self.toggle_entry_state(state="disabled")
-        self.database_manager.add_database("source", self.working_dir_var.get())
-        self.database_manager.add_database("watch", self.watch_path)
-        self.toggle_entry_state(state="normal")
-        end_time = f"{time.time() - start_time:.2f}"
-        self.log(f"Time to initialize databases: {end_time} seconds\nReady!")
-        self.status_label_var.set("Status: Running")
+    def _start_folder_watcher(self):
+        """Start watching both the watch folder and source folder for changes"""
+        self._stop_folder_watcher()  # Stop any existing observers
+        # Set up watch folder observer
+        self.watch_observer = Observer()
+        watch_handler = WatchFolderHandler(self)
+        self.watch_observer.schedule(watch_handler, path=self.watch_path, recursive=True)
+        self.watch_observer.start()
+        # Set up source folder observer
+        source_path = self.working_dir_var.get()
+        if source_path:
+            self.source_observer = Observer()
+            source_handler = SourceFolderHandler(self)
+            self.source_observer.schedule(source_handler, path=source_path, recursive=True)
+            self.source_observer.start()
+        self.log("Ready!\n")
 
 
     def stop_folder_watcher(self):
-        if not (self.database_manager.watch_observer or self.database_manager.source_observer):
-            return
+        if not (self.watch_observer or self.source_observer):
+            return True
         confirm = messagebox.askokcancel("Stop Process?", "This will stop the Folder-Funnel process and remove the duplicate folder.\n\nContinue?")
         if not confirm:
-            return
-        self.database_manager.stop_watching()
+            return False
+        self._stop_folder_watcher()
         self.log("Stopping Folder-Funnel process...")
         self.status_label_var.set("Status: Idle")
         self.toggle_button_state(state="idle")
@@ -428,6 +433,19 @@ class FolderFunnelApp:
             shutil.rmtree(self.watch_path)
             self.log(f"Removed watch folder: {self.watch_path}")
         self.toggle_progressbar(state="stop")
+        return True
+
+
+    def _stop_folder_watcher(self):
+        """Stop all file system observers"""
+        if self.watch_observer:
+            self.watch_observer.stop()
+            self.watch_observer.join()
+            self.watch_observer = None
+        if self.source_observer:
+            self.source_observer.stop()
+            self.source_observer.join()
+            self.source_observer = None
 
 
     def sync_watch_folders(self, silent=False):
@@ -436,15 +454,15 @@ class FolderFunnelApp:
             return
         source_folder_name = os.path.basename(source_path)
         parent_dir = os.path.dirname(source_path)
-        watch_folder_name = f"#watching#_{source_folder_name}"
-        self.watch_path = os.path.normpath(os.path.join(parent_dir, watch_folder_name))
+        self.watch_folder_name = f"#watching#_{source_folder_name}"
+        self.watch_path = os.path.normpath(os.path.join(parent_dir, self.watch_folder_name))
         counter_created = 0
         counter_removed = 0
         try:
             # Create watch folder
             os.makedirs(self.watch_path, exist_ok=True)
             if not silent:
-                self.log(f"Using watch folder: {self.watch_path}")
+                self.log("Initializing synced folder...")
             # Walk through the source directory and create corresponding directories in the watch folder
             for dirpath, dirnames, filenames in os.walk(source_path):
                 relpath = os.path.relpath(dirpath, source_path)
@@ -462,8 +480,10 @@ class FolderFunnelApp:
                     os.rmdir(dirpath)
                     counter_removed += 1
             if silent in [False, "semi"]:
-                self.log(f"Created {counter_created} new directories in {self.watch_path}")
-                self.log(f"Removed {counter_removed} directories from {self.watch_path}")
+                self.log(f"Created: {counter_created}, Removed: {counter_removed}, directories in {self.watch_path}")
+            elif silent == "initial":
+                folder_count = re.split(" ", self.foldercount_var.get())
+                self.log(f"Watching: {folder_count[1]} directories in {self.watch_path}")
         except Exception as e:
             messagebox.showerror("Error: create_watch_folders()", f"{str(e)}")
 
@@ -478,7 +498,7 @@ class FolderFunnelApp:
             self._handle_new_folder(source_path)
         elif source_path not in self.move_queue:
             self.move_queue.append(source_path)
-            self.log(f"Queued file: {os.path.basename(source_path)}")
+            self.log(f"Queued file: {os.path.relpath(source_path, self.watch_path)}")
         # Reset queue timer
         if self.queue_timer_id:
             self.root.after_cancel(self.queue_timer_id)
@@ -507,7 +527,6 @@ class FolderFunnelApp:
                     rel_dir = os.path.join(rel_path, rel_dirpath, dirname)
                     watch_dir = os.path.join(self.watch_path, rel_dir)
                     dest_dir = os.path.join(self.working_dir_var.get(), rel_dir)
-
                     os.makedirs(watch_dir, exist_ok=True)
                     os.makedirs(dest_dir, exist_ok=True)
                     self.log(f"Created subfolder: {rel_dir}")
@@ -517,19 +536,6 @@ class FolderFunnelApp:
                     if file_path not in self.move_queue:
                         self.move_queue.append(file_path)
                         self.log(f"Queued file: {os.path.join(rel_path, rel_dirpath, filename)}")
-            # Update the databases
-            source_db = self.database_manager.get_database("source")
-            watch_db = self.database_manager.get_database("watch")
-            if source_db and watch_db:
-                # Update folder lists
-                rel_path = os.path.relpath(source_path, self.watch_path)
-                if rel_path not in source_db.folders:
-                    source_db.folders.append(rel_path)
-                if rel_path not in watch_db.folders:
-                    watch_db.folders.append(rel_path)
-                # Save database changes
-                source_db.save_to_file(str(self.database_manager.database_dir / "source.json"))
-                watch_db.save_to_file(str(self.database_manager.database_dir / "watch.json"))
         except Exception as e:
             self.log(f"Error handling new folder {source_path}: {str(e)}")
 
@@ -539,11 +545,9 @@ class FolderFunnelApp:
         if not self.queue_start_time or not self.move_queue:
             self.queue_progressbar['value'] = 0
             return
-
         current_time = self.root.tk.getint(self.root.tk.call('clock', 'milliseconds'))
         elapsed = current_time - self.queue_start_time
         progress = (elapsed / self.move_queue_timer_length_var.get()) * 100
-
         if progress <= 100:
             self.queue_progressbar['value'] = progress
             # Update every 50ms
@@ -564,10 +568,7 @@ class FolderFunnelApp:
         for source_path in self.move_queue:
             if self._move_file(source_path):
                 success_count += 1
-        if success_count == 1:
-            self.log(f"Move complete: 1 file moved successfully")
-        else:
-            self.log(f"Batch move complete: {success_count}/{len(self.move_queue)} files moved successfully")
+        self.log(f"Batch move complete: {success_count}/{len(self.move_queue)} files moved successfully\n")
         self.move_queue.clear()
 
 
@@ -580,8 +581,6 @@ class FolderFunnelApp:
             dest_path = os.path.join(self.working_dir_var.get(), rel_path)
             # Ensure the destination directory exists
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-            watch_db = self.database_manager.get_database("watch")
-            source_db = self.database_manager.get_database("source")
             # If file exists, check if it's a duplicate
             if os.path.exists(dest_path):
                 # Compare file contents
@@ -589,10 +588,6 @@ class FolderFunnelApp:
                     # Files are identical, delete the duplicate
                     os.remove(source_path)
                     self.log(f"Deleted duplicate file: {rel_path}")
-                    # Update watch DB to show file removal
-                    if watch_db:
-                        watch_db.partial_update(rel_path, "deleted")
-                        watch_db.save_to_file(str(self.database_manager.database_dir / "watch.json"))
                     return True
                 # Not a duplicate, find new name
                 base, ext = os.path.splitext(dest_path)
@@ -603,15 +598,6 @@ class FolderFunnelApp:
             # Move the file
             shutil.move(source_path, dest_path)
             self.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}")
-            # Update watch DB: file no longer resides in watch folder
-            if watch_db:
-                watch_db.partial_update(rel_path, "deleted")
-                watch_db.save_to_file(str(self.database_manager.database_dir / "watch.json"))
-            # Update source DB: file was created in source folder
-            if source_db:
-                new_rel_path = os.path.relpath(dest_path, source_db.root_path)
-                source_db.partial_update(new_rel_path, "created")
-                source_db.save_to_file(str(self.database_manager.database_dir / "source.json"))
             # Update history list with the new filename and full path
             self.update_history_list(os.path.basename(dest_path), dest_path)
             # Update counts
@@ -652,7 +638,7 @@ class FolderFunnelApp:
         if os.path.exists(path):
             self.working_dir_var.set(path)
             self.dir_entry_tooltip.config(text=path)
-            self.log(f"Selected folder: {path}")
+            self.log(f"\nSelected folder: {path}\n")
             self.count_folders_and_files()
 
 
@@ -735,18 +721,16 @@ class FolderFunnelApp:
 
     def on_closing(self):
         """Handle cleanup when closing the application"""
-        # Cancel any pending timer
-        if self.queue_timer:
-            self.root.after_cancel(self.queue_timer)
-            # Process any remaining files
-            if self.move_queue:
-                self.process_move_queue()
+        # Process any remaining files
+        if self.move_queue:
+            self.process_move_queue()
         if self.queue_timer_id:
             self.root.after_cancel(self.queue_timer_id)
             # Process any remaining files
             if self.move_queue:
                 self.process_move_queue()
-        self.stop_folder_watcher()
+        if not self.stop_folder_watcher():
+            return
         self.root.quit()
 
 

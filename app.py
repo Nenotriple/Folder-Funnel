@@ -4,8 +4,10 @@
 # Standard
 import os
 import re
+import sys
 import time
 import shutil
+import ctypes
 from typing import Optional
 
 # Standard GUI
@@ -48,7 +50,7 @@ class FolderFunnelApp:
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
         self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
         self.rigorous_duplicate_check_var = tk.BooleanVar(value=True)  # More thorough duplicate check
-        self.rigorous_dupe_max_files_var = tk.IntVar(value=25)  # Max files to check for duplicates
+        self.rigorous_dupe_max_files_var = tk.IntVar(value=50)  # Max files to check for duplicates
         self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for filtering duplicates (Flexible/Strict)
         self.move_queue_timer_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
@@ -65,7 +67,7 @@ class FolderFunnelApp:
         self.queue_progressbar: Optional[ttk.Progressbar] = None
 
         # Other Variables
-        self.app_path = os.path.dirname(os.path.abspath(__file__))  # The application folder
+        self.app_path = self.get_app_path()  # The application folder
         self.watch_path = ""  # The duplicate folder that will be watched
         self.watch_folder_name = ""  # The name of the duplicate folder
         self.messages = []  # Log messages
@@ -536,6 +538,8 @@ class FolderFunnelApp:
 
 
     def setup_window(self):
+        self.set_appid()
+        self.set_icon()
         self.root.title(WINDOW_TITLE)
         self.root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         screen_width = self.root.winfo_screenwidth()
@@ -545,6 +549,25 @@ class FolderFunnelApp:
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         self.root.geometry(f'{window_width}x{window_height}+{x}+{y}')
+
+
+    def set_appid(self):
+        myappid = 'ImgTxtViewer.Nenotriple'
+        ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+
+
+    def set_icon(self):
+        icon_path = os.path.join(self.app_path, "icon.png")
+        if os.path.exists(icon_path):
+            self.root.iconphoto(True, tk.PhotoImage(file=icon_path))
+
+
+    def get_app_path(self):
+        if getattr(sys, 'frozen', False):
+            return sys._MEIPASS
+        elif __file__:
+            return os.path.dirname(__file__)
+        return ""
 
 
     def on_closing(self):

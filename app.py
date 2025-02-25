@@ -685,7 +685,6 @@ class FolderFunnelApp:
                 "• The timer progress bar shows the time remaining before the next batch move.\n"
                 "• The timer is reset each time a new file is added to the queue.",
 
-
             "Tips & Tricks:":
                 "• Right-click items in *'History'* to open or locate them quickly.\n"
                 "• Clear logs or history anytime under the *Edit'* menu.\n"

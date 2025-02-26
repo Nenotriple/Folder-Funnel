@@ -32,7 +32,7 @@ def update_history_list(app: 'Main', filename, filepath):
     # Add new item to dictionary
     list[filename] = filepath
     # Remove oldest items if limit is reached
-    while len(list) > app.MAX_HISTORY_entries:
+    while len(list) > app.max_history_entries:
         oldest_key = next(iter(list))
         del list[oldest_key]
     # Clear and repopulate the list widget

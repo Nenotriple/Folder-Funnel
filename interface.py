@@ -75,23 +75,29 @@ def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     # Duplicate handling submenu
     dupe_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="Duplicate Handling", menu=dupe_menu)
-    dupe_menu.add_command(label="Duplicate Checking Mode", state="disabled")
-    dupe_menu.add_radiobutton(label="Rigorous", variable=app.rigorous_duplicate_check_var, value=True)
-    dupe_menu.add_radiobutton(label="Simple", variable=app.rigorous_duplicate_check_var, value=False)
-    dupe_menu.add_separator()
-    # Rigorous Check
-    dupe_menu.add_command(label="Rigorous Check: Max Files", state="disabled")
-    dupe_menu.add_radiobutton(label="10", variable=app.rigorous_max_file_var, value=10)
-    dupe_menu.add_radiobutton(label="25", variable=app.rigorous_max_file_var, value=25)
-    dupe_menu.add_radiobutton(label="50", variable=app.rigorous_max_file_var, value=50)
-    dupe_menu.add_radiobutton(label="100", variable=app.rigorous_max_file_var, value=100)
-    dupe_menu.add_radiobutton(label="1000", variable=app.rigorous_max_file_var, value=1000)
-    dupe_menu.add_radiobutton(label="10000", variable=app.rigorous_max_file_var, value=10000)
+    # Dupe Handle Mode
+    dupe_menu.add_command(label="Duplicate Handling Mode", state="disabled")
+    dupe_menu.add_radiobutton(label="Move", variable=app.dupe_handle_mode_var, value="Move")
+    dupe_menu.add_radiobutton(label="Delete", variable=app.dupe_handle_mode_var, value="Delete")
     dupe_menu.add_separator()
     # Dupe Filter Mode
     dupe_menu.add_command(label="Duplicate Matching Mode", state="disabled")
     dupe_menu.add_radiobutton(label="Strict", variable=app.dupe_filter_mode_var, value="Strict")
     dupe_menu.add_radiobutton(label="Flexible", variable=app.dupe_filter_mode_var, value="Flexible")
+    dupe_menu.add_separator()
+    # Dupe Check Mode
+    dupe_menu.add_command(label="Duplicate Checking Mode", state="disabled")
+    dupe_menu.add_radiobutton(label="Rigorous", variable=app.rigorous_duplicate_check_var, value=True)
+    dupe_menu.add_radiobutton(label="Simple", variable=app.rigorous_duplicate_check_var, value=False)
+    dupe_menu.add_separator()
+    # Max Files
+    dupe_menu.add_command(label="Duplicate Check: Max Files", state="disabled")
+    dupe_menu.add_radiobutton(label="10", variable=app.dupe_max_files_var, value=10)
+    dupe_menu.add_radiobutton(label="25", variable=app.dupe_max_files_var, value=25)
+    dupe_menu.add_radiobutton(label="50", variable=app.dupe_max_files_var, value=50)
+    dupe_menu.add_radiobutton(label="100", variable=app.dupe_max_files_var, value=100)
+    dupe_menu.add_radiobutton(label="1000", variable=app.dupe_max_files_var, value=1000)
+    dupe_menu.add_radiobutton(label="10000", variable=app.dupe_max_files_var, value=10000)
     # Text Log submenu
     text_log_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="Text Log", menu=text_log_menu)
@@ -192,19 +198,32 @@ def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     history_options_menu["menu"] = history_options_menu.menu
     history_options_menu.menu.add_command(label="Clear History", command=app.clear_history)
     history_options_menu.menu.add_separator()
-    history_options_menu.menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved")
-    history_options_menu.menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate")
+    history_options_menu.menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
+    history_options_menu.menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     Tip(history_options_menu, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
     # Listbox
     app.history_listbox = tk.Listbox(list_frame, width=1, height=1)
     app.history_listbox.pack(fill="both", expand=True)
     app.history_listbox.bind("<Button-3>", app.show_history_context_menu)
     # Context menu
+    create_history_context_menu(app)
+
+
+def create_history_context_menu(app: 'FolderFunnelApp'):
     app.history_menu = tk.Menu(app.history_listbox, tearoff=0)
-    app.history_menu.add_command(label="Open", command=app.open_selected_file)
-    app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
-    app.history_menu.add_separator()
-    app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
+    if app.history_mode_var.get() == "Moved":
+        app.history_menu.add_command(label="Open", command=app.open_selected_file)
+        app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
+    elif app.history_mode_var.get() == "Duplicate":
+        app.history_menu.add_command(label="Open: Duplicate", command=app.open_selected_duplicate_file)
+        app.history_menu.add_command(label="Show Duplicate in Explorer", command=app.show_selected_duplicate_in_explorer)
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Open: Source", command=app.open_selected_source_file)
+        app.history_menu.add_command(label="Show Source in Explorer", command=app.show_selected_source_in_explorer)
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Delete: Duplicate", command=app.delete_selected_duplicate_file)
 
 
 #endregion

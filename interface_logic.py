@@ -9,10 +9,10 @@ from help_text import HELP_TEXT
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from app import FolderFunnelApp
+    from app import Main
 
 
-def log(app: 'FolderFunnelApp', message):
+def log(app: 'Main', message):
     """Add a message to the log if it's not the same as the last one."""
     if app.messages and app.messages[-1] == message:
         return
@@ -23,27 +23,27 @@ def log(app: 'FolderFunnelApp', message):
     app.text_log.see("end")
 
 
-def clear_log(app: 'FolderFunnelApp'):
+def clear_log(app: 'Main'):
     """Clear the log text area."""
     app.text_log.configure(state="normal")
     app.text_log.delete(1.0, "end")
     app.text_log.configure(state="disable")
 
 
-def clear_history(app: 'FolderFunnelApp'):
+def clear_history(app: 'Main'):
     """Clear the history listbox and the underlying history list."""
     app.history_listbox.delete(0, "end")
     list = listbox_logic.get_history_list(app)
     list.clear()
 
 
-def toggle_text_wrap(app: 'FolderFunnelApp'):
+def toggle_text_wrap(app: 'Main'):
     """Toggle text wrapping in the log text area."""
     wrap = app.text_log_wrap_var.get()
     app.text_log.configure(wrap="word" if wrap else "none")
 
 
-def toggle_button_state(app: 'FolderFunnelApp', state="idle"):
+def toggle_button_state(app: 'Main', state="idle"):
     """Toggle the state of start and stop buttons based on application state."""
     start = app.start_button
     stop = app.stop_button
@@ -58,7 +58,7 @@ def toggle_button_state(app: 'FolderFunnelApp', state="idle"):
         stop.configure(state=state)
 
 
-def toggle_indicator(app: 'FolderFunnelApp', state=None):
+def toggle_indicator(app: 'Main', state=None):
     """Toggle the activity indicator (progressbar) state."""
     if state == "start":
         app.running_indicator.configure(mode="indeterminate")
@@ -68,16 +68,16 @@ def toggle_indicator(app: 'FolderFunnelApp', state=None):
         app.running_indicator.stop()
 
 
-def open_help_window(app: 'FolderFunnelApp'):
+def open_help_window(app: 'Main'):
     """Open the help window with the application help text."""
     app.help_window.open_window(geometry="800x700", help_text=HELP_TEXT)
 
 
-def update_duplicate_count(app: 'FolderFunnelApp'):
+def update_duplicate_count(app: 'Main'):
     """Update the duplicate count display."""
     app.duplicate_count_var.set(f"Duplicates: {app.duplicate_count}")
 
 
-def get_history_list(app: 'FolderFunnelApp'):
+def get_history_list(app: 'Main'):
     """Get the appropriate history list based on current mode."""
     return listbox_logic.get_history_list(app)

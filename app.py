@@ -18,10 +18,10 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 from watchdog.observers import Observer
 
 # Custom
+import interface
+import duplicate_handler
 from help_text import HELP_TEXT
 from help_window import HelpWindow
-from interface import create_interface
-from duplicate_handler import are_files_identical
 from event_handler import WatchFolderHandler, SourceFolderHandler
 
 
@@ -42,8 +42,8 @@ HISTORY_LIMIT = 100
 
 
 class FolderFunnelApp:
-    def __init__(self, root):
-        self.root: tk.Tk = root
+    def __init__(self, root: tk.Tk):
+        self.root = root
 
         # tk Variables
         self.working_dir_var = tk.StringVar(value="")  # The source folder
@@ -52,15 +52,13 @@ class FolderFunnelApp:
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
         self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
         self.duplicate_count_var = tk.StringVar(value="Duplicates: 0")  # Display variable for duplicate count
+        self.dupe_handle_mode_var = tk.StringVar(value="Move")  # Method for handling duplicates ("Delete", "Move")
+        self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for finding similar files to check ("Flexible", "Strict")
         self.rigorous_duplicate_check_var = tk.BooleanVar(value=True)  # Method of checking similar files for duplicates
-        self.rigorous_max_file_var = tk.IntVar(value=50)  # Max files to check for duplicates
-        self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for finding similar files to check (Flexible/Strict)
+        self.dupe_max_files_var = tk.IntVar(value=50)  # Max files to check for duplicates
         self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
-
-        # !YET TO BE IMPLEMENTED!
-        self.dupe_handle_mode_var = tk.StringVar(value="Delete")  # Method for handling duplicates (Delete/Move)
-        self.history_mode_var = tk.StringVar(value="Moved")  # History display mode (Moved/Duplicate)
+        self.history_mode_var = tk.StringVar(value="Moved")  # History display mode ("Moved", "Duplicate")
 
         # Initialize UI objects
         self.dir_entry: Optional[ttk.Entry] = None
@@ -77,10 +75,13 @@ class FolderFunnelApp:
         self.app_path = self.get_app_path()  # The application folder
         self.watch_path = ""  # The duplicate folder that will be watched
         self.watch_folder_name = ""  # The name of the duplicate folder
+        self.watch_name_prefix = "#FUNNEL#_"  # Prefix for the duplicate folder name
+        self.duplicate_storage_path = ""  # The folder that will store moved duplicate files
+        self.duplicate_name_prefix = "#DUPLICATE#_"  # Prefix for duplicate storage folder name
         self.messages = []  # Log message list
         self.move_history_items = {}  # Store history of moved files as {filename: full_path} (move path)
         self.move_count = 0  # Number of files moved
-        self.duplicate_history_items = {}  # Store history of matched duplicate files as {filename: full_path} (source path)
+        self.duplicate_history_items = {}  # Store history of matched duplicate files as {filename: {"source": source_path, "duplicate": duplicate_path}}
         self.duplicate_count = 0  # Number of duplicate files detected
 
         # Queue related variables
@@ -121,7 +122,8 @@ class FolderFunnelApp:
 
     def clear_history(self):
         self.history_listbox.delete(0, "end")
-        self.move_history_items.clear()
+        list = self.get_history_list()
+        list.clear()
 
 
     def toggle_text_wrap(self):
@@ -160,21 +162,38 @@ class FolderFunnelApp:
         self.duplicate_count_var.set(f"Duplicates: {self.duplicate_count}")
 
 
+    def get_history_list(self):
+        display_mode = self.history_mode_var.get()
+        if display_mode == "Moved":
+            return self.move_history_items
+        elif display_mode == "Duplicate":
+            return self.duplicate_history_items
+        return {}
+
+
 #endregion
 #region - Listbox Logic
 
 
+    def toggle_history_mode(self):
+        list = self.get_history_list()
+        self.history_listbox.delete(0, "end")
+        for filename in list:
+            self.history_listbox.insert(0, filename)
+
+
     def update_history_list(self, filename, filepath):
         """Update the history list with a new filename and its full path."""
+        list = self.get_history_list()
         # Add new item to dictionary
-        self.move_history_items[filename] = filepath
+        list[filename] = filepath
         # Remove oldest items if limit is reached
-        while len(self.move_history_items) > HISTORY_LIMIT:
-            oldest_key = next(iter(self.move_history_items))
-            del self.move_history_items[oldest_key]
+        while len(list) > HISTORY_LIMIT:
+            oldest_key = next(iter(list))
+            del list[oldest_key]
         # Clear and repopulate the list widget
         self.history_listbox.delete(0, "end")
-        for filename in self.move_history_items:
+        for filename in list:
             # Insert at top to show newest first
             self.history_listbox.insert(0, filename)
 
@@ -185,15 +204,32 @@ class FolderFunnelApp:
             self.history_listbox.selection_clear(0, "end")
             self.history_listbox.selection_set(clicked_index)
             self.history_listbox.activate(clicked_index)
+            interface.create_history_context_menu(self)
             self.history_menu.post(event.x_root, event.y_root)
 
 
-    def get_selected_filepath(self):
+    def get_selected_filepath(self, file_type="source"):
+        """
+        Get the filepath of the selected item in the history listbox.
+
+        Args:
+            file_type: Either "source" or "duplicate" to indicate which file to return for duplicate entries
+        """
         selection = self.history_listbox.curselection()
         if not selection:
             return None
         filename = self.history_listbox.get(selection[0])
-        return self.move_history_items.get(filename)
+        list = self.get_history_list()
+
+        if self.history_mode_var.get() == "Duplicate":
+            # For duplicates, return either the source or duplicate path based on file_type
+            if file_type == "source":
+                return list.get(filename, {}).get("source")
+            else:  # duplicate
+                return list.get(filename, {}).get("duplicate")
+        else:
+            # For moved files, return the full path as before
+            return list.get(filename)
 
 
     def open_selected_file(self):
@@ -204,12 +240,44 @@ class FolderFunnelApp:
             messagebox.showerror("Error", "File not found")
 
 
+    def open_selected_source_file(self):
+        filepath = self.get_selected_filepath(file_type="source")
+        if filepath and os.path.exists(filepath):
+            os.startfile(filepath)
+        else:
+            messagebox.showerror("Error", "Source file not found")
+
+
+    def open_selected_duplicate_file(self):
+        filepath = self.get_selected_filepath(file_type="duplicate")
+        if filepath and os.path.exists(filepath):
+            os.startfile(filepath)
+        else:
+            messagebox.showerror("Error", "Duplicate file not found")
+
+
     def show_selected_in_explorer(self):
         filepath = self.get_selected_filepath()
         if filepath and os.path.exists(filepath):
             os.system(f'explorer /select,"{filepath}"')
         else:
             messagebox.showerror("Error", "File not found")
+
+
+    def show_selected_source_in_explorer(self):
+        filepath = self.get_selected_filepath(file_type="source")
+        if filepath and os.path.exists(filepath):
+            os.system(f'explorer /select,"{filepath}"')
+        else:
+            messagebox.showerror("Error", "Source file not found")
+
+
+    def show_selected_duplicate_in_explorer(self):
+        filepath = self.get_selected_filepath(file_type="duplicate")
+        if filepath and os.path.exists(filepath):
+            os.system(f'explorer /select,"{filepath}"')
+        else:
+            messagebox.showerror("Error", "Duplicate file not found")
 
 
     def delete_selected_file(self):
@@ -221,9 +289,27 @@ class FolderFunnelApp:
         if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{filename}'?"):
             try:
                 os.remove(filepath)
-                del self.move_history_items[filename]
+                list = self.get_history_list()
+                del list[filename]
                 self.history_listbox.delete(self.history_listbox.curselection())
                 self.log(f"Deleted file: {filename}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not delete file: {str(e)}")
+
+
+    def delete_selected_duplicate_file(self):
+        filepath = self.get_selected_filepath(file_type="duplicate")
+        if not filepath or not os.path.exists(filepath):
+            messagebox.showerror("Error", "Duplicate file not found")
+            return
+        filename = os.path.basename(filepath)
+        if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete duplicate file '{filename}'?"):
+            try:
+                os.remove(filepath)
+                # Only remove from history if we actually want to track deleted duplicates
+                # For now, we'll keep it in history but could add a flag to remove it
+                self.log(f"Deleted duplicate file: {filename}")
+                messagebox.showinfo("Success", f"Duplicate file deleted: {filename}")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not delete file: {str(e)}")
 
@@ -302,7 +388,7 @@ class FolderFunnelApp:
             return
         source_folder_name = os.path.basename(source_path)
         parent_dir = os.path.dirname(source_path)
-        self.watch_folder_name = f"#watching#_{source_folder_name}"
+        self.watch_folder_name = f"{self.watch_name_prefix}{source_folder_name}"
         self.watch_path = os.path.normpath(os.path.join(parent_dir, self.watch_folder_name))
         counter_created = 0
         counter_removed = 0
@@ -334,6 +420,21 @@ class FolderFunnelApp:
                 self.log(f"Watching: {folder_count[1]} directories in {self.watch_path}")
         except Exception as e:
             messagebox.showerror("Error: create_watch_folders()", f"{str(e)}")
+
+
+    def create_duplicate_storage_folder(self):
+        """Create a folder to store duplicate files when in 'Move' mode."""
+        source_path = self.working_dir_var.get()
+        source_folder_name = os.path.basename(source_path)
+        parent_dir = os.path.dirname(source_path)
+        duplicate_folder_name = f"{self.duplicate_name_prefix}{source_folder_name}"
+        self.duplicate_storage_path = os.path.normpath(os.path.join(parent_dir, duplicate_folder_name))
+        try:
+            os.makedirs(self.duplicate_storage_path, exist_ok=True)
+            self.log(f"Created duplicate storage folder: {self.duplicate_storage_path}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to create duplicate storage folder: {str(e)}")
+            self.duplicate_storage_path = ""
 
 
 #endregion
@@ -432,13 +533,45 @@ class FolderFunnelApp:
             # If file exists, check if it's a duplicate
             if os.path.exists(dest_path):
                 # Compare file contents
-                if are_files_identical(file1=source_path, file2=dest_path, rigorous_check=self.rigorous_duplicate_check_var.get(), method=self.dupe_filter_mode_var.get(), max_files=self.rigorous_max_file_var.get()):
-                    # Files are identical, delete the duplicate
-                    os.remove(source_path)
-                    self.log(f"Deleted duplicate file: {rel_path}")
-                    # Record the duplicate file
+                if duplicate_handler.are_files_identical(file1=source_path, file2=dest_path, rigorous_check=self.rigorous_duplicate_check_var.get(), method=self.dupe_filter_mode_var.get(), max_files=self.dupe_max_files_var.get()):
+                    # Files are identical, handle based on dupe_handle_mode
                     filename = os.path.basename(source_path)
-                    self.duplicate_history_items[filename] = dest_path
+
+                    if self.dupe_handle_mode_var.get() == "Delete":
+                        # Delete the duplicate file
+                        os.remove(source_path)
+                        self.log(f"Deleted duplicate file: {rel_path}")
+                    else:  # "Move" mode
+                        if not self.duplicate_storage_path:
+                            self.create_duplicate_storage_folder()
+
+                        # Ensure the directory structure exists in the duplicate folder
+                        rel_dir = os.path.dirname(rel_path)
+                        dup_dir_path = os.path.join(self.duplicate_storage_path, rel_dir)
+                        os.makedirs(dup_dir_path, exist_ok=True)
+
+                        # Calculate destination path in duplicate storage
+                        dup_file_path = os.path.join(self.duplicate_storage_path, rel_path)
+
+                        # Handle if file already exists in duplicate storage
+                        if os.path.exists(dup_file_path):
+                            base, ext = os.path.splitext(dup_file_path)
+                            counter = 1
+                            while os.path.exists(dup_file_path):
+                                dup_file_path = f"{base}_{counter}{ext}"
+                                counter += 1
+
+                        # Move the duplicate file
+                        shutil.move(source_path, dup_file_path)
+                        self.log(f"Moved duplicate file: {rel_path} -> {os.path.relpath(dup_file_path, self.duplicate_storage_path)}")
+
+                    # Record the duplicate file
+                    # Store both the source (kept) path and duplicate path
+                    duplicate_path = source_path
+                    if self.dupe_handle_mode_var.get() == "Move":
+                        duplicate_path = dup_file_path
+
+                    self.duplicate_history_items[filename] = {"source": dest_path, "duplicate": duplicate_path}
                     self.duplicate_count += 1
                     self.update_duplicate_count()
                     return True
@@ -523,7 +656,6 @@ class FolderFunnelApp:
         self.filecount_var.set(f"Files: {file_count}")
 
 
-
 #endregion
 #region - Framework
 
@@ -573,16 +705,29 @@ class FolderFunnelApp:
                 self.process_move_queue()
         if not self.stop_folder_watcher():
             return
+
+        # Check if duplicate storage folder exists and ask about removal
+        if self.duplicate_storage_path and os.path.exists(self.duplicate_storage_path):
+            response = messagebox.askyesnocancel(
+                "Remove Duplicate Files?",
+                f"Do you want to remove the duplicate files folder?\n{self.duplicate_storage_path}"
+            )
+            if response is None:  # Cancel was selected
+                return
+            elif response:  # Yes was selected
+                try:
+                    shutil.rmtree(self.duplicate_storage_path)
+                    self.log(f"Removed duplicate storage folder: {self.duplicate_storage_path}")
+                except Exception as e:
+                    messagebox.showerror("Error", f"Failed to remove duplicate folder: {str(e)}")
+            # If No was selected, keep the folder
+
         self.root.quit()
 
 
-# Setup Tkinter
+# Run the application
 root = tk.Tk()
-# Setup app
 app = FolderFunnelApp(root)
-# Create app interface
-create_interface(app)
-# Setup app window
+interface.create_interface(app)
 app.setup_window()
-# Start Tkinter mainloop
 root.mainloop()

@@ -18,7 +18,6 @@ import move_queue
 import folder_watcher
 import listbox_logic
 import interface_logic
-from help_text import HELP_TEXT
 from help_window import HelpWindow
 
 

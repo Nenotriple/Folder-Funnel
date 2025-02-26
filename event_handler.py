@@ -10,7 +10,7 @@ from watchdog.events import FileSystemEventHandler
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from app import FolderFunnelApp
+    from app import Main
 
 
 #endregion
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 class WatchFolderHandler(FileSystemEventHandler):
-    def __init__(self, app: 'FolderFunnelApp'):
+    def __init__(self, app: 'Main'):
         self.parent = app
 
 
@@ -51,7 +51,7 @@ class WatchFolderHandler(FileSystemEventHandler):
 
 
 class SourceFolderHandler(FileSystemEventHandler):
-    def __init__(self, app: 'FolderFunnelApp'):
+    def __init__(self, app: 'Main'):
         self.parent = app
 
 

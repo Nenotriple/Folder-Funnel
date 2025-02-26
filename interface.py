@@ -11,14 +11,14 @@ from TkToolTip.TkToolTip import TkToolTip as Tip
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from app import FolderFunnelApp
+    from app import Main
 
 
 #endregion
 #region - Entry point
 
 
-def create_interface(app: 'FolderFunnelApp'):
+def create_interface(app: 'Main'):
     create_menubar(app)
     create_control_row(app)
     create_main_frame(app)
@@ -29,7 +29,7 @@ def create_interface(app: 'FolderFunnelApp'):
 #region - Menubar
 
 
-def create_menubar(app: 'FolderFunnelApp'):
+def create_menubar(app: 'Main'):
     # Create menubar
     menubar = tk.Menu(app.root)
     app.root.config(menu=menubar)
@@ -40,7 +40,7 @@ def create_menubar(app: 'FolderFunnelApp'):
     menubar.add_command(label="Help", command=app.open_help_window)
 
 
-def _create_file_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
+def _create_file_menu(app: 'Main', menubar: tk.Menu):
     file_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="File", menu=file_menu)
     file_menu.add_command(label="Select source path...", command=app.select_working_dir)
@@ -49,7 +49,7 @@ def _create_file_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     file_menu.add_command(label="Exit", command=app.on_closing)
 
 
-def _create_edit_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
+def _create_edit_menu(app: 'Main', menubar: tk.Menu):
     edit_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Edit", menu=edit_menu)
     edit_menu.add_command(label="Sync Folders", command=app.sync_watch_folders)
@@ -58,7 +58,7 @@ def _create_edit_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     edit_menu.add_command(label="Clear history", command=app.clear_history)
 
 
-def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
+def _create_options_menu(app: 'Main', menubar: tk.Menu):
     options_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Options", menu=options_menu)
     # Queue submenu
@@ -108,7 +108,7 @@ def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
 #region - Control row
 
 
-def create_control_row(app: 'FolderFunnelApp'):
+def create_control_row(app: 'Main'):
     # Create control row
     control_frame = tk.Frame(app.root)
     control_frame.pack(side="top", fill="x")
@@ -119,7 +119,7 @@ def create_control_row(app: 'FolderFunnelApp'):
     _create_buttons(app, control_frame)
 
 
-def _create_dir_entry(app: 'FolderFunnelApp', control_frame: tk.Frame):
+def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     dir_selection_frame = tk.Frame(control_frame)
     dir_selection_frame.pack(side="left", fill="x", expand=True)
     #Label
@@ -140,7 +140,7 @@ def _create_dir_entry(app: 'FolderFunnelApp', control_frame: tk.Frame):
     Tip(open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
 
 
-def _create_buttons(app: 'FolderFunnelApp', control_frame: tk.Frame):
+def _create_buttons(app: 'Main', control_frame: tk.Frame):
     app.start_button = ttk.Button(control_frame, text="Start", command=app.start_folder_watcher)
     app.start_button.pack(side="left")
     Tip(app.start_button, "Begin watching the selected folder", delay=250, pady=25, origin="widget")
@@ -154,7 +154,7 @@ def _create_buttons(app: 'FolderFunnelApp', control_frame: tk.Frame):
 #region - Main frame
 
 
-def create_main_frame(app: 'FolderFunnelApp'):
+def create_main_frame(app: 'Main'):
     # Create main frame
     main_frame = tk.Frame(app.root)
     main_frame.pack(fill="both", expand=True)
@@ -166,7 +166,7 @@ def create_main_frame(app: 'FolderFunnelApp'):
     _create_history_list(app, main_pane)
 
 
-def _create_text_log(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
+def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     # Frame
     text_frame = tk.Frame(main_pane)
     main_pane.add(text_frame, stretch="always")
@@ -186,7 +186,7 @@ def _create_text_log(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
 
 
 
-def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
+def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     # Frame
     list_frame = tk.Frame(main_pane)
     main_pane.add(list_frame, stretch="never")
@@ -209,7 +209,7 @@ def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     create_history_context_menu(app)
 
 
-def create_history_context_menu(app: 'FolderFunnelApp'):
+def create_history_context_menu(app: 'Main'):
     app.history_menu = tk.Menu(app.history_listbox, tearoff=0)
     if app.history_mode_var.get() == "Moved":
         app.history_menu.add_command(label="Open", command=app.open_selected_file)
@@ -230,7 +230,7 @@ def create_history_context_menu(app: 'FolderFunnelApp'):
 #region - Message row
 
 
-def create_message_row(app: 'FolderFunnelApp'):
+def create_message_row(app: 'Main'):
     # Message row
     message_frame = tk.Frame(app.root)
     message_frame.pack(side="bottom", fill="x")

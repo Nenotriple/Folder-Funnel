@@ -106,34 +106,26 @@ class Main:
     def log(self, message):
         interface_logic.log(self, message)
 
-
     def clear_log(self):
         interface_logic.clear_log(self)
-
 
     def clear_history(self):
         interface_logic.clear_history(self)
 
-
     def toggle_text_wrap(self):
         interface_logic.toggle_text_wrap(self)
-
 
     def toggle_button_state(self, state="idle"):
         interface_logic.toggle_button_state(self, state)
 
-
     def toggle_indicator(self, state=None):
         interface_logic.toggle_indicator(self, state)
-
 
     def open_help_window(self):
         interface_logic.open_help_window(self)
 
-
     def update_duplicate_count(self):
         interface_logic.update_duplicate_count(self)
-
 
     def get_history_list(self):
         return interface_logic.get_history_list(self)
@@ -187,10 +179,8 @@ class Main:
     def start_folder_watcher(self):
         folder_watcher.start_folder_watcher(self)
 
-
     def stop_folder_watcher(self):
         return folder_watcher.stop_folder_watcher(self)
-
 
     def sync_watch_folders(self, silent=False):
         folder_watcher.sync_watch_folders(self, silent)
@@ -201,17 +191,12 @@ class Main:
 
 
     def queue_move_file(self, source_path):
-        """Add a file or folder to the move queue and start/restart the timer."""
         move_queue.queue_move_file(self, source_path)
 
-
     def process_move_queue(self):
-        """Process the move queue and move files to the working directory."""
         move_queue.process_move_queue(self)
 
-
     def handle_rename_event(self, old_path, new_path):
-        """Handle a file being renamed or moved."""
         move_queue.handle_rename_event(self, old_path, new_path)
 
 
@@ -237,6 +222,8 @@ class Main:
             path = self.working_dir_var.get()
         if os.path.exists(path):
             os.startfile(path)
+        else:
+            messagebox.showerror("Error", "Folder not found")
 
 
     def check_working_dir_exists(self):

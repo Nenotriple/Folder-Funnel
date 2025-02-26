@@ -12,21 +12,21 @@ import interface
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from app import FolderFunnelApp
+    from app import Main
 
 
 #endregion
 #region - Listbox Logic
 
 
-def toggle_history_mode(app: 'FolderFunnelApp'):
+def toggle_history_mode(app: 'Main'):
     list = get_history_list(app)
     app.history_listbox.delete(0, "end")
     for filename in list:
         app.history_listbox.insert(0, filename)
 
 
-def update_history_list(app: 'FolderFunnelApp', filename, filepath):
+def update_history_list(app: 'Main', filename, filepath):
     """Update the history list with a new filename and its full path."""
     list = get_history_list(app)
     # Add new item to dictionary
@@ -42,7 +42,7 @@ def update_history_list(app: 'FolderFunnelApp', filename, filepath):
         app.history_listbox.insert(0, filename)
 
 
-def show_history_context_menu(app: 'FolderFunnelApp', event):
+def show_history_context_menu(app: 'Main', event):
     clicked_index = app.history_listbox.nearest(event.y)
     if clicked_index >= 0:
         app.history_listbox.selection_clear(0, "end")
@@ -52,7 +52,7 @@ def show_history_context_menu(app: 'FolderFunnelApp', event):
         app.history_menu.post(event.x_root, event.y_root)
 
 
-def get_selected_filepath(app: 'FolderFunnelApp', file_type="source"):
+def get_selected_filepath(app: 'Main', file_type="source"):
     """
     Get the filepath of the selected item in the history listbox.
 
@@ -77,7 +77,7 @@ def get_selected_filepath(app: 'FolderFunnelApp', file_type="source"):
         return list.get(filename)
 
 
-def open_selected_file(app: 'FolderFunnelApp'):
+def open_selected_file(app: 'Main'):
     filepath = get_selected_filepath(app)
     if filepath and os.path.exists(filepath):
         os.startfile(filepath)
@@ -85,7 +85,7 @@ def open_selected_file(app: 'FolderFunnelApp'):
         messagebox.showerror("Error", "File not found")
 
 
-def open_selected_source_file(app: 'FolderFunnelApp'):
+def open_selected_source_file(app: 'Main'):
     filepath = get_selected_filepath(app, file_type="source")
     if filepath and os.path.exists(filepath):
         os.startfile(filepath)
@@ -93,7 +93,7 @@ def open_selected_source_file(app: 'FolderFunnelApp'):
         messagebox.showerror("Error", "Source file not found")
 
 
-def open_selected_duplicate_file(app: 'FolderFunnelApp'):
+def open_selected_duplicate_file(app: 'Main'):
     filepath = get_selected_filepath(app, file_type="duplicate")
     if filepath and os.path.exists(filepath):
         os.startfile(filepath)
@@ -101,7 +101,7 @@ def open_selected_duplicate_file(app: 'FolderFunnelApp'):
         messagebox.showerror("Error", "Duplicate file not found")
 
 
-def show_selected_in_explorer(app: 'FolderFunnelApp'):
+def show_selected_in_explorer(app: 'Main'):
     filepath = get_selected_filepath(app)
     if filepath and os.path.exists(filepath):
         os.system(f'explorer /select,"{filepath}"')
@@ -109,7 +109,7 @@ def show_selected_in_explorer(app: 'FolderFunnelApp'):
         messagebox.showerror("Error", "File not found")
 
 
-def show_selected_source_in_explorer(app: 'FolderFunnelApp'):
+def show_selected_source_in_explorer(app: 'Main'):
     filepath = get_selected_filepath(app, file_type="source")
     if filepath and os.path.exists(filepath):
         os.system(f'explorer /select,"{filepath}"')
@@ -117,7 +117,7 @@ def show_selected_source_in_explorer(app: 'FolderFunnelApp'):
         messagebox.showerror("Error", "Source file not found")
 
 
-def show_selected_duplicate_in_explorer(app: 'FolderFunnelApp'):
+def show_selected_duplicate_in_explorer(app: 'Main'):
     filepath = get_selected_filepath(app, file_type="duplicate")
     if filepath and os.path.exists(filepath):
         os.system(f'explorer /select,"{filepath}"')
@@ -125,7 +125,7 @@ def show_selected_duplicate_in_explorer(app: 'FolderFunnelApp'):
         messagebox.showerror("Error", "Duplicate file not found")
 
 
-def delete_selected_file(app: 'FolderFunnelApp'):
+def delete_selected_file(app: 'Main'):
     filepath = get_selected_filepath(app)
     if not filepath or not os.path.exists(filepath):
         messagebox.showerror("Error", "File not found")
@@ -142,7 +142,7 @@ def delete_selected_file(app: 'FolderFunnelApp'):
             messagebox.showerror("Error", f"Could not delete file: {str(e)}")
 
 
-def delete_selected_duplicate_file(app: 'FolderFunnelApp'):
+def delete_selected_duplicate_file(app: 'Main'):
     filepath = get_selected_filepath(app, file_type="duplicate")
     if not filepath or not os.path.exists(filepath):
         messagebox.showerror("Error", "Duplicate file not found")
@@ -159,7 +159,7 @@ def delete_selected_duplicate_file(app: 'FolderFunnelApp'):
             messagebox.showerror("Error", f"Could not delete file: {str(e)}")
 
 
-def get_history_list(app: 'FolderFunnelApp'):
+def get_history_list(app: 'Main'):
     """Return the current history list based on selected display mode"""
     display_mode = app.history_mode_var.get()
     if display_mode == "Moved":

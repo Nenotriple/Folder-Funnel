@@ -44,7 +44,10 @@ def _create_file_menu(app: 'Main', menubar: tk.Menu):
     file_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="File", menu=file_menu)
     file_menu.add_command(label="Select source path...", command=app.select_working_dir)
-    file_menu.add_command(label="Open selected path", command=app.open_folder)
+    file_menu.add_separator()
+    file_menu.add_command(label="Open: Source", command=app.open_folder)
+    file_menu.add_command(label="Open: Funnel", command=lambda: app.open_folder(app.watch_path))
+    file_menu.add_command(label="Open: Duplicates", command=lambda: app.open_folder(app.duplicate_storage_path))
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=app.on_closing)
 
@@ -54,8 +57,8 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
     menubar.add_cascade(label="Edit", menu=edit_menu)
     edit_menu.add_command(label="Sync Folders", command=app.sync_watch_folders)
     edit_menu.add_separator()
-    edit_menu.add_command(label="Clear log", command=app.clear_log)
-    edit_menu.add_command(label="Clear history", command=app.clear_history)
+    edit_menu.add_command(label="Clear: log", command=app.clear_log)
+    edit_menu.add_command(label="Clear: history", command=app.clear_history)
 
 
 def _create_options_menu(app: 'Main', menubar: tk.Menu):

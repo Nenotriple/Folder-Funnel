@@ -16,14 +16,14 @@ from event_handler import WatchFolderHandler, SourceFolderHandler
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from app import FolderFunnelApp
+    from app import Main
 
 
 #endregion
 #region - Folder Watcher Functions
 
 
-def start_folder_watcher(app: 'FolderFunnelApp'):
+def start_folder_watcher(app: 'Main'):
     """Start the folder watching process after verification"""
     if not app.check_working_dir_exists():
         return
@@ -42,7 +42,7 @@ def start_folder_watcher(app: 'FolderFunnelApp'):
     app.toggle_button_state(state="running")
 
 
-def _start_folder_watcher(app: 'FolderFunnelApp'):
+def _start_folder_watcher(app: 'Main'):
     """Start watching both the watch folder and source folder for changes"""
     # Stop any existing observers
     _stop_folder_watcher(app)
@@ -59,7 +59,7 @@ def _start_folder_watcher(app: 'FolderFunnelApp'):
     app.log("Ready!\n")
 
 
-def stop_folder_watcher(app: 'FolderFunnelApp'):
+def stop_folder_watcher(app: 'Main'):
     """Stop the folder watching process with confirmation"""
     if not (app.watch_observer or app.source_observer):
         return True
@@ -77,7 +77,7 @@ def stop_folder_watcher(app: 'FolderFunnelApp'):
     return True
 
 
-def _stop_folder_watcher(app: 'FolderFunnelApp'):
+def _stop_folder_watcher(app: 'Main'):
     """Stop all file system observers"""
     if app.watch_observer:
         app.watch_observer.stop()
@@ -89,7 +89,7 @@ def _stop_folder_watcher(app: 'FolderFunnelApp'):
         app.source_observer = None
 
 
-def sync_watch_folders(app: 'FolderFunnelApp', silent=False):
+def sync_watch_folders(app: 'Main', silent=False):
     """Create or update the watch folder structure to match the source folder"""
     source_path = app.working_dir_var.get()
     if not app.check_working_dir_exists():

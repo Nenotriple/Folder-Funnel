@@ -22,21 +22,10 @@ from help_window import HelpWindow
 
 
 #endregion
-#region - Constants
+#region - Main
 
 
-WINDOW_TITLE = "Folder-Funnel"
-WINDOW_WIDTH = 1000
-WINDOW_HEIGHT = 480
-WINDOW_MIN_WIDTH = 400
-WINDOW_MIN_HEIGHT = 300
-
-
-#endregion
-#region - FolderFunnelApp
-
-
-class FolderFunnelApp:
+class Main:
     def __init__(self, root: tk.Tk):
         self.root = root
 
@@ -309,6 +298,13 @@ class FolderFunnelApp:
 
 
     def setup_window(self):
+        # Window settings
+        WINDOW_TITLE = "Folder-Funnel"
+        WINDOW_WIDTH = 1000
+        WINDOW_HEIGHT = 480
+        WINDOW_MIN_WIDTH = 400
+        WINDOW_MIN_HEIGHT = 300
+        # Setup window
         self.set_appid()
         self.set_icon()
         self.root.title(WINDOW_TITLE)
@@ -359,7 +355,7 @@ class FolderFunnelApp:
 
 # Run the application
 root = tk.Tk()
-app = FolderFunnelApp(root)
+app = Main(root)
 interface.create_interface(app)
 app.setup_window()
 root.mainloop()

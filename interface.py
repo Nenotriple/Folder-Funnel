@@ -192,8 +192,8 @@ def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     history_options_menu["menu"] = history_options_menu.menu
     history_options_menu.menu.add_command(label="Clear History", command=app.clear_history)
     history_options_menu.menu.add_separator()
-    history_options_menu.menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved", command=app.update_history_list)
-    history_options_menu.menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate", command=app.update_history_list)
+    history_options_menu.menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved")
+    history_options_menu.menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate")
     Tip(history_options_menu, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
     # Listbox
     app.history_listbox = tk.Listbox(list_frame, width=1, height=1)
@@ -232,6 +232,10 @@ def create_message_row(app: 'FolderFunnelApp'):
     movecount_label = tk.Label(message_frame, textvariable=app.movecount_var, relief="groove", width=15, anchor="w")
     movecount_label.pack(side="left")
     Tip(movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
+    # Duplicate count label
+    dupecount_label = tk.Label(message_frame, textvariable=app.duplicate_count_var, relief="groove", width=15, anchor="w")
+    dupecount_label.pack(side="left")
+    Tip(dupecount_label, "Number of duplicate files found", delay=250, pady=-25, origin="widget")
     # Running indicator
     app.running_indicator = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
     app.running_indicator.pack(side="left", fill="x", expand=True)

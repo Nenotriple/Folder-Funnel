@@ -51,11 +51,15 @@ class FolderFunnelApp:
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
         self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
+        self.duplicate_count_var = tk.StringVar(value="Duplicates: 0")  # Display variable for duplicate count
         self.rigorous_duplicate_check_var = tk.BooleanVar(value=True)  # Method of checking similar files for duplicates
         self.rigorous_max_file_var = tk.IntVar(value=50)  # Max files to check for duplicates
         self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for finding similar files to check (Flexible/Strict)
         self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
+
+        # !YET TO BE IMPLEMENTED!
+        self.dupe_handle_mode_var = tk.StringVar(value="Delete")  # Method for handling duplicates (Delete/Move)
         self.history_mode_var = tk.StringVar(value="Moved")  # History display mode (Moved/Duplicate)
 
         # Initialize UI objects
@@ -74,12 +78,10 @@ class FolderFunnelApp:
         self.watch_path = ""  # The duplicate folder that will be watched
         self.watch_folder_name = ""  # The name of the duplicate folder
         self.messages = []  # Log message list
-        self.move_history_items = {}  # Store history of moved files as {filename: full_path}
+        self.move_history_items = {}  # Store history of moved files as {filename: full_path} (move path)
         self.move_count = 0  # Number of files moved
-
-        # !YET TO BE IMPLEMENTED!
-        self.delete_history_items = {}  # Store history of deleted files as {filename: full_path}
-        self.delete_count = 0  # Number of files deleted
+        self.duplicate_history_items = {}  # Store history of matched duplicate files as {filename: full_path} (source path)
+        self.duplicate_count = 0  # Number of duplicate files detected
 
         # Queue related variables
         self.move_queue = []  # List of files waiting to be moved
@@ -152,6 +154,10 @@ class FolderFunnelApp:
 
     def open_help_window(self):
         self.help_window.open_window(geometry="800x700", help_text=HELP_TEXT)
+
+
+    def update_duplicate_count(self):
+        self.duplicate_count_var.set(f"Duplicates: {self.duplicate_count}")
 
 
 #endregion
@@ -239,6 +245,8 @@ class FolderFunnelApp:
         self.count_folders_and_files()
         self.move_count = 0
         self.movecount_var.set("Moved: 0")
+        self.duplicate_count = 0
+        self.update_duplicate_count()
         self.toggle_button_state(state="running")
 
 
@@ -428,6 +436,11 @@ class FolderFunnelApp:
                     # Files are identical, delete the duplicate
                     os.remove(source_path)
                     self.log(f"Deleted duplicate file: {rel_path}")
+                    # Record the duplicate file
+                    filename = os.path.basename(source_path)
+                    self.duplicate_history_items[filename] = dest_path
+                    self.duplicate_count += 1
+                    self.update_duplicate_count()
                     return True
                 # Not a duplicate, find new name
                 base, ext = os.path.splitext(dest_path)

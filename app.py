@@ -18,9 +18,10 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 from watchdog.observers import Observer
 
 # Custom
-from interface import create_interface
-from event_handler import WatchFolderHandler, SourceFolderHandler, are_files_identical
 from help_window import HelpWindow
+from interface import create_interface
+from duplicate_handler import are_files_identical
+from event_handler import WatchFolderHandler, SourceFolderHandler
 
 
 #endregion
@@ -41,7 +42,7 @@ HISTORY_LIMIT = 100
 
 class FolderFunnelApp:
     def __init__(self, root):
-        self.root = root
+        self.root: tk.Tk = root
 
         # tk Variables
         self.working_dir_var = tk.StringVar(value="")  # The source folder
@@ -49,11 +50,12 @@ class FolderFunnelApp:
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
         self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
-        self.rigorous_duplicate_check_var = tk.BooleanVar(value=True)  # More thorough duplicate check
-        self.rigorous_dupe_max_files_var = tk.IntVar(value=50)  # Max files to check for duplicates
-        self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for filtering duplicates (Flexible/Strict)
-        self.move_queue_timer_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
+        self.rigorous_duplicate_check_var = tk.BooleanVar(value=True)  # Method of checking similar files for duplicates
+        self.rigorous_max_file_var = tk.IntVar(value=50)  # Max files to check for duplicates
+        self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for finding similar files to check (Flexible/Strict)
+        self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
+        self.history_mode_var = tk.StringVar(value="Moved")  # History display mode (Moved/Duplicate)
 
         # Initialize UI objects
         self.dir_entry: Optional[ttk.Entry] = None
@@ -62,17 +64,21 @@ class FolderFunnelApp:
         self.stop_button: Optional[ttk.Button] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
         self.history_listbox: Optional[tk.Listbox] = None
-        self.list_context_menu: Optional[tk.Menu] = None
-        self.progressbar: Optional[ttk.Progressbar] = None
+        self.history_menu: Optional[tk.Menu] = None
+        self.running_indicator: Optional[ttk.Progressbar] = None
         self.queue_progressbar: Optional[ttk.Progressbar] = None
 
         # Other Variables
         self.app_path = self.get_app_path()  # The application folder
         self.watch_path = ""  # The duplicate folder that will be watched
         self.watch_folder_name = ""  # The name of the duplicate folder
-        self.messages = []  # Log messages
-        self.history_items = {}  # Store history of moved files as {filename: full_path}
+        self.messages = []  # Log message list
+        self.move_history_items = {}  # Store history of moved files as {filename: full_path}
         self.move_count = 0  # Number of files moved
+
+        # !YET TO BE IMPLEMENTED!
+        self.delete_history_items = {}  # Store history of deleted files as {filename: full_path}
+        self.delete_count = 0  # Number of files deleted
 
         # Queue related variables
         self.move_queue = []  # List of files waiting to be moved
@@ -112,7 +118,7 @@ class FolderFunnelApp:
 
     def clear_history(self):
         self.history_listbox.delete(0, "end")
-        self.history_items.clear()
+        self.move_history_items.clear()
 
 
     def toggle_text_wrap(self):
@@ -134,13 +140,13 @@ class FolderFunnelApp:
             stop.configure(state=state)
 
 
-    def toggle_progressbar(self, state=None):
+    def toggle_indicator(self, state=None):
         if state == "start":
-            self.progressbar.configure(mode="indeterminate")
-            self.progressbar.start()
+            self.running_indicator.configure(mode="indeterminate")
+            self.running_indicator.start()
         else:
-            self.progressbar.configure(mode="determinate")
-            self.progressbar.stop()
+            self.running_indicator.configure(mode="determinate")
+            self.running_indicator.stop()
 
 
 #endregion
@@ -150,25 +156,25 @@ class FolderFunnelApp:
     def update_history_list(self, filename, filepath):
         """Update the history list with a new filename and its full path."""
         # Add new item to dictionary
-        self.history_items[filename] = filepath
+        self.move_history_items[filename] = filepath
         # Remove oldest items if limit is reached
-        while len(self.history_items) > HISTORY_LIMIT:
-            oldest_key = next(iter(self.history_items))
-            del self.history_items[oldest_key]
+        while len(self.move_history_items) > HISTORY_LIMIT:
+            oldest_key = next(iter(self.move_history_items))
+            del self.move_history_items[oldest_key]
         # Clear and repopulate the list widget
         self.history_listbox.delete(0, "end")
-        for filename in self.history_items:
+        for filename in self.move_history_items:
             # Insert at top to show newest first
             self.history_listbox.insert(0, filename)
 
 
-    def show_context_menu(self, event):
+    def show_history_context_menu(self, event):
         clicked_index = self.history_listbox.nearest(event.y)
         if clicked_index >= 0:
             self.history_listbox.selection_clear(0, "end")
             self.history_listbox.selection_set(clicked_index)
             self.history_listbox.activate(clicked_index)
-            self.list_context_menu.post(event.x_root, event.y_root)
+            self.history_menu.post(event.x_root, event.y_root)
 
 
     def get_selected_filepath(self):
@@ -176,7 +182,7 @@ class FolderFunnelApp:
         if not selection:
             return None
         filename = self.history_listbox.get(selection[0])
-        return self.history_items.get(filename)
+        return self.move_history_items.get(filename)
 
 
     def open_selected_file(self):
@@ -204,7 +210,7 @@ class FolderFunnelApp:
         if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{filename}'?"):
             try:
                 os.remove(filepath)
-                del self.history_items[filename]
+                del self.move_history_items[filename]
                 self.history_listbox.delete(self.history_listbox.curselection())
                 self.log(f"Deleted file: {filename}")
             except Exception as e:
@@ -221,7 +227,7 @@ class FolderFunnelApp:
         confirm = messagebox.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (Excluding files), and begin the Folder-Funnel process.\n\nContinue?")
         if not confirm:
             return
-        self.toggle_progressbar(state="start")
+        self.toggle_indicator(state="start")
         self.sync_watch_folders(silent="initial")
         self._start_folder_watcher()
         self.status_label_var.set("Status: Running")
@@ -261,7 +267,7 @@ class FolderFunnelApp:
         if self.watch_path and os.path.exists(self.watch_path):
             shutil.rmtree(self.watch_path)
             self.log(f"Removed watch folder: {self.watch_path}")
-        self.toggle_progressbar(state="stop")
+        self.toggle_indicator(state="stop")
         return True
 
 
@@ -335,7 +341,7 @@ class FolderFunnelApp:
         self.queue_start_time = time.time() * 1000
         self.queue_progressbar['value'] = 0
         self._update_queue_progress()
-        self.queue_timer_id = self.root.after(self.move_queue_timer_length_var.get(), self.process_move_queue)
+        self.queue_timer_id = self.root.after(self.move_queue_length_var.get(), self.process_move_queue)
 
 
     def _handle_new_folder(self, source_path):
@@ -376,7 +382,7 @@ class FolderFunnelApp:
             return
         current_time = time.time() * 1000
         elapsed = current_time - self.queue_start_time
-        progress = (elapsed / self.move_queue_timer_length_var.get()) * 100
+        progress = (elapsed / self.move_queue_length_var.get()) * 100
         if progress <= 100:
             self.queue_progressbar['value'] = progress
             # Update every 50ms
@@ -413,7 +419,7 @@ class FolderFunnelApp:
             # If file exists, check if it's a duplicate
             if os.path.exists(dest_path):
                 # Compare file contents
-                if are_files_identical(file1=source_path, file2=dest_path, rigorous_check=self.rigorous_duplicate_check_var.get(), method=self.dupe_filter_mode_var.get(), max_files=self.rigorous_dupe_max_files_var.get()):
+                if are_files_identical(file1=source_path, file2=dest_path, rigorous_check=self.rigorous_duplicate_check_var.get(), method=self.dupe_filter_mode_var.get(), max_files=self.rigorous_max_file_var.get()):
                     # Files are identical, delete the duplicate
                     os.remove(source_path)
                     self.log(f"Deleted duplicate file: {rel_path}")
@@ -506,29 +512,29 @@ class FolderFunnelApp:
     def open_help_window(self):
         help_text = {
             "Welcome to Folder-Funnel":
-                "Folder-Funnel helps you watch a folder for new or changed files, then seamlessly moves them to a chosen folder. It's designed to keep your workspace organized and reduce clutter.\n\n"
-                "The primary goal is to remove the need for manual filename conflict resolution by automatically renaming files to avoid duplicates, and by checking if files are identical before moving them.",
+            "Folder-Funnel watches a folder for new files, then seamlessly moves them to a chosen folder.\n\n"
+            "Filenames are automatically renamed to avoid duplicates and checks if they are identical before moving.\n\n",
 
             "Basic Steps:":
-                "**1) Select** a folder to watch from *'File' > 'Select source path...'* or via the *'Browse...'* button.\n"
-                "**2) Click 'Start'** to duplicate the folder structure and begin monitoring changes.\n"
-                "**3) Click 'Stop'** to remove the duplicate folder and end the process.",
+            "**1) Select** a folder to watch from *'File' > 'Select source path...'* or via the *'Browse...'* button.\n"
+            "**2) Click 'Start'** to duplicate the folder structure and begin monitoring changes.\n"
+            "**3) Click 'Stop'** to remove the duplicate folder and end the process.",
 
             "Duplicate Handling:":
-                "• **Rigorous Check**: Compares file contents using MD5 hashes to ensure files are identical.\n"
-                "• **Simple Check**: Compares file sizes before moving.\n"
-                "• **Duplicate Matching Mode**: Choose *'Strict'* to match filenames exactly, or *'Flexible'* to match similar filenames.",
+            "• **Rigorous Check**: Compares file contents using MD5 hashes to ensure files are identical.\n"
+            "• **Simple Check**: Compares file sizes before moving.\n"
+            "• **Duplicate Matching Mode**: Choose *'Strict'* to match filenames exactly, or *'Flexible'* to match similar filenames.",
 
             "Queue Timer:":
-                "• New files and folders in the watch folder are queued for moving after a brief delay. This prevents partial file moves and ensures changes are grouped together.\n"
-                "• The queue timer length can be adjusted under *'Options' > 'Queue Timer'*. This is the delay between moving files in the queue.\n"
-                "• The timer progress bar shows the time remaining before the next batch move.\n"
-                "• The timer is reset each time a new file is added to the queue.",
+            "• New files and folders in the watch folder are queued for moving after a brief delay. This groups changes together and prevents partial moves.\n"
+            "• The queue timer length can be adjusted under *'Options' > 'Queue Timer'*. This delay occurs between moving batches of files.\n"
+            "• The timer progress bar shows the remaining time before the next move.\n"
+            "• The timer resets each time a new file is added to the queue.",
 
             "Tips & Tricks:":
-                "• Right-click items in *'History'* to open or locate them quickly.\n"
-                "• Clear logs or history anytime under the *Edit'* menu.\n"
-                "• Check the status bar at the bottom to see progress and queue details."
+            "• Right-click items in *'History'* to open or locate them quickly.\n"
+            "• Clear logs or history anytime under the *'Edit'* menu.\n"
+            "• Check the status bar at the bottom to see progress and queue details."
         }
         self.help_window.open_window(geometry="800x700", help_text=help_text)
 

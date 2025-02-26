@@ -12,14 +12,14 @@ import duplicate_handler
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from app import FolderFunnelApp
+    from app import Main
 
 
 #endregion
 #region - Queue Logic
 
 
-def queue_move_file(app: 'FolderFunnelApp', source_path):
+def queue_move_file(app: 'Main', source_path):
     """Add a file or folder to the move queue and start/restart the timer."""
     if os.path.isdir(source_path):
         _handle_new_folder(app, source_path)
@@ -36,7 +36,7 @@ def queue_move_file(app: 'FolderFunnelApp', source_path):
     app.queue_timer_id = app.root.after(app.move_queue_length_var.get(), lambda: process_move_queue(app))
 
 
-def _handle_new_folder(app: 'FolderFunnelApp', source_path):
+def _handle_new_folder(app: 'Main', source_path):
     """Handle a new folder being created in the watch directory."""
     try:
         # Get relative path from watch folder
@@ -67,7 +67,7 @@ def _handle_new_folder(app: 'FolderFunnelApp', source_path):
         app.log(f"Error handling new folder {source_path}: {str(e)}")
 
 
-def _update_queue_progress(app: 'FolderFunnelApp'):
+def _update_queue_progress(app: 'Main'):
     """Update the queue progress bar."""
     if not app.queue_start_time or not app.move_queue:
         app.queue_progressbar['value'] = 0
@@ -83,7 +83,7 @@ def _update_queue_progress(app: 'FolderFunnelApp'):
         app.queue_progressbar['value'] = 100
 
 
-def process_move_queue(app: 'FolderFunnelApp'):
+def process_move_queue(app: 'Main'):
     """Process all queued file moves."""
     app.queue_timer_id = None  # Reset timer ID
     app.queue_start_time = None  # Reset start time
@@ -99,7 +99,7 @@ def process_move_queue(app: 'FolderFunnelApp'):
     app.move_queue.clear()
 
 
-def _move_file(app: 'FolderFunnelApp', source_path):
+def _move_file(app: 'Main', source_path):
     """Internal method to actually move a file. Used by process_move_queue."""
     try:
         # Get the relative path from the watch folder
@@ -173,7 +173,7 @@ def _move_file(app: 'FolderFunnelApp', source_path):
         return False
 
 
-def handle_rename_event(app: 'FolderFunnelApp', old_path, new_path):
+def handle_rename_event(app: 'Main', old_path, new_path):
     """
     Remove the old file path from the move queue if present, then add the new path for subsequent moving.
     """

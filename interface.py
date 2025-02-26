@@ -61,37 +61,37 @@ def _create_edit_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
 def _create_options_menu(app: 'FolderFunnelApp', menubar: tk.Menu):
     options_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Options", menu=options_menu)
-    # Queue Timer submenu
-    queue_timer_menu = tk.Menu(options_menu, tearoff=0)
-    options_menu.add_cascade(label="Queue Timer", menu=queue_timer_menu)
-    queue_timer_menu.add_command(label="Queue Timer Length", state="disabled")
-    queue_timer_menu.add_radiobutton(label="5 seconds", variable=app.move_queue_timer_length_var, value=5000)
-    queue_timer_menu.add_radiobutton(label="15 seconds", variable=app.move_queue_timer_length_var, value=15000)
-    queue_timer_menu.add_radiobutton(label="30 seconds", variable=app.move_queue_timer_length_var, value=30000)
-    queue_timer_menu.add_radiobutton(label="1 minute", variable=app.move_queue_timer_length_var, value=60000)
-    queue_timer_menu.add_radiobutton(label="5 minutes", variable=app.move_queue_timer_length_var, value=300000)
-    queue_timer_menu.add_radiobutton(label="10 minutes", variable=app.move_queue_timer_length_var, value=600000)
-    queue_timer_menu.add_radiobutton(label="1 hour", variable=app.move_queue_timer_length_var, value=3600000)
+    # Queue submenu
+    queue_menu = tk.Menu(options_menu, tearoff=0)
+    options_menu.add_cascade(label="Queue Timer", menu=queue_menu)
+    queue_menu.add_command(label="Queue Timer Length", state="disabled")
+    queue_menu.add_radiobutton(label="5 seconds", variable=app.move_queue_length_var, value=5000)
+    queue_menu.add_radiobutton(label="15 seconds", variable=app.move_queue_length_var, value=15000)
+    queue_menu.add_radiobutton(label="30 seconds", variable=app.move_queue_length_var, value=30000)
+    queue_menu.add_radiobutton(label="1 minute", variable=app.move_queue_length_var, value=60000)
+    queue_menu.add_radiobutton(label="5 minutes", variable=app.move_queue_length_var, value=300000)
+    queue_menu.add_radiobutton(label="10 minutes", variable=app.move_queue_length_var, value=600000)
+    queue_menu.add_radiobutton(label="1 hour", variable=app.move_queue_length_var, value=3600000)
     # Duplicate handling submenu
-    duplicate_handling_menu = tk.Menu(options_menu, tearoff=0)
-    options_menu.add_cascade(label="Duplicate Handling", menu=duplicate_handling_menu)
-    duplicate_handling_menu.add_command(label="Duplicate Checking Mode", state="disabled")
-    duplicate_handling_menu.add_radiobutton(label="Rigorous", variable=app.rigorous_duplicate_check_var, value=True)
-    duplicate_handling_menu.add_radiobutton(label="Simple", variable=app.rigorous_duplicate_check_var, value=False)
-    duplicate_handling_menu.add_separator()
+    dupe_menu = tk.Menu(options_menu, tearoff=0)
+    options_menu.add_cascade(label="Duplicate Handling", menu=dupe_menu)
+    dupe_menu.add_command(label="Duplicate Checking Mode", state="disabled")
+    dupe_menu.add_radiobutton(label="Rigorous", variable=app.rigorous_duplicate_check_var, value=True)
+    dupe_menu.add_radiobutton(label="Simple", variable=app.rigorous_duplicate_check_var, value=False)
+    dupe_menu.add_separator()
     # Rigorous Check
-    duplicate_handling_menu.add_command(label="Rigorous Check: Max Files", state="disabled")
-    duplicate_handling_menu.add_radiobutton(label="10", variable=app.rigorous_dupe_max_files_var, value=10)
-    duplicate_handling_menu.add_radiobutton(label="25", variable=app.rigorous_dupe_max_files_var, value=25)
-    duplicate_handling_menu.add_radiobutton(label="50", variable=app.rigorous_dupe_max_files_var, value=50)
-    duplicate_handling_menu.add_radiobutton(label="100", variable=app.rigorous_dupe_max_files_var, value=100)
-    duplicate_handling_menu.add_radiobutton(label="1000", variable=app.rigorous_dupe_max_files_var, value=1000)
-    duplicate_handling_menu.add_radiobutton(label="10000", variable=app.rigorous_dupe_max_files_var, value=10000)
-    duplicate_handling_menu.add_separator()
+    dupe_menu.add_command(label="Rigorous Check: Max Files", state="disabled")
+    dupe_menu.add_radiobutton(label="10", variable=app.rigorous_max_file_var, value=10)
+    dupe_menu.add_radiobutton(label="25", variable=app.rigorous_max_file_var, value=25)
+    dupe_menu.add_radiobutton(label="50", variable=app.rigorous_max_file_var, value=50)
+    dupe_menu.add_radiobutton(label="100", variable=app.rigorous_max_file_var, value=100)
+    dupe_menu.add_radiobutton(label="1000", variable=app.rigorous_max_file_var, value=1000)
+    dupe_menu.add_radiobutton(label="10000", variable=app.rigorous_max_file_var, value=10000)
+    dupe_menu.add_separator()
     # Dupe Filter Mode
-    duplicate_handling_menu.add_command(label="Duplicate Matching Mode", state="disabled")
-    duplicate_handling_menu.add_radiobutton(label="Strict", variable=app.dupe_filter_mode_var, value="Strict")
-    duplicate_handling_menu.add_radiobutton(label="Flexible", variable=app.dupe_filter_mode_var, value="Flexible")
+    dupe_menu.add_command(label="Duplicate Matching Mode", state="disabled")
+    dupe_menu.add_radiobutton(label="Strict", variable=app.dupe_filter_mode_var, value="Strict")
+    dupe_menu.add_radiobutton(label="Flexible", variable=app.dupe_filter_mode_var, value="Flexible")
     # Text Log submenu
     text_log_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="Text Log", menu=text_log_menu)
@@ -165,13 +165,19 @@ def _create_text_log(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     text_frame = tk.Frame(main_pane)
     main_pane.add(text_frame, stretch="always")
     main_pane.paneconfigure(text_frame, minsize=200, width=400)
-    # Label
-    log_label = tk.Label(text_frame, text="Log")
-    log_label.pack(fill="x")
-    Tip(log_label, "Log of events and actions", delay=250, pady=25, origin="widget")
+    # Label/Menu
+    textlog_options_menu = ttk.Menubutton(text_frame, text="Log")
+    textlog_options_menu.pack(fill="x")
+    textlog_options_menu.menu = tk.Menu(textlog_options_menu, tearoff=0)
+    textlog_options_menu["menu"] = textlog_options_menu.menu
+    textlog_options_menu.menu.add_command(label="Clear Log", command=app.clear_log)
+    textlog_options_menu.menu.add_separator()
+    textlog_options_menu.menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
+    Tip(textlog_options_menu, "Log of events and actions", delay=250, pady=25, origin="widget")
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1)
     app.text_log.pack(fill="both", expand=True)
+
 
 
 def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
@@ -179,20 +185,26 @@ def _create_history_list(app: 'FolderFunnelApp', main_pane: tk.PanedWindow):
     list_frame = tk.Frame(main_pane)
     main_pane.add(list_frame, stretch="never")
     main_pane.paneconfigure(list_frame, minsize=200, width=200)
-    # Label
-    history_label = tk.Label(list_frame, text="History")
-    history_label.pack(fill="x")
-    Tip(history_label, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
+    # Label/Menu
+    history_options_menu = ttk.Menubutton(list_frame, text="History")
+    history_options_menu.pack(fill="x")
+    history_options_menu.menu = tk.Menu(history_options_menu, tearoff=0)
+    history_options_menu["menu"] = history_options_menu.menu
+    history_options_menu.menu.add_command(label="Clear History", command=app.clear_history)
+    history_options_menu.menu.add_separator()
+    history_options_menu.menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved", command=app.update_history_list)
+    history_options_menu.menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate", command=app.update_history_list)
+    Tip(history_options_menu, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
     # Listbox
     app.history_listbox = tk.Listbox(list_frame, width=1, height=1)
     app.history_listbox.pack(fill="both", expand=True)
-    app.history_listbox.bind("<Button-3>", app.show_context_menu)
+    app.history_listbox.bind("<Button-3>", app.show_history_context_menu)
     # Context menu
-    app.list_context_menu = tk.Menu(app.history_listbox, tearoff=0)
-    app.list_context_menu.add_command(label="Open", command=app.open_selected_file)
-    app.list_context_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
-    app.list_context_menu.add_separator()
-    app.list_context_menu.add_command(label="Delete", command=app.delete_selected_file)
+    app.history_menu = tk.Menu(app.history_listbox, tearoff=0)
+    app.history_menu.add_command(label="Open", command=app.open_selected_file)
+    app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
+    app.history_menu.add_separator()
+    app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
 
 
 #endregion
@@ -220,10 +232,10 @@ def create_message_row(app: 'FolderFunnelApp'):
     movecount_label = tk.Label(message_frame, textvariable=app.movecount_var, relief="groove", width=15, anchor="w")
     movecount_label.pack(side="left")
     Tip(movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
-    # Progress bar
-    app.progressbar = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
-    app.progressbar.pack(side="left", fill="x", expand=True)
-    Tip(app.progressbar, "Running indicator of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
+    # Running indicator
+    app.running_indicator = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
+    app.running_indicator.pack(side="left", fill="x", expand=True)
+    Tip(app.running_indicator, "Running indicator of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
     # Queue Timer
     app.queue_progressbar = ttk.Progressbar(message_frame, mode="determinate")
     app.queue_progressbar.pack(side="left", fill="x", expand=True)

@@ -1,7 +1,5 @@
-"""
-Module for handling interface logic operations in Folder-Funnel application.
-Contains functions for logging, history clearing, UI element state management, etc.
-"""
+#region - Imports
+
 
 import listbox_logic
 from help_text import HELP_TEXT
@@ -10,6 +8,10 @@ from help_text import HELP_TEXT
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app import Main
+
+
+#endregion
+#region - Interface Logic
 
 
 def log(app: 'Main', message):

@@ -9,15 +9,15 @@ from typing import Optional
 
 # Standard GUI
 import tkinter as tk
-from tkinter import ttk, filedialog, messagebox, scrolledtext
+from tkinter import ttk, messagebox, scrolledtext
 
 # Custom
 import interface
 import move_queue
-import duplicate_handler
-import folder_watcher
 import listbox_logic
+import folder_watcher
 import interface_logic
+import duplicate_handler
 from help_window import HelpWindow
 
 

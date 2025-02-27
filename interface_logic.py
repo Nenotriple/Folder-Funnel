@@ -1,5 +1,10 @@
 #region - Imports
 
+# Standard
+import os
+
+# Standard GUI
+from tkinter import filedialog, messagebox
 
 # Custom
 import listbox_logic
@@ -13,6 +18,30 @@ if TYPE_CHECKING:
 
 #endregion
 #region - Interface Logic
+
+
+def select_working_dir(app: 'Main', path=None):
+    """Select a folder to use as the source folder."""
+    if not path:
+        path = filedialog.askdirectory()
+        if not path:  # Cancelled dialog
+            return
+        path = os.path.normpath(path)
+    if os.path.exists(path):
+        app.working_dir_var.set(path)
+        app.dir_entry_tooltip.config(text=path)
+        app.log(f"\nSelected folder: {path}\n")
+        app.count_folders_and_files()
+
+
+def open_folder(app: 'Main', path=None):
+    """Open a folder in the file explorer; if no path is provided, use the working directory."""
+    if not path:
+        path = app.working_dir_var.get()
+    if os.path.exists(path):
+        os.startfile(path)
+    else:
+        messagebox.showerror("Error", "Folder not found")
 
 
 def log(app: 'Main', message):

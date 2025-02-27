@@ -21,9 +21,19 @@ if TYPE_CHECKING:
 
 def toggle_history_mode(app: 'Main'):
     list = get_history_list(app)
+    handle_widget_binds(app, list)
     app.history_listbox.delete(0, "end")
     for filename in list:
         app.history_listbox.insert(0, filename)
+
+
+def handle_widget_binds(app: 'Main', list):
+    if list == app.move_history_items:
+        app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_file(app))
+        app.history_listbox.bind("<Delete>", lambda e: delete_selected_file(app))
+    elif list == app.duplicate_history_items:
+        app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_source_file(app))
+        app.history_listbox.bind("<Delete>", lambda e: delete_selected_duplicate_file(app))
 
 
 def update_history_list(app: 'Main', filename, filepath):
@@ -151,8 +161,9 @@ def delete_selected_duplicate_file(app: 'Main'):
     if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete duplicate file '{filename}'?"):
         try:
             os.remove(filepath)
-            # Only remove from history if we actually want to track deleted duplicates
-            # For now, we'll keep it in history but could add a flag to remove it
+            list = get_history_list(app)
+            del list[filename]
+            app.history_listbox.delete(app.history_listbox.curselection())
             app.log(f"Deleted duplicate file: {filename}")
             messagebox.showinfo("Success", f"Duplicate file deleted: {filename}")
         except Exception as e:

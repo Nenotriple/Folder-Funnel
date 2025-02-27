@@ -56,6 +56,7 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
     edit_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Edit", menu=edit_menu)
     edit_menu.add_command(label="Sync Folders", command=app.sync_watch_folders)
+    edit_menu.add_command(label="Process Move Queue", command=app.process_move_queue)
     edit_menu.add_separator()
     edit_menu.add_command(label="Clear: log", command=app.clear_log)
     edit_menu.add_command(label="Clear: history", command=app.clear_history)
@@ -188,7 +189,6 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     app.text_log.pack(fill="both", expand=True)
 
 
-
 def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     # Frame
     list_frame = tk.Frame(main_pane)
@@ -255,9 +255,13 @@ def create_message_row(app: 'Main'):
     movecount_label.pack(side="left")
     Tip(movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
     # Duplicate count label
-    dupecount_label = tk.Label(message_frame, textvariable=app.duplicate_count_var, relief="groove", width=15, anchor="w")
+    dupecount_label = tk.Label(message_frame, textvariable=app.dupecount_var, relief="groove", width=15, anchor="w")
     dupecount_label.pack(side="left")
     Tip(dupecount_label, "Number of duplicate files found", delay=250, pady=-25, origin="widget")
+    # Queuecount label
+    queuecount_label = tk.Label(message_frame, textvariable=app.queuecount_var, relief="groove", width=15, anchor="w")
+    queuecount_label.pack(side="left")
+    Tip(queuecount_label, "Number of files in the move queue", delay=250, pady=-25, origin="widget")
     # Running indicator
     app.running_indicator = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
     app.running_indicator.pack(side="left", fill="x", expand=True)

@@ -43,7 +43,7 @@ class Main:
         self.duplicate_count_var = tk.StringVar(value="Duplicates: 0")  # Display variable for duplicate count
         self.dupe_handle_mode_var = tk.StringVar(value="Move")  # Method for handling duplicates ("Delete", "Move")
         self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for finding similar files to check ("Flexible", "Strict")
-        self.rigorous_duplicate_check_var = tk.BooleanVar(value=True)  # Method of checking similar files for duplicates
+        self.dupe_check_mode_var = tk.StringVar(value="By MD5")  # Method of checking similar files for duplicates ("By MD5", "By Size")
         self.dupe_max_files_var = tk.IntVar(value=50)  # Max files to check for duplicates
         self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window

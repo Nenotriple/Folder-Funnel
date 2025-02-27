@@ -40,7 +40,8 @@ class Main:
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
         self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
-        self.duplicate_count_var = tk.StringVar(value="Duplicates: 0")  # Display variable for duplicate count
+        self.dupecount_var = tk.StringVar(value="Duplicates: 0")  # Display variable for duplicate count
+        self.queuecount_var = tk.StringVar(value="Queue: 0")  # Number of files in the move queue
         self.dupe_handle_mode_var = tk.StringVar(value="Move")  # Method for handling duplicates ("Delete", "Move")
         self.dupe_filter_mode_var = tk.StringVar(value="Strict")  # Method for finding similar files to check ("Flexible", "Strict")
         self.dupe_check_mode_var = tk.StringVar(value="By MD5")  # Method of checking similar files for duplicates ("By MD5", "By Size")
@@ -84,6 +85,7 @@ class Main:
 
         # Queue related variables
         self.move_queue = []  # List of files waiting to be moved
+        self.queue_count = 0  # Number of files in the move queue
         self.queue_timer_id = None  # Store timer ID for cancellation
         self.queue_start_time = None  # Store when the queue timer started
 
@@ -125,6 +127,9 @@ class Main:
 
     def update_duplicate_count(self):
         interface_logic.update_duplicate_count(self)
+
+    def update_queue_count(self):
+        interface_logic.update_queue_count(self)
 
     def get_history_list(self):
         return interface_logic.get_history_list(self)
@@ -198,12 +203,16 @@ class Main:
     def handle_rename_event(self, old_path, new_path):
         move_queue.handle_rename_event(self, old_path, new_path)
 
+    def process_pending_moves(self):
+        move_queue.process_pending_moves(self)
+
 
 #endregion
 #region - File Logic
 
 
     def select_working_dir(self, path=None):
+        """Select a folder to use as the source folder."""
         if not path:
             path = filedialog.askdirectory()
             if not path:  # Cancelled dialog
@@ -217,6 +226,7 @@ class Main:
 
 
     def open_folder(self, path=None):
+        """Open a folder in the file explorer; if no path is provided, use the working directory."""
         if not path:
             path = self.working_dir_var.get()
         if os.path.exists(path):
@@ -226,6 +236,7 @@ class Main:
 
 
     def check_working_dir_exists(self):
+        """Check if the source folder exists."""
         path = self.working_dir_var.get()
         if not path:
             messagebox.showerror("Error", "No folder selected")
@@ -237,6 +248,7 @@ class Main:
 
 
     def count_folders_and_files(self):
+        """Count the number of folders and files in the source folder."""
         folder_count = 0
         file_count = 0
         for root, dirs, files in os.walk(self.working_dir_var.get()):
@@ -249,10 +261,7 @@ class Main:
     def confirm_duplicate_storage_removal(self):
         """Ask the user if they want to remove the duplicate storage folder"""
         if self.duplicate_storage_path and os.path.exists(self.duplicate_storage_path):
-            response = messagebox.askyesnocancel(
-                "Remove Duplicate Files?",
-                f"Do you want to remove the duplicate files folder?\n{self.duplicate_storage_path}"
-            )
+            response = messagebox.askyesnocancel("Remove Duplicate Files?", f"Do you want to remove the duplicate files folder?\n{self.duplicate_storage_path}")
             if response is None:  # Cancel was selected
                 return
             elif response:  # Yes was selected
@@ -325,14 +334,7 @@ class Main:
 
     def on_closing(self):
         """Handle cleanup when closing the application"""
-        # Process any remaining files
-        if self.move_queue:
-            self.process_move_queue()
-        if self.queue_timer_id:
-            self.root.after_cancel(self.queue_timer_id)
-            # Process any remaining files
-            if self.move_queue:
-                self.process_move_queue()
+        self.process_pending_moves()
         if not self.stop_folder_watcher():
             return
         self.confirm_duplicate_storage_removal()

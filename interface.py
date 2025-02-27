@@ -90,8 +90,8 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     dupe_menu.add_separator()
     # Dupe Check Mode
     dupe_menu.add_command(label="Duplicate Checking Mode", state="disabled")
-    dupe_menu.add_radiobutton(label="Rigorous", variable=app.rigorous_duplicate_check_var, value=True)
-    dupe_menu.add_radiobutton(label="Simple", variable=app.rigorous_duplicate_check_var, value=False)
+    dupe_menu.add_radiobutton(label="By MD5", variable=app.dupe_check_mode_var, value="By MD5")
+    dupe_menu.add_radiobutton(label="By Size", variable=app.dupe_check_mode_var, value="By Size")
     dupe_menu.add_separator()
     # Max Files
     dupe_menu.add_command(label="Duplicate Check: Max Files", state="disabled")

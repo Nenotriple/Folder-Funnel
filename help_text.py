@@ -5,13 +5,21 @@ HELP_TEXT = {
 
     "Basic Steps:":
     "**1) Select** a folder to watch from *'File' > 'Select source path...'* or via the *'Browse...'* button.\n"
-    "**2) Click 'Start'** to duplicate the folder structure and begin monitoring changes.\n"
-    "**3) Click 'Stop'** to remove the duplicate folder and end the process.",
+    "**2) Click 'Start'** to copy a folder structure *(the funnel)* and begin monitoring changes there.\n"
+    "**3) Click 'Stop'** to remove the funnel folder *(and any detected duplicates)* and end the process.",
 
-    "Duplicate Handling:":
-    "• **Rigorous Check**: Compares file contents using MD5 hashes to ensure files are identical.\n"
-    "• **Simple Check**: Compares file sizes before moving.\n"
-    "• **Duplicate Matching Mode**: Choose *'Strict'* to match filenames exactly, or *'Flexible'* to match similar filenames.",
+    "Duplicate Handling Options:":
+    "• **Duplicate Handling Mode**:\n"
+    "  - *Move*: Move incoming duplicate files to a '#DUPLICATE#_' storage folder.\n"
+    "  - *Delete*: Remove incoming duplicate files.\n"
+    "• **Duplicate Matching Mode**:\n"
+    "  - *Flexible*: More flexible initial filename matching.\n"
+    "  - *Strict*: More strict initial filename matching\n"
+    "• **Duplicate Checking Mode**:\n"
+    "  - *Similar*: Perform additional MD5 check against files with a similar filename\n"
+    "  - *Single*: Perform on MD5 check only on exact filename match.\n"
+    "• **Duplicate Checking: Max Files**:\n"
+    "  - The maximum number of similar files to check for duplicates.\n",
 
     "Queue Timer:":
     "• New files and folders in the watch folder are queued for moving after a brief delay. This groups changes together and prevents partial moves.\n"

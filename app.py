@@ -104,6 +104,12 @@ class Main:
 #region - Interface Logic
 
 
+    def select_working_dir(self, path=None):
+        interface_logic.select_working_dir(self, path)
+
+    def open_folder(self, path=None):
+        interface_logic.open_folder(self, path)
+
     def log(self, message):
         interface_logic.log(self, message)
 
@@ -211,30 +217,6 @@ class Main:
 #region - File Logic
 
 
-    def select_working_dir(self, path=None):
-        """Select a folder to use as the source folder."""
-        if not path:
-            path = filedialog.askdirectory()
-            if not path:  # Cancelled dialog
-                return
-            path = os.path.normpath(path)
-        if os.path.exists(path):
-            self.working_dir_var.set(path)
-            self.dir_entry_tooltip.config(text=path)
-            self.log(f"\nSelected folder: {path}\n")
-            self.count_folders_and_files()
-
-
-    def open_folder(self, path=None):
-        """Open a folder in the file explorer; if no path is provided, use the working directory."""
-        if not path:
-            path = self.working_dir_var.get()
-        if os.path.exists(path):
-            os.startfile(path)
-        else:
-            messagebox.showerror("Error", "Folder not found")
-
-
     def check_working_dir_exists(self):
         """Check if the source folder exists."""
         path = self.working_dir_var.get()
@@ -307,7 +289,7 @@ class Main:
         self.process_pending_moves()
         if not self.stop_folder_watcher():
             return
-        duplicate_handler.confirm_duplicate_storage_removal()
+        duplicate_handler.confirm_duplicate_storage_removal(self)
         self.root.quit()
 
 

@@ -4,9 +4,17 @@
 # Standard
 import os
 import re
+import shutil
 import hashlib
 from typing import List
 from difflib import SequenceMatcher
+
+from tkinter import messagebox
+
+# Type checking
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app import Main
 
 
 #endregion
@@ -68,6 +76,36 @@ def find_similar_files(filename, target_dir, method='Strict', max_files=10) -> L
                     similar_files.append(full_path)
         similar_files.sort(key=lambda x: SequenceMatcher(None, base_name_clean.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
     return similar_files[:max_files]
+
+
+def confirm_duplicate_storage_removal(app: 'Main'):
+    """Ask the user if they want to remove the duplicate storage folder"""
+    if app.duplicate_storage_path and os.path.exists(app.duplicate_storage_path):
+        response = messagebox.askyesnocancel("Remove Duplicate Files?", f"Do you want to remove the duplicate files folder?\n{app.duplicate_storage_path}")
+        if response is None:  # Cancel was selected
+            return
+        elif response:  # Yes was selected
+            try:
+                shutil.rmtree(app.duplicate_storage_path)
+                app.log(f"Removed duplicate storage folder: {app.duplicate_storage_path}")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to remove duplicate folder: {str(e)}")
+        # If No was selected, keep the folder
+
+
+def create_duplicate_storage_folder(app: 'Main'):
+    """Create a folder to store duplicate files when in 'Move' mode."""
+    source_path = app.working_dir_var.get()
+    source_folder_name = os.path.basename(source_path)
+    parent_dir = os.path.dirname(source_path)
+    duplicate_folder_name = f"{app.duplicate_name_prefix}{source_folder_name}"
+    app.duplicate_storage_path = os.path.normpath(os.path.join(parent_dir, duplicate_folder_name))
+    try:
+        os.makedirs(app.duplicate_storage_path, exist_ok=True)
+        app.log(f"Created duplicate storage folder: {app.duplicate_storage_path}")
+    except Exception as e:
+        messagebox.showerror("Error", f"Failed to create duplicate storage folder: {str(e)}")
+        app.duplicate_storage_path = ""
 
 
 #endregion

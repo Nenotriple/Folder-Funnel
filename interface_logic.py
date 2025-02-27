@@ -77,7 +77,13 @@ def open_help_window(app: 'Main'):
 
 def update_duplicate_count(app: 'Main'):
     """Update the duplicate count display."""
-    app.duplicate_count_var.set(f"Duplicates: {app.duplicate_count}")
+    app.dupecount_var.set(f"Duplicates: {app.duplicate_count}")
+
+
+def update_queue_count(app: 'Main'):
+    """Update the move queue count display."""
+    app.queue_count = len(app.move_queue)
+    app.queuecount_var.set(f"Queue: {app.queue_count}")
 
 
 def get_history_list(app: 'Main'):

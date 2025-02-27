@@ -25,6 +25,7 @@ def queue_move_file(app: 'Main', source_path):
         _handle_new_folder(app, source_path)
     elif source_path not in app.move_queue:
         app.move_queue.append(source_path)
+        app.update_queue_count()
         app.log(f"Queued file: {os.path.relpath(source_path, app.watch_path)}")
     # Reset queue timer
     if app.queue_timer_id:
@@ -62,6 +63,7 @@ def _handle_new_folder(app: 'Main', source_path):
                 file_path = os.path.join(dirpath, filename)
                 if file_path not in app.move_queue:
                     app.move_queue.append(file_path)
+                    app.update_queue_count()
                     app.log(f"Queued file: {os.path.join(rel_path, rel_dirpath, filename)}")
     except Exception as e:
         app.log(f"Error handling new folder {source_path}: {str(e)}")
@@ -93,10 +95,14 @@ def process_move_queue(app: 'Main'):
     app.log(f"Processing {len(app.move_queue)} queued files...")
     success_count = 0
     for source_path in app.move_queue:
-        if _move_file(app, source_path):
-            success_count += 1
+        if os.path.exists(source_path):  # Check if the file exists before moving
+            if _move_file(app, source_path):
+                success_count += 1
+        else:
+            app.log(f"File not found, skipping: {source_path}")
     app.log(f"Batch move complete: {success_count}/{len(app.move_queue)} files moved successfully\n")
     app.move_queue.clear()
+    app.update_queue_count()
 
 
 def _move_file(app: 'Main', source_path):
@@ -174,9 +180,7 @@ def _move_file(app: 'Main', source_path):
 
 
 def handle_rename_event(app: 'Main', old_path, new_path):
-    """
-    Remove the old file path from the move queue if present, then add the new path for subsequent moving.
-    """
+    """Remove the old file path from the move queue if present, then add the new path for subsequent moving."""
     try:
         if old_path in app.move_queue:
             app.move_queue.remove(old_path)
@@ -184,8 +188,19 @@ def handle_rename_event(app: 'Main', old_path, new_path):
         if not os.path.isdir(new_path) and new_path not in app.move_queue:
             app.move_queue.append(new_path)
             app.log(f"Queued renamed file: {os.path.basename(new_path)}")
+        app.update_queue_count()
     except Exception as e:
         app.log(f"Error handling rename event: {str(e)}")
+
+
+def process_pending_moves(app: 'Main'):
+    """Process any remaining files in the move queue."""
+    if app.move_queue:
+        app.process_move_queue()
+    if app.queue_timer_id:
+        app.root.after_cancel(app.queue_timer_id)
+        if app.move_queue:
+            app.process_move_queue()
 
 
 #endregion

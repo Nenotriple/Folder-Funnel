@@ -1,4 +1,4 @@
-<p align="center"><img src="https://github.com/user-attachments/assets/34974daf-9315-48eb-90d6-3316a46f417b" alt="cover" width="730"></p>
+<p align="center"><img src="https://github.com/user-attachments/assets/37631bed-426a-4f9d-9043-a4e125c8016d" alt="cover" width="730"></p>
 <p align="center">Copy a folder structure and funnel files from it to a source folder while handling duplicate files.</p>
 <p align="center"><img src="https://github.com/user-attachments/assets/95d14545-9084-41f3-952a-dd157acc76db" alt="cover"></p>
 

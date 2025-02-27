@@ -4,7 +4,6 @@
 # Standard
 import os
 import sys
-import shutil
 import ctypes
 from typing import Optional
 
@@ -15,6 +14,7 @@ from tkinter import ttk, filedialog, messagebox, scrolledtext
 # Custom
 import interface
 import move_queue
+import duplicate_handler
 import folder_watcher
 import listbox_logic
 import interface_logic
@@ -258,36 +258,6 @@ class Main:
         self.filecount_var.set(f"Files: {file_count}")
 
 
-    def confirm_duplicate_storage_removal(self):
-        """Ask the user if they want to remove the duplicate storage folder"""
-        if self.duplicate_storage_path and os.path.exists(self.duplicate_storage_path):
-            response = messagebox.askyesnocancel("Remove Duplicate Files?", f"Do you want to remove the duplicate files folder?\n{self.duplicate_storage_path}")
-            if response is None:  # Cancel was selected
-                return
-            elif response:  # Yes was selected
-                try:
-                    shutil.rmtree(self.duplicate_storage_path)
-                    self.log(f"Removed duplicate storage folder: {self.duplicate_storage_path}")
-                except Exception as e:
-                    messagebox.showerror("Error", f"Failed to remove duplicate folder: {str(e)}")
-            # If No was selected, keep the folder
-
-
-    def create_duplicate_storage_folder(self):
-        """Create a folder to store duplicate files when in 'Move' mode."""
-        source_path = self.working_dir_var.get()
-        source_folder_name = os.path.basename(source_path)
-        parent_dir = os.path.dirname(source_path)
-        duplicate_folder_name = f"{self.duplicate_name_prefix}{source_folder_name}"
-        self.duplicate_storage_path = os.path.normpath(os.path.join(parent_dir, duplicate_folder_name))
-        try:
-            os.makedirs(self.duplicate_storage_path, exist_ok=True)
-            self.log(f"Created duplicate storage folder: {self.duplicate_storage_path}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to create duplicate storage folder: {str(e)}")
-            self.duplicate_storage_path = ""
-
-
 #endregion
 #region - Framework
 
@@ -337,7 +307,7 @@ class Main:
         self.process_pending_moves()
         if not self.stop_folder_watcher():
             return
-        self.confirm_duplicate_storage_removal()
+        duplicate_handler.confirm_duplicate_storage_removal()
         self.root.quit()
 
 

@@ -132,7 +132,7 @@ def _move_file(app: 'Main', source_path):
                     app.log(f"Deleted duplicate file: {rel_path}")
                 else:  # "Move" mode
                     if not app.duplicate_storage_path:
-                        duplicate_handler.create_duplicate_storage_folder()
+                        duplicate_handler.create_duplicate_storage_folder(app)
                     # Ensure the directory structure exists in the duplicate folder
                     rel_dir = os.path.dirname(rel_path)
                     dup_dir_path = os.path.join(app.duplicate_storage_path, rel_dir)

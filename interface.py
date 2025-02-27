@@ -1,7 +1,7 @@
 #region - Imports
 
 
-# Standard
+# Standard GUI
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 

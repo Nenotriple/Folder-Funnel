@@ -36,6 +36,7 @@ def create_menubar(app: 'Main'):
     # Menus
     _create_file_menu(app, menubar)
     _create_edit_menu(app, menubar)
+    _create_view_menu(app, menubar)
     _create_options_menu(app, menubar)
     menubar.add_command(label="Help", command=app.open_help_window)
 
@@ -60,6 +61,15 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
     edit_menu.add_separator()
     edit_menu.add_command(label="Clear: log", command=app.clear_log)
     edit_menu.add_command(label="Clear: history", command=app.clear_history)
+
+
+def _create_view_menu(app: 'Main', menubar: tk.Menu):
+    view_menu = tk.Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="View", menu=view_menu)
+    view_menu.add_radiobutton(label="Show: Moved history", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
+    view_menu.add_radiobutton(label="Show: Duplicate history", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
+    view_menu.add_separator()
+    view_menu.add_command(label="Toggle: Text Wrap", command=app.toggle_text_wrap)
 
 
 def _create_options_menu(app: 'Main', menubar: tk.Menu):
@@ -102,10 +112,6 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     dupe_menu.add_radiobutton(label="100", variable=app.dupe_max_files_var, value=100)
     dupe_menu.add_radiobutton(label="1000", variable=app.dupe_max_files_var, value=1000)
     dupe_menu.add_radiobutton(label="10000", variable=app.dupe_max_files_var, value=10000)
-    # Text Log submenu
-    text_log_menu = tk.Menu(options_menu, tearoff=0)
-    options_menu.add_cascade(label="Text Log", menu=text_log_menu)
-    text_log_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
 
 
 #endregion
@@ -176,14 +182,14 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     main_pane.add(text_frame, stretch="always")
     main_pane.paneconfigure(text_frame, minsize=200, width=400)
     # Label/Menu
-    textlog_options_menu = ttk.Menubutton(text_frame, text="Log")
-    textlog_options_menu.pack(fill="x")
-    textlog_options_menu.menu = tk.Menu(textlog_options_menu, tearoff=0)
-    textlog_options_menu["menu"] = textlog_options_menu.menu
-    textlog_options_menu.menu.add_command(label="Clear Log", command=app.clear_log)
-    textlog_options_menu.menu.add_separator()
-    textlog_options_menu.menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
-    Tip(textlog_options_menu, "Log of events and actions", delay=250, pady=25, origin="widget")
+    textlog_menubutton = ttk.Menubutton(text_frame, text="Log")
+    textlog_menubutton.pack(fill="x")
+    textlog_menu = tk.Menu(textlog_menubutton, tearoff=0)
+    textlog_menubutton.config(menu=textlog_menu)
+    textlog_menu.add_command(label="Clear Log", command=app.clear_log)
+    textlog_menu.add_separator()
+    textlog_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
+    Tip(textlog_menubutton, "Log of events and actions", delay=250, pady=25, origin="widget")
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1)
     app.text_log.pack(fill="both", expand=True)
@@ -195,15 +201,15 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     main_pane.add(list_frame, stretch="never")
     main_pane.paneconfigure(list_frame, minsize=200, width=200)
     # Label/Menu
-    history_options_menu = ttk.Menubutton(list_frame, text="History")
-    history_options_menu.pack(fill="x")
-    history_options_menu.menu = tk.Menu(history_options_menu, tearoff=0)
-    history_options_menu["menu"] = history_options_menu.menu
-    history_options_menu.menu.add_command(label="Clear History", command=app.clear_history)
-    history_options_menu.menu.add_separator()
-    history_options_menu.menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
-    history_options_menu.menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
-    Tip(history_options_menu, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
+    history_menubutton = ttk.Menubutton(list_frame, text="History")
+    history_menubutton.pack(fill="x")
+    history_menu = tk.Menu(history_menubutton, tearoff=0)
+    history_menubutton.config(menu=history_menu)
+    history_menu.add_command(label="Clear History", command=app.clear_history)
+    history_menu.add_separator()
+    history_menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
+    history_menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
+    Tip(history_menubutton, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
     # Listbox
     app.history_listbox = tk.Listbox(list_frame, width=1, height=1)
     app.history_listbox.pack(fill="both", expand=True)

@@ -13,8 +13,8 @@ from difflib import SequenceMatcher
 #region - File Operations
 
 
-def are_files_identical(file1, file2, check_mode="By Size", method='Strict', max_files=10, chunk_size=8192):
-    """Compare files by size/MD5 or find similar files if rigorous_check is True."""
+def are_files_identical(file1, file2, check_mode="Similar", method='Strict', max_files=10, chunk_size=8192):
+    """Compare files by size/MD5 and/or check similar files in the target directory."""
     def get_md5(filename):
         m = hashlib.md5()
         with open(filename, 'rb') as f:
@@ -30,12 +30,12 @@ def are_files_identical(file1, file2, check_mode="By Size", method='Strict', max
         for file in similar_files:
             if os.path.exists(file) and os.path.getsize(file1) == os.path.getsize(file):
                 return True
-        if check_mode == "By MD5":
+        if check_mode == "Similar":
             file1_md5 = get_md5(file1)
             for file in similar_files:
                 if get_md5(file) == file1_md5:
                     return True
-        elif check_mode == "By Size":
+        elif check_mode == "Single":
             if os.path.exists(file2) and get_md5(file1) == get_md5(file2):
                 return True
         return False

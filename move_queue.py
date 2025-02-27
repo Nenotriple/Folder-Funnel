@@ -114,7 +114,7 @@ def _move_file(app: 'Main', source_path):
             if duplicate_handler.are_files_identical(
                 file1=source_path,
                 file2=dest_path,
-                rigorous_check=app.rigorous_duplicate_check_var.get(),
+                check_mode=app.dupe_check_mode_var.get(),
                 method=app.dupe_filter_mode_var.get(),
                 max_files=app.dupe_max_files_var.get()
             ):

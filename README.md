@@ -4,7 +4,7 @@
 
 
 ## ❓ What's this for?
-Folder-Funnel was created to help speed up the process of saving files to a directory by removing the need to manually create a unique filename. It does this by creating a copy of a folder with no other files. This allows you to save the file to the funnel folder and have it automatically moved to the destination folder while handling filename conflicts and potential duplicate files.
+Folder-Funnel is designed to speed up the process of saving files to a specific directory by automating the creation of unique filenames. It works by creating an empty copy of a folder structure, known as the "funnel" folder. You can save files to the funnel folder, and Folder-Funnel will automatically move them to the destination folder, resolving any filename conflicts and handling potential duplicate files.
 
 ## 📋 Index
 - [Usage](#usage)

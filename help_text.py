@@ -6,11 +6,12 @@ HELP_TEXT = {
     "Basic Steps:":
     "**1) Select** a folder to watch from *'File' > 'Select source path...'* or via the *'Browse...'* button.\n"
     "**2) Click 'Start'** to copy a folder structure *(the funnel)* and begin monitoring changes there.\n"
-    "**3) Click 'Stop'** to remove the funnel folder *(and any detected duplicates)* and end the process.",
+    "**3) Move files** into the funnel folder to have them automatically funneled to the destination folder.\n"
+    "**4) Click 'Stop'** to remove the funnel folder *(and any detected duplicates)* and end the process.",
 
     "Duplicate Handling Options:":
     "• **Duplicate Handling Mode**:\n"
-    "  - *Move*: Move incoming duplicate files to a '#DUPLICATE#_' storage folder.\n"
+    "  - *Move*: Move incoming duplicate files to a *'#DUPLICATE#_'* storage folder.\n"
     "  - *Delete*: Remove incoming duplicate files.\n"
     "• **Duplicate Matching Mode**:\n"
     "  - *Flexible*: More flexible initial filename matching.\n"
@@ -30,5 +31,11 @@ HELP_TEXT = {
     "Tips & Tricks:":
     "• Right-click items in *'History'* to open or locate them quickly.\n"
     "• Clear logs or history anytime under the *'Edit'* menu.\n"
-    "• Check the status bar at the bottom to see progress and queue details."
+    "• Check the status bar at the bottom to see progress and queue details.",
+
+    "Notes and Warnings:":
+    "• **Warning**: Moving/renaming/deleting the source or funnel folders whiles Folder-Funnel is running may cause issues.\n"
+    "• **Warning**: Avoid creating temporary files in the funnel folder.\n"
+    "• **Note**: The app creates two base folders: *'#FUNNEL#_'*, and *'#DUPLICATE#_'* in the same path as the source folder.\n"
+    "• **Note**: When closing the app you can choose to keep the duplicate storage folder or delete it.\n",
 }

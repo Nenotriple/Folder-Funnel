@@ -74,7 +74,7 @@ class Main:
         self.messages = []  # Log message list
 
         # History
-        self.max_history_entries = 100
+        self.max_history_entries = 100 # Maximum number of history items to store
 
         # History items and count
         self.move_history_items = {}  # Store history of moved files as {filename: full_path} (move path)
@@ -96,7 +96,6 @@ class Main:
 
         # Help window
         self.help_window = HelpWindow(self.root)
-
 
 
 #endregion

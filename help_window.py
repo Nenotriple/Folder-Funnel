@@ -22,6 +22,7 @@ General Use:
 #region - Imports
 
 
+# Standard GUI
 import tkinter as tk
 from tkinter import scrolledtext
 

@@ -9,6 +9,7 @@ import hashlib
 from typing import List
 from difflib import SequenceMatcher
 
+# Standard GUI
 from tkinter import messagebox
 
 # Type checking

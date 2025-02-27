@@ -66,8 +66,8 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
 def _create_view_menu(app: 'Main', menubar: tk.Menu):
     view_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="View", menu=view_menu)
-    view_menu.add_radiobutton(label="Show: Moved history", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
-    view_menu.add_radiobutton(label="Show: Duplicate history", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
+    view_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
+    view_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     view_menu.add_separator()
     view_menu.add_command(label="Toggle: Text Wrap", command=app.toggle_text_wrap)
 
@@ -201,15 +201,15 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     main_pane.add(list_frame, stretch="never")
     main_pane.paneconfigure(list_frame, minsize=200, width=200)
     # Label/Menu
-    history_menubutton = ttk.Menubutton(list_frame, text="History")
-    history_menubutton.pack(fill="x")
-    history_menu = tk.Menu(history_menubutton, tearoff=0)
-    history_menubutton.config(menu=history_menu)
+    app.history_menubutton = ttk.Menubutton(list_frame, text="History - " + app.history_mode_var.get())
+    app.history_menubutton.pack(fill="x")
+    history_menu = tk.Menu(app.history_menubutton, tearoff=0)
+    app.history_menubutton.config(menu=history_menu)
     history_menu.add_command(label="Clear History", command=app.clear_history)
     history_menu.add_separator()
-    history_menu.add_radiobutton(label="Show: Moved files", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
-    history_menu.add_radiobutton(label="Show: Duplicate files", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
-    Tip(history_menubutton, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
+    history_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
+    history_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
+    Tip(app.history_menubutton, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
     # Listbox
     app.history_listbox = tk.Listbox(list_frame, width=1, height=1)
     app.history_listbox.pack(fill="both", expand=True)

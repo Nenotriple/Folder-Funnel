@@ -19,10 +19,22 @@ if TYPE_CHECKING:
 
 
 def toggle_history_mode(app: 'Main'):
-    list = get_history_list(app)
-    handle_widget_binds(app, list)
     app.history_listbox.delete(0, "end")
-    for filename in list:
+    # Get display mode
+    display_mode = app.history_mode_var.get()
+    # Update the history menubutton text
+    app.history_menubutton.config(text=f"History - {display_mode}")
+    # Determine which list to use for bindings
+    if display_mode == "Duplicate":
+        handle_widget_binds(app, app.duplicate_history_items)
+        items = app.duplicate_history_items
+    elif display_mode == "Moved":
+        handle_widget_binds(app, app.move_history_items)
+        items = app.move_history_items
+    else:
+        items = {}
+    # Populate the listbox
+    for filename in items:
         app.history_listbox.insert(0, filename)
 
 
@@ -36,19 +48,18 @@ def handle_widget_binds(app: 'Main', list):
 
 
 def update_history_list(app: 'Main', filename, filepath):
-    """Update the history list with a new filename and its full path."""
-    list = get_history_list(app)
-    # Add new item to dictionary
-    list[filename] = filepath
+    """Update the moved files history list with a new filename and its full path."""
+    # Always add to the move history items
+    app.move_history_items[filename] = filepath
     # Remove oldest items if limit is reached
-    while len(list) > app.max_history_entries:
-        oldest_key = next(iter(list))
-        del list[oldest_key]
-    # Clear and repopulate the list widget
-    app.history_listbox.delete(0, "end")
-    for filename in list:
-        # Insert at top to show newest first
-        app.history_listbox.insert(0, filename)
+    while len(app.move_history_items) > app.max_history_entries:
+        oldest_key = next(iter(app.move_history_items))
+        del app.move_history_items[oldest_key]
+    # Update listbox only if we're viewing moved files or all files
+    display_mode = app.history_mode_var.get()
+    if display_mode == "Moved":
+        # Clear and repopulate the list widget based on current mode
+        toggle_history_mode(app)
 
 
 def show_history_context_menu(app: 'Main', event):
@@ -73,17 +84,16 @@ def get_selected_filepath(app: 'Main', file_type="source"):
     if not selection:
         return None
     filename = app.history_listbox.get(selection[0])
-    list = get_history_list(app)
-
-    if app.history_mode_var.get() == "Duplicate":
+    # Check if this filename exists in the duplicates dictionary
+    if filename in app.duplicate_history_items:
         # For duplicates, return either the source or duplicate path based on file_type
         if file_type == "source":
-            return list.get(filename, {}).get("source")
+            return app.duplicate_history_items.get(filename, {}).get("source")
         else:  # duplicate
-            return list.get(filename, {}).get("duplicate")
+            return app.duplicate_history_items.get(filename, {}).get("duplicate")
     else:
-        # For moved files, return the full path as before
-        return list.get(filename)
+        # For moved files, return the path from move_history_items
+        return app.move_history_items.get(filename)
 
 
 def open_selected_file(app: 'Main'):
@@ -170,7 +180,7 @@ def delete_selected_duplicate_file(app: 'Main'):
 
 
 def get_history_list(app: 'Main'):
-    """Return the current history list based on selected display mode"""
+    """Return the appropriate history dict based on selected display mode"""
     display_mode = app.history_mode_var.get()
     if display_mode == "Moved":
         return app.move_history_items

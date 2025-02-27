@@ -56,6 +56,7 @@ class Main:
         self.start_button: Optional[ttk.Button] = None
         self.stop_button: Optional[ttk.Button] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
+        self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None
         self.history_menu: Optional[tk.Menu] = None
         self.running_indicator: Optional[ttk.Progressbar] = None
@@ -78,7 +79,7 @@ class Main:
         self.max_history_entries = 100 # Maximum number of history items to store
 
         # History items and count
-        self.move_history_items = {}  # Store history of moved files as {filename: full_path} (move path)
+        self.move_history_items = {}  # Store history of moved files and their final path as {filename: source_path}
         self.move_count = 0  # Files moved
         self.duplicate_history_items = {}  # Store history of matched duplicate files as {filename: {"source": source_path, "duplicate": duplicate_path}}
         self.duplicate_count = 0  # Duplicate files detected

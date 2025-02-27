@@ -8,6 +8,7 @@ import shutil
 
 # Custom
 import duplicate_handler
+import listbox_logic
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -157,6 +158,9 @@ def _move_file(app: 'Main', source_path):
                 app.duplicate_history_items[filename] = {"source": dest_path, "duplicate": duplicate_path}
                 app.duplicate_count += 1
                 app.update_duplicate_count()
+                # Update history listbox if we're in Duplicate or All mode
+                if app.history_mode_var.get() == "Duplicate":
+                    listbox_logic.toggle_history_mode(app)
                 return True
             # Not a duplicate, find new name
             base, ext = os.path.splitext(dest_path)

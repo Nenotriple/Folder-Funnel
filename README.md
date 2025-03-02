@@ -2,6 +2,7 @@
 <p align="center">Copy a folder structure and funnel files from it to a source folder while handling duplicate files.</p>
 <p align="center"><img src="https://github.com/user-attachments/assets/95d14545-9084-41f3-952a-dd157acc76db" alt="cover"></p>
 
+## [💾 Download Latest Release](https://github.com/Nenotriple/Folder-Funnel/releases)
 
 ## ❓ What's this for?
 Folder-Funnel is designed to speed up the process of saving files to a specific directory by automating the creation of unique filenames. It works by creating an empty copy of a folder structure, known as the "funnel" folder. You can save files to the funnel folder, and Folder-Funnel will automatically move them to the destination folder, resolving any filename conflicts and handling potential duplicate files.

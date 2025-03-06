@@ -49,6 +49,7 @@ class Main:
         self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
         self.history_mode_var = tk.StringVar(value="Moved")  # History display mode ("Moved", "Duplicate")
+        self.ignore_firefox_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files created by Firefox
         self.ignore_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files in the funnel folder
         self.auto_extract_zip_var = tk.BooleanVar(value=False)  # Automatically extract zip files in the funnel folder
         self.overwrite_on_conflict_var = tk.BooleanVar(value=False)  # Overwrite files with the same name in the source folder
@@ -96,6 +97,9 @@ class Main:
         # Observers for file watching
         self.watch_observer = None
         self.source_observer = None
+
+        # Temporary filetypes
+        self.temp_filetypes = [".tmp", ".temp", ".part", ".crdownload", ".partial", ".bak"]
 
         # Set up close handler
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)

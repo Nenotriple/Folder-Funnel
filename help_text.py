@@ -19,16 +19,16 @@ HELP_TEXT = {
 
     "Duplicate Handling Options:":
     "• **Duplicate Handling Mode**:\n"
-    "  - *Move*: Move incoming duplicate files to a *'#DUPLICATE#_'* storage folder.\n"
-    "  - *Delete*: Remove incoming duplicate files.\n"
-    "• **Duplicate Matching Mode**:\n"
-    "  - *Flexible*: More flexible initial filename matching.\n"
-    "  - *Strict*: More strict initial filename matching\n"
+    "   - *Move*: Move incoming duplicate files to a *'#DUPLICATE#_'* storage folder.\n"
+    "   - *Delete*: Remove incoming duplicate files.\n"
+    "• **Duplicate Name Matching Mode**:\n"
+    "   - *Flexible*: More flexible initial filename matching.\n"
+    "   - *Strict*: More strict initial filename matching\n"
     "• **Duplicate Checking Mode**:\n"
-    "  - *Similar*: Perform additional MD5 checksum check against files with a similar filename\n"
-    "  - *Single*: Perform an MD5 checksum check only on exact filename match.\n"
+    "   - *Similar*: Perform additional MD5 checksum check against files with a similar filename\n"
+    "   - *Single*: Perform an MD5 checksum check only on exact filename match.\n"
     "• **Duplicate Checking: Max Files**:\n"
-    "  - The maximum number of similar files to check for duplicates.",
+    "   - The maximum number of similar files to check for duplicates.",
 
     "Queue Timer:":
     "• The queue timer length can be adjusted under *'Options' > 'Queue Timer'*.\n"

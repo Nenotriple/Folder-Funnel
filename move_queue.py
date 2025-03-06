@@ -35,9 +35,6 @@ def _is_empty_file(file_path):
 
 def _is_temp_file(app: 'Main', file_path):
     """Check if a file has a temporary extension. Returns True if temp, False not."""
-    # If temporary file filtering is disabled, treat all files as if they should be processed
-    if not app.ignore_temp_files_var.get():
-        return True
     _, ext = os.path.splitext(file_path.lower())
     # Check if the extension is in the list of temporary file types
     if ext in app.temp_filetypes:
@@ -134,7 +131,7 @@ def _handle_new_folder(app: 'Main', source_path):
                 if not _should_process_firefox_temp_files(app, file_path):
                     continue
                 # Check if the file is a temporary file that should be ignored
-                if _is_temp_file(app, file_path):
+                if app.ignore_temp_files_var.get() and _is_temp_file(app, file_path):
                     continue
                 if file_path not in app.move_queue:
                     app.move_queue.append(file_path)
@@ -186,19 +183,24 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
 def _move_file(app: 'Main', source_path):
     """Internal method to move a file when the queue is ready."""
     try:
-                # Get the relative path from the watch folder
+        # Get the relative path from the watch folder
         rel_path = os.path.relpath(source_path, app.watch_path)
         # Calculate the destination path in the source folder
         dest_path = os.path.join(app.working_dir_var.get(), rel_path)
         # Ensure the destination directory exists
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-        # If file exists, check if it's a duplicate
+        # If file exists, handle based on settings
         if os.path.exists(dest_path):
-            is_duplicate, new_dest_path = _handle_possible_duplicate_file(app, source_path, dest_path, rel_path)
-            if is_duplicate:
-                return True
-            if new_dest_path:
-                dest_path = new_dest_path
+            # If overwrite is enabled, skip duplicate checking
+            if app.overwrite_on_conflict_var.get():
+                app.log(f"Overwriting existing file: {rel_path}")
+            else:
+                # Check for duplicates and get unique name if needed
+                is_duplicate, new_dest_path = _handle_possible_duplicate_file(app, source_path, dest_path, rel_path)
+                if is_duplicate:
+                    return True
+                if new_dest_path:
+                    dest_path = new_dest_path
         # Move the file
         shutil.move(source_path, dest_path)
         app.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}")
@@ -248,7 +250,7 @@ def queue_move_file(app: 'Main', source_path):
         if not _should_process_firefox_temp_files(app, source_path):
             return
         # Check if the file is a temporary file that should be processed
-        if _is_temp_file(app, source_path):
+        if app.ignore_temp_files_var.get() and _is_temp_file(app, source_path):
             return
         app.move_queue.append(source_path)
         app.update_queue_count()

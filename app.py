@@ -49,6 +49,9 @@ class Main:
         self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
         self.history_mode_var = tk.StringVar(value="Moved")  # History display mode ("Moved", "Duplicate")
+        self.ignore_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files in the funnel folder
+        self.auto_extract_zip_var = tk.BooleanVar(value=False)  # Automatically extract zip files in the funnel folder
+        self.overwrite_on_conflict_var = tk.BooleanVar(value=False)  # Overwrite files with the same name in the source folder
 
         # Initialize UI objects
         self.dir_entry: Optional[ttk.Entry] = None

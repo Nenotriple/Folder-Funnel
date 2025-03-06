@@ -22,17 +22,17 @@ if TYPE_CHECKING:
 
 
 def create_interface(app: 'Main'):
-    create_menubar(app)
-    create_control_row(app)
-    create_main_frame(app)
-    create_message_row(app)
+    _create_menubar(app)
+    _create_control_row(app)
+    _create_main_frame(app)
+    _create_message_row(app)
 
 
 #endregion
 #region - Menubar
 
 
-def create_menubar(app: 'Main'):
+def _create_menubar(app: 'Main'):
     # Create menubar
     menubar = tk.Menu(app.root)
     app.root.config(menu=menubar)
@@ -129,7 +129,7 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
 #region - Control row
 
 
-def create_control_row(app: 'Main'):
+def _create_control_row(app: 'Main'):
     # Create control row
     control_frame = tk.Frame(app.root)
     control_frame.pack(side="top", fill="x")
@@ -176,7 +176,7 @@ def _create_buttons(app: 'Main', control_frame: tk.Frame):
 #region - Main frame
 
 
-def create_main_frame(app: 'Main'):
+def _create_main_frame(app: 'Main'):
     # Create main frame
     main_frame = tk.Frame(app.root)
     main_frame.pack(fill="both", expand=True)
@@ -252,7 +252,7 @@ def create_history_context_menu(app: 'Main'):
 #region - Message row
 
 
-def create_message_row(app: 'Main'):
+def _create_message_row(app: 'Main'):
     # Message row
     message_frame = tk.Frame(app.root)
     message_frame.pack(side="bottom", fill="x")

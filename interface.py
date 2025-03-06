@@ -98,7 +98,7 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     dupe_menu.add_radiobutton(label="Delete", variable=app.dupe_handle_mode_var, value="Delete")
     dupe_menu.add_separator()
     # Dupe Filter Mode
-    dupe_menu.add_command(label="Duplicate Matching Mode", state="disabled")
+    dupe_menu.add_command(label="Duplicate Name Matching Mode", state="disabled")
     dupe_menu.add_radiobutton(label="Flexible", variable=app.dupe_filter_mode_var, value="Flexible")
     dupe_menu.add_radiobutton(label="Strict", variable=app.dupe_filter_mode_var, value="Strict")
     dupe_menu.add_separator()
@@ -133,20 +133,21 @@ def create_control_row(app: 'Main'):
 
 
 def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
+    tip_text = "Select the folder to funnel files into"
     dir_selection_frame = tk.Frame(control_frame)
     dir_selection_frame.pack(side="left", fill="x", expand=True)
     #Label
-    dir_label = tk.Label(dir_selection_frame, text="Watch Folder:")
+    dir_label = tk.Label(dir_selection_frame, text="Source Folder:")
     dir_label.pack(side="left")
-    Tip(dir_label, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
+    Tip(dir_label, tip_text, delay=250, pady=25, origin="widget")
     # Entry
     app.dir_entry = ttk.Entry(dir_selection_frame, textvariable=app.working_dir_var)
     app.dir_entry.pack(side="left", fill="x", expand=True)
-    app.dir_entry_tooltip = Tip(app.dir_entry, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
+    app.dir_entry_tooltip = Tip(app.dir_entry, tip_text, delay=250, pady=25, origin="widget")
     # Browse
     browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=app.select_working_dir)
     browse_button.pack(side="left")
-    Tip(browse_button, "Select the folder to watch for new files", delay=250, pady=25, origin="widget")
+    Tip(browse_button, tip_text, delay=250, pady=25, origin="widget")
     # Open
     open_button = ttk.Button(dir_selection_frame, text="Open", command=app.open_folder)
     open_button.pack(side="left")
@@ -156,11 +157,11 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
 def _create_buttons(app: 'Main', control_frame: tk.Frame):
     app.start_button = ttk.Button(control_frame, text="Start", command=app.start_folder_watcher)
     app.start_button.pack(side="left")
-    Tip(app.start_button, "Begin watching the selected folder", delay=250, pady=25, origin="widget")
+    Tip(app.start_button, "Start the Folder-Funnel process", delay=250, pady=25, origin="widget")
     # Stop
     app.stop_button = ttk.Button(control_frame, text="Stop", state="disabled", command=app.stop_folder_watcher)
     app.stop_button.pack(side="left")
-    Tip(app.stop_button, "Stop watching the folder and remove the duplicate", delay=250, pady=25, origin="widget")
+    Tip(app.stop_button, "Stop the Folder-Funnel process and remove temp folders", delay=250, pady=25, origin="widget")
 
 
 #endregion

@@ -8,9 +8,6 @@ from tkinter import ttk, scrolledtext
 # Third-party
 from TkToolTip.TkToolTip import TkToolTip as Tip
 
-# Custom
-import interface_logic
-
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -205,7 +202,7 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1)
     app.text_log.pack(fill="both", expand=True)
-    interface_logic.log(app, "Welcome to Folder-Funnel - Please see the help menu for more information.")
+    app.log("Welcome to Folder-Funnel - Please see the help menu for more information.")
 
 
 def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):

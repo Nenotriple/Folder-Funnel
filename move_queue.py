@@ -5,6 +5,7 @@
 import os
 import time
 import shutil
+import zipfile  # Added import for ZIP handling
 
 # Custom
 import duplicate_handler
@@ -34,7 +35,7 @@ def _is_empty_file(file_path):
 
 
 def _is_temp_file(app: 'Main', file_path):
-    """Check if a file has a temporary extension. Returns True if temp, False not."""
+    """Check if a file has a temporary extension. Returns True if temp, False if not."""
     _, ext = os.path.splitext(file_path.lower())
     # Check if the extension is in the list of temporary file types
     if ext in app.temp_filetypes:
@@ -97,6 +98,45 @@ def _get_unique_filename(file_path):
         unique_path = f"{base}_{counter}{ext}"
         counter += 1
     return unique_path
+
+
+def _is_zip_file(file_path):
+    """Check if a file is a ZIP file by extension and validity."""
+    # Check extension
+    _, ext = os.path.splitext(file_path.lower())
+    if ext != '.zip':
+        return False
+    # Verify it's a valid zip file
+    try:
+        with zipfile.ZipFile(file_path, 'r') as zip_ref:
+            return True
+    except (zipfile.BadZipFile, zipfile.LargeZipFile):
+        return False
+    except Exception:
+        return False
+
+
+def _extract_zip(app: 'Main', zip_path, extract_dir):
+    """Extract a ZIP file to the specified directory."""
+    try:
+        # Create the extraction directory if it doesn't exist
+        os.makedirs(extract_dir, exist_ok=True)
+        # Extract the zip file
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+            # Extract all contents, overwriting existing files
+            zip_ref.extractall(path=extract_dir)
+        # Log the extraction
+        rel_path = os.path.relpath(zip_path, app.working_dir_var.get())
+        rel_extract = os.path.relpath(extract_dir, app.working_dir_var.get())
+        app.log(f"Extracted ZIP: {rel_path} → {rel_extract}")
+        # Remove the original ZIP file if enabled
+        if app.auto_delete_zip_var.get():
+            os.remove(zip_path)
+            app.log(f"Deleted ZIP: {rel_path}")
+        return True
+    except Exception as e:
+        app.log(f"Error extracting ZIP {zip_path}: {str(e)}")
+        return False
 
 
 #endregion
@@ -204,6 +244,12 @@ def _move_file(app: 'Main', source_path):
         # Move the file
         shutil.move(source_path, dest_path)
         app.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}")
+        # Handle ZIP extraction if enabled
+        if app.auto_extract_zip_var.get() and _is_zip_file(dest_path):
+            # Create extraction directory named after the zip file (without extension)
+            zip_name = os.path.splitext(os.path.basename(dest_path))[0]
+            extract_dir = os.path.join(os.path.dirname(dest_path), zip_name)
+            _extract_zip(app, dest_path, extract_dir)
         # Update history list with the new filename and full path
         app.update_history_list(os.path.basename(dest_path), dest_path)
         # Update counts
@@ -272,7 +318,7 @@ def process_move_queue(app: 'Main'):
                 success_count += 1
         else:
             app.log(f"File not found, skipping: {source_path}")
-    app.log(f"Batch move complete: {success_count}\{len(app.move_queue)} files moved successfully\n")
+    app.log(f"Batch move complete: {success_count}/{len(app.move_queue)} files moved successfully\n")
     app.move_queue.clear()
     app.update_queue_count()
 

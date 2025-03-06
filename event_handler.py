@@ -14,6 +14,38 @@ if TYPE_CHECKING:
 
 
 #endregion
+#region - Constants
+
+
+DELAY = 2000  # Delay in milliseconds for after() calls
+
+
+#endregion
+#region - Helper Functions
+
+
+def queue_move_file(app: 'Main', path):
+    """Queue a file for moving to the watch folder."""
+    app.root.after(DELAY, lambda: app.queue_move_file(path))
+
+
+def handle_rename_event(app: 'Main', src, dest):
+    """Handle a file rename event."""
+    app.root.after(DELAY, lambda: app.handle_rename_event(src, dest))
+
+
+def sync_watch_folders(app: 'Main', silent="semi"):
+    """Sync the watch folders with the source folder."""
+    app.root.after(DELAY, lambda: app.sync_watch_folders(silent))
+
+
+def count_folders_and_files(app: 'Main'):
+    """Count the number of folders and files in the source folder."""
+    app.root.after(DELAY, lambda: app.count_folders_and_files())
+
+
+
+#endregion
 #region - cls WatchFolderHandler
 
 
@@ -25,15 +57,16 @@ class WatchFolderHandler(FileSystemEventHandler):
     def on_created(self, event):
         # If a new folder is created, sync the watch folders
         if event.is_directory:
-            self.parent.sync_watch_folders(silent="semi")
+            sync_watch_folders(self.parent, silent="semi")
         # Else, queue the file for moving
         else:
+            # Check if the file exists and queue it
             if os.path.exists(event.src_path):
-                self.parent.queue_move_file(event.src_path)
+                queue_move_file(self.parent, event.src_path)
 
 
     def on_deleted(self, event):
-        self.parent.sync_watch_folders(silent="silent")
+        sync_watch_folders(self.parent, silent="silent")
 
 
     def on_modified(self, event):
@@ -42,8 +75,7 @@ class WatchFolderHandler(FileSystemEventHandler):
 
 
     def on_moved(self, event):
-        # Inform the app that a file was renamed/moved
-        self.parent.handle_rename_event(event.src_path, event.dest_path)
+        handle_rename_event(self.parent, event.src_path, event.dest_path)
 
 
 #endregion
@@ -57,20 +89,17 @@ class SourceFolderHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         if event.is_directory:
-            # Only sync folders when a directory is created in source
-            self.parent.sync_watch_folders(silent="semi")
-        self.parent.count_folders_and_files()
+            sync_watch_folders(self.parent, silent="semi")
+        count_folders_and_files(self.parent)
 
 
     def on_deleted(self, event):
         if event.is_directory:
-            # Only sync folders when a directory is deleted in source
-            self.parent.sync_watch_folders(silent="silent")
-        self.parent.count_folders_and_files()
+            sync_watch_folders(self.parent, silent="silent")
+        count_folders_and_files(self.parent)
 
 
     def on_moved(self, event):
         if event.is_directory:
-            # Only sync folders when a directory is moved/renamed in source
-            self.parent.sync_watch_folders(silent="semi")
-        self.parent.count_folders_and_files()
+            sync_watch_folders(self.parent, silent="semi")
+        count_folders_and_files(self.parent)

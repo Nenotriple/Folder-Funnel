@@ -8,7 +8,6 @@ import shutil
 
 # Custom
 import duplicate_handler
-import listbox_logic
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -21,28 +20,44 @@ if TYPE_CHECKING:
 
 
 def _is_empty_file(file_path):
-    """Check if a file exists and has 0 bytes."""
-    if os.path.exists(file_path) and os.path.isfile(file_path):
-        return os.path.getsize(file_path) == 0
+    """Check if a file exists and has 0 bytes. Returns True if empty, False if not."""
+    # Check if path exists and is a file
+    if not os.path.exists(file_path):
+        return False
+    if not os.path.isfile(file_path):
+        return False
+    # Check if the file has zero size
+    if os.path.getsize(file_path) == 0:
+        return True
+    # File has content
     return False
 
 
 def _is_temp_file(app: 'Main', file_path):
-    """Check if a file has a temporary extension."""
+    """Check if a file has a temporary extension. Returns True if temp, False not."""
+    # If temporary file filtering is disabled, treat all files as if they should be processed
+    if not app.ignore_temp_files_var.get():
+        return True
     _, ext = os.path.splitext(file_path.lower())
-    return ext in app.temp_filetypes
+    # Check if the extension is in the list of temporary file types
+    if ext in app.temp_filetypes:
+        return True
+    # Not a temporary file
+    return False
 
 
 def _is_part_file(file_path):
-    """Check if a file has a ".part" extension."""
+    """Check if a file has a ".part" extension (indicating an incomplete download). Returns True if part file, False if not."""
     _, ext = os.path.splitext(file_path.lower())
-    return ext == ".part"
+    # Check specifically for ".part" extension
+    if ext == ".part":
+        return True
+    # Not a part file
+    return False
 
 
 def _should_process_firefox_temp_files(app: 'Main', file_path):
-    """
-    Returns True if file should be processed, False if it should be skipped.
-    """
+    """Returns True if file should be processed, False if it should be skipped."""
     # Check if temp files should be ignored
     if not app.ignore_firefox_temp_files_var.get():
         return True
@@ -50,14 +65,45 @@ def _should_process_firefox_temp_files(app: 'Main', file_path):
     rel_path = os.path.relpath(file_path, app.watch_path)
     # Check if file is empty (0 bytes) - The Firefox 0-byte placeholder
     if _is_empty_file(file_path):
-        app.log(f"Skipped empty file (0 bytes): {rel_path}")
         return False
     # Check if Firefox ".part" file
     if _is_part_file(file_path):
-        app.log(f"Skipped part file: {rel_path}")
         return False
     # File should be processed
     return True
+
+
+def _update_queue_progress(app: 'Main'):
+    """Update the queue progress bar."""
+    if not app.queue_start_time or not app.move_queue:
+        app.queue_progressbar['value'] = 0
+        return
+    current_time = time.time() * 1000
+    elapsed = current_time - app.queue_start_time
+    progress = (elapsed / app.move_queue_length_var.get()) * 100
+    if progress <= 100:
+        app.queue_progressbar['value'] = progress
+        # Update every 50ms
+        app.root.after(50, lambda: _update_queue_progress(app))
+    else:
+        app.queue_progressbar['value'] = 100
+
+
+def _get_unique_filename(file_path):
+    """Returns a unique file path by appending a counter to the filename if needed."""
+    if not os.path.exists(file_path):
+        return file_path
+    base, ext = os.path.splitext(file_path)
+    counter = 1
+    unique_path = file_path
+    while os.path.exists(unique_path):
+        unique_path = f"{base}_{counter}{ext}"
+        counter += 1
+    return unique_path
+
+
+#endregion
+#region - File Handling
 
 
 def _handle_new_folder(app: 'Main', source_path):
@@ -87,6 +133,9 @@ def _handle_new_folder(app: 'Main', source_path):
                 # Check if file should be processed
                 if not _should_process_firefox_temp_files(app, file_path):
                     continue
+                # Check if the file is a temporary file that should be ignored
+                if _is_temp_file(app, file_path):
+                    continue
                 if file_path not in app.move_queue:
                     app.move_queue.append(file_path)
                     app.update_queue_count()
@@ -95,26 +144,49 @@ def _handle_new_folder(app: 'Main', source_path):
         app.log(f"Error handling new folder {source_path}: {str(e)}")
 
 
-def _update_queue_progress(app: 'Main'):
-    """Update the queue progress bar."""
-    if not app.queue_start_time or not app.move_queue:
-        app.queue_progressbar['value'] = 0
-        return
-    current_time = time.time() * 1000
-    elapsed = current_time - app.queue_start_time
-    progress = (elapsed / app.move_queue_length_var.get()) * 100
-    if progress <= 100:
-        app.queue_progressbar['value'] = progress
-        # Update every 50ms
-        app.root.after(50, lambda: _update_queue_progress(app))
+def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_path):
+    """Handle a file that might be a duplicate."""
+    if duplicate_handler.are_files_identical(file1=source_path, file2=dest_path, check_mode=app.dupe_check_mode_var.get(), method=app.dupe_filter_mode_var.get(), max_files=app.dupe_max_files_var.get()):
+        # Files are identical, handle based on dupe_handle_mode
+        filename = os.path.basename(source_path)
+        duplicate_path = source_path
+        if app.dupe_handle_mode_var.get() == "Delete":
+            # Delete the duplicate file
+            os.remove(source_path)
+            app.log(f"Deleted duplicate file: {rel_path}")
+        else:  # "Move" mode
+            if not app.duplicate_storage_path:
+                duplicate_handler.create_duplicate_storage_folder(app)
+            # Ensure the directory structure exists in the duplicate folder
+            rel_dir = os.path.dirname(rel_path)
+            dup_dir_path = os.path.join(app.duplicate_storage_path, rel_dir)
+            os.makedirs(dup_dir_path, exist_ok=True)
+            # Calculate destination path in duplicate storage
+            dup_file_path = os.path.join(app.duplicate_storage_path, rel_path)
+            # Handle if file already exists in duplicate storage - use get_unique_filename
+            dup_file_path = _get_unique_filename(dup_file_path)
+            # Move the duplicate file
+            shutil.move(source_path, dup_file_path)
+            app.log(f"Moved duplicate file: {rel_path} -> {os.path.relpath(dup_file_path, app.duplicate_storage_path)}")
+            duplicate_path = dup_file_path
+        # Record the duplicate file
+        app.duplicate_history_items[filename] = {"source": dest_path, "duplicate": duplicate_path}
+        app.duplicate_count += 1
+        app.update_duplicate_count()
+        # Update history listbox if we're in Duplicate or All mode
+        if app.history_mode_var.get() == "Duplicate":
+            app.toggle_history_mode(app)
+        return True, None
     else:
-        app.queue_progressbar['value'] = 100
+        # Not a duplicate, find new name
+        new_dest_path = _get_unique_filename(dest_path)
+        return False, new_dest_path
 
 
 def _move_file(app: 'Main', source_path):
-    """Internal method to actually move a file. Used by process_move_queue."""
+    """Internal method to move a file when the queue is ready."""
     try:
-        # Get the relative path from the watch folder
+                # Get the relative path from the watch folder
         rel_path = os.path.relpath(source_path, app.watch_path)
         # Calculate the destination path in the source folder
         dest_path = os.path.join(app.working_dir_var.get(), rel_path)
@@ -122,57 +194,11 @@ def _move_file(app: 'Main', source_path):
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
         # If file exists, check if it's a duplicate
         if os.path.exists(dest_path):
-            # Compare file contents
-            if duplicate_handler.are_files_identical(
-                file1=source_path,
-                file2=dest_path,
-                check_mode=app.dupe_check_mode_var.get(),
-                method=app.dupe_filter_mode_var.get(),
-                max_files=app.dupe_max_files_var.get()
-            ):
-                # Files are identical, handle based on dupe_handle_mode
-                filename = os.path.basename(source_path)
-                if app.dupe_handle_mode_var.get() == "Delete":
-                    # Delete the duplicate file
-                    os.remove(source_path)
-                    app.log(f"Deleted duplicate file: {rel_path}")
-                else:  # "Move" mode
-                    if not app.duplicate_storage_path:
-                        duplicate_handler.create_duplicate_storage_folder(app)
-                    # Ensure the directory structure exists in the duplicate folder
-                    rel_dir = os.path.dirname(rel_path)
-                    dup_dir_path = os.path.join(app.duplicate_storage_path, rel_dir)
-                    os.makedirs(dup_dir_path, exist_ok=True)
-                    # Calculate destination path in duplicate storage
-                    dup_file_path = os.path.join(app.duplicate_storage_path, rel_path)
-                    # Handle if file already exists in duplicate storage
-                    if os.path.exists(dup_file_path):
-                        base, ext = os.path.splitext(dup_file_path)
-                        counter = 1
-                        while os.path.exists(dup_file_path):
-                            dup_file_path = f"{base}_{counter}{ext}"
-                            counter += 1
-                    # Move the duplicate file
-                    shutil.move(source_path, dup_file_path)
-                    app.log(f"Moved duplicate file: {rel_path} -> {os.path.relpath(dup_file_path, app.duplicate_storage_path)}")
-                # Record the duplicate file
-                # Store both the source (kept) path and duplicate path
-                duplicate_path = source_path
-                if app.dupe_handle_mode_var.get() == "Move":
-                    duplicate_path = dup_file_path
-                app.duplicate_history_items[filename] = {"source": dest_path, "duplicate": duplicate_path}
-                app.duplicate_count += 1
-                app.update_duplicate_count()
-                # Update history listbox if we're in Duplicate or All mode
-                if app.history_mode_var.get() == "Duplicate":
-                    listbox_logic.toggle_history_mode(app)
+            is_duplicate, new_dest_path = _handle_possible_duplicate_file(app, source_path, dest_path, rel_path)
+            if is_duplicate:
                 return True
-            # Not a duplicate, find new name
-            base, ext = os.path.splitext(dest_path)
-            counter = 1
-            while os.path.exists(dest_path):
-                dest_path = f"{base}_{counter}{ext}"
-                counter += 1
+            if new_dest_path:
+                dest_path = new_dest_path
         # Move the file
         shutil.move(source_path, dest_path)
         app.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}")
@@ -221,6 +247,9 @@ def queue_move_file(app: 'Main', source_path):
         # Check if file should be processed
         if not _should_process_firefox_temp_files(app, source_path):
             return
+        # Check if the file is a temporary file that should be processed
+        if _is_temp_file(app, source_path):
+            return
         app.move_queue.append(source_path)
         app.update_queue_count()
         app.log(f"Queued file: {os.path.relpath(source_path, app.watch_path)}")
@@ -266,7 +295,6 @@ def handle_rename_event(app: 'Main', old_path, new_path):
             app.log(f"Removed old path from queue: {old_path}")
         if not os.path.isdir(new_path) and new_path not in app.move_queue:
             queue_move_file(app, new_path)
-            app.log(f"Queued renamed file: {os.path.basename(new_path)}")
         app.update_queue_count()
     except Exception as e:
         app.log(f"Error handling rename event: {str(e)}")

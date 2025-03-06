@@ -8,6 +8,9 @@ from tkinter import ttk, scrolledtext
 # Third-party
 from TkToolTip.TkToolTip import TkToolTip as Tip
 
+# Custom
+import interface_logic
+
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -56,11 +59,11 @@ def _create_file_menu(app: 'Main', menubar: tk.Menu):
 def _create_edit_menu(app: 'Main', menubar: tk.Menu):
     edit_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Edit", menu=edit_menu)
-    edit_menu.add_command(label="Sync Folders", command=app.sync_watch_folders)
+    edit_menu.add_command(label="Sync Source-and-Funnel Folders", command=app.sync_watch_folders)
     edit_menu.add_command(label="Process Move Queue", command=app.process_move_queue)
     edit_menu.add_separator()
-    edit_menu.add_command(label="Clear: log", command=app.clear_log)
-    edit_menu.add_command(label="Clear: history", command=app.clear_history)
+    edit_menu.add_command(label="Clear: Log", command=app.clear_log)
+    edit_menu.add_command(label="Clear: History", command=app.clear_history)
 
 
 def _create_view_menu(app: 'Main', menubar: tk.Menu):
@@ -193,6 +196,7 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1)
     app.text_log.pack(fill="both", expand=True)
+    interface_logic.log(app, "Welcome to Folder-Funnel - Please see the help menu for more information.")
 
 
 def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):

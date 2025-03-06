@@ -17,6 +17,18 @@ HELP_TEXT = {
     "• Clear logs or history anytime under the *'Edit'* menu.\n"
     "• Check the status bar at the bottom to see progress and queue details.",
 
+    "File Rules":
+    "• **Ignore Temp Files**:\n"
+    "   - Files with the following extensions are ignored: *.tmp*, *.temp*, *.part*, *.crdownload*, *.partial*, *.bak*.\n"
+    "• **Ignore Temp Firefox Files**:\n"
+    "   - Skip placeholder and *.part* files created by Firefox during its download process and only move the finished download.\n"
+    "• **Auto-Extract Zip Files '*\\'**:\n"
+    "   - Automatically extract zip files to the source folder, creating a new folder with the same name as the zip file.\n"
+    "• **Auto-Delete Zip Files**:\n"
+    "   - Automatically delete the zip file after auto-extraction. This option does nothing if auto-extraction is disabled.\n"
+    "• **Overright on File Conflict**:\n"
+    "   - Overwrite existing files in the source folder with incoming files from the funnel folder.",
+
     "Duplicate Handling Options:":
     "• **Duplicate Handling Mode**:\n"
     "   - *Move*: Move incoming duplicate files to a *'#DUPLICATE#_'* storage folder.\n"

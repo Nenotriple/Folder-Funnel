@@ -79,6 +79,7 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     file_rules_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="File Rules", menu=file_rules_menu)
     file_rules_menu.add_checkbutton(label="Ignore Temp Files", variable=app.ignore_temp_files_var)
+    file_rules_menu.add_checkbutton(label="Ignore Temp Firefox Files", variable=app.ignore_firefox_temp_files_var)
     file_rules_menu.add_checkbutton(label='Auto Extract Zip Files "*\\"', variable=app.auto_extract_zip_var)
     file_rules_menu.add_separator()
     file_rules_menu.add_checkbutton(label="Overwrite On File Conflict", variable=app.overwrite_on_conflict_var)

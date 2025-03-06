@@ -50,6 +50,8 @@ def _create_file_menu(app: 'Main', menubar: tk.Menu):
     file_menu.add_command(label="Open: Funnel", command=lambda: app.open_folder(app.watch_path))
     file_menu.add_command(label="Open: Duplicates", command=lambda: app.open_folder(app.duplicate_storage_path))
     file_menu.add_separator()
+    file_menu.add_command(label="Reset App Settings", command=app.reset_settings)
+    file_menu.add_separator()
     file_menu.add_command(label="Exit", command=app.on_closing)
 
 

@@ -18,6 +18,7 @@ import listbox_logic
 import folder_watcher
 import interface_logic
 import duplicate_handler
+import settings_manager
 from help_window import HelpWindow
 
 
@@ -250,6 +251,25 @@ class Main:
 
 
 #endregion
+#region - Settings Logic
+
+
+    def load_and_apply_settings(self):
+        settings_manager.load_settings(self)
+        settings_manager.apply_settings_to_ui(self)
+
+
+    def save_settings(self):
+        settings_manager.save_settings(self)
+
+
+    def reset_settings(self):
+        if not messagebox.askyesno("Reset Settings", "Are you sure you want to reset all settings to default values?"):
+            return
+        settings_manager.reset_settings(self)
+
+
+#endregion
 #region - Framework
 
 
@@ -272,6 +292,8 @@ class Main:
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         self.root.geometry(f'{window_width}x{window_height}+{x}+{y}')
+        # Load settings after UI is initialized
+        self.root.after(100, lambda: self.load_and_apply_settings())
 
 
     def set_appid(self):
@@ -296,6 +318,8 @@ class Main:
     def on_closing(self):
         """Handle cleanup when closing the application"""
         self.process_pending_moves()
+        # Save settings before closing
+        self.save_settings()
         if not self.stop_folder_watcher():
             return
         duplicate_handler.confirm_duplicate_storage_removal(self)

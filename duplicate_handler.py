@@ -80,7 +80,7 @@ def find_similar_files(filename, target_dir, method='Strict', max_files=10) -> L
 
 
 def confirm_duplicate_storage_removal(app: 'Main'):
-    """Ask the user if they want to remove the duplicate storage folder"""
+    """Ask the user if they want to remove the duplicate storage folder."""
     if app.duplicate_storage_path and os.path.exists(app.duplicate_storage_path):
         response = messagebox.askyesnocancel("Remove Duplicate Files?", f"Do you want to remove the duplicate files folder?\n{app.duplicate_storage_path}")
         if response is None:  # Cancel was selected

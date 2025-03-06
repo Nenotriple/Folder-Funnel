@@ -17,25 +17,47 @@ if TYPE_CHECKING:
 
 
 #endregion
-#region - Queue Logic
+#region - Helper Functions
 
 
-def queue_move_file(app: 'Main', source_path):
-    """Add a file or folder to the move queue and start/restart the timer."""
-    if os.path.isdir(source_path):
-        _handle_new_folder(app, source_path)
-    elif source_path not in app.move_queue:
-        app.move_queue.append(source_path)
-        app.update_queue_count()
-        app.log(f"Queued file: {os.path.relpath(source_path, app.watch_path)}")
-    # Reset queue timer
-    if app.queue_timer_id:
-        app.root.after_cancel(app.queue_timer_id)
-    # Start new timer
-    app.queue_start_time = time.time() * 1000
-    app.queue_progressbar['value'] = 0
-    _update_queue_progress(app)
-    app.queue_timer_id = app.root.after(app.move_queue_length_var.get(), lambda: process_move_queue(app))
+def _is_empty_file(file_path):
+    """Check if a file exists and has 0 bytes."""
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return os.path.getsize(file_path) == 0
+    return False
+
+
+def _is_temp_file(app: 'Main', file_path):
+    """Check if a file has a temporary extension."""
+    _, ext = os.path.splitext(file_path.lower())
+    return ext in app.temp_filetypes
+
+
+def _is_part_file(file_path):
+    """Check if a file has a ".part" extension."""
+    _, ext = os.path.splitext(file_path.lower())
+    return ext == ".part"
+
+
+def _should_process_firefox_temp_files(app: 'Main', file_path):
+    """
+    Returns True if file should be processed, False if it should be skipped.
+    """
+    # Check if temp files should be ignored
+    if not app.ignore_firefox_temp_files_var.get():
+        return True
+    # Get relative path for logging
+    rel_path = os.path.relpath(file_path, app.watch_path)
+    # Check if file is empty (0 bytes) - The Firefox 0-byte placeholder
+    if _is_empty_file(file_path):
+        app.log(f"Skipped empty file (0 bytes): {rel_path}")
+        return False
+    # Check if Firefox ".part" file
+    if _is_part_file(file_path):
+        app.log(f"Skipped part file: {rel_path}")
+        return False
+    # File should be processed
+    return True
 
 
 def _handle_new_folder(app: 'Main', source_path):
@@ -62,6 +84,9 @@ def _handle_new_folder(app: 'Main', source_path):
             # Queue all files for moving
             for filename in filenames:
                 file_path = os.path.join(dirpath, filename)
+                # Check if file should be processed
+                if not _should_process_firefox_temp_files(app, file_path):
+                    continue
                 if file_path not in app.move_queue:
                     app.move_queue.append(file_path)
                     app.update_queue_count()
@@ -84,26 +109,6 @@ def _update_queue_progress(app: 'Main'):
         app.root.after(50, lambda: _update_queue_progress(app))
     else:
         app.queue_progressbar['value'] = 100
-
-
-def process_move_queue(app: 'Main'):
-    """Process all queued file moves."""
-    app.queue_timer_id = None  # Reset timer ID
-    app.queue_start_time = None  # Reset start time
-    app.queue_progressbar['value'] = 0  # Reset progress bar
-    if not app.move_queue:
-        return
-    app.log(f"Processing {len(app.move_queue)} queued files...")
-    success_count = 0
-    for source_path in app.move_queue:
-        if os.path.exists(source_path):  # Check if the file exists before moving
-            if _move_file(app, source_path):
-                success_count += 1
-        else:
-            app.log(f"File not found, skipping: {source_path}")
-    app.log(f"Batch move complete: {success_count}/{len(app.move_queue)} files moved successfully\n")
-    app.move_queue.clear()
-    app.update_queue_count()
 
 
 def _move_file(app: 'Main', source_path):
@@ -183,6 +188,76 @@ def _move_file(app: 'Main', source_path):
         return False
 
 
+#endregion
+#region - Queue Management
+
+
+def start_queue(app: 'Main'):
+    """Start/restart the queue timer and progress bar updates."""
+    # Cancel any existing timer
+    if app.queue_timer_id:
+        app.root.after_cancel(app.queue_timer_id)
+    # Start new timer
+    app.queue_start_time = time.time() * 1000
+    app.queue_progressbar['value'] = 0
+    _update_queue_progress(app)
+    app.queue_timer_id = app.root.after(app.move_queue_length_var.get(), lambda: process_move_queue(app))
+
+
+def stop_queue(app: 'Main'):
+    """Stop the queue timer and reset progress bar."""
+    if app.queue_timer_id:
+        app.root.after_cancel(app.queue_timer_id)
+    app.queue_timer_id = None  # Reset timer ID
+    app.queue_start_time = None  # Reset start time
+    app.queue_progressbar['value'] = 0  # Reset progress bar
+
+
+def queue_move_file(app: 'Main', source_path):
+    """Add a file or folder to the move queue and start/restart the timer."""
+    if os.path.isdir(source_path):
+        _handle_new_folder(app, source_path)
+    elif source_path not in app.move_queue:
+        # Check if file should be processed
+        if not _should_process_firefox_temp_files(app, source_path):
+            return
+        app.move_queue.append(source_path)
+        app.update_queue_count()
+        app.log(f"Queued file: {os.path.relpath(source_path, app.watch_path)}")
+    # Start or restart the queue timer
+    start_queue(app)
+
+
+def process_move_queue(app: 'Main'):
+    """Process all queued file moves."""
+    stop_queue(app)  # Stop the queue timer and reset progress indicators
+    if not app.move_queue:
+        return
+    app.log(f"Processing {len(app.move_queue)} queued files...")
+    success_count = 0
+    for source_path in app.move_queue:
+        if os.path.exists(source_path):  # Check if the file exists before moving
+            if _move_file(app, source_path):
+                success_count += 1
+        else:
+            app.log(f"File not found, skipping: {source_path}")
+    app.log(f"Batch move complete: {success_count}\{len(app.move_queue)} files moved successfully\n")
+    app.move_queue.clear()
+    app.update_queue_count()
+
+
+def process_pending_moves(app: 'Main'):
+    """Process any remaining files in the move queue."""
+    if app.move_queue:
+        process_move_queue(app)
+    elif app.queue_timer_id:
+        stop_queue(app)
+
+
+#endregion
+#region - Event Handlers
+
+
 def handle_rename_event(app: 'Main', old_path, new_path):
     """Remove the old file path from the move queue if present, then add the new path for subsequent moving."""
     try:
@@ -190,21 +265,11 @@ def handle_rename_event(app: 'Main', old_path, new_path):
             app.move_queue.remove(old_path)
             app.log(f"Removed old path from queue: {old_path}")
         if not os.path.isdir(new_path) and new_path not in app.move_queue:
-            app.move_queue.append(new_path)
+            queue_move_file(app, new_path)
             app.log(f"Queued renamed file: {os.path.basename(new_path)}")
         app.update_queue_count()
     except Exception as e:
         app.log(f"Error handling rename event: {str(e)}")
-
-
-def process_pending_moves(app: 'Main'):
-    """Process any remaining files in the move queue."""
-    if app.move_queue:
-        app.process_move_queue()
-    if app.queue_timer_id:
-        app.root.after_cancel(app.queue_timer_id)
-        if app.move_queue:
-            app.process_move_queue()
 
 
 #endregion

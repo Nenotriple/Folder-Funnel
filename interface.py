@@ -44,7 +44,7 @@ def _create_menubar(app: 'Main'):
 def _create_file_menu(app: 'Main', menubar: tk.Menu):
     file_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="File", menu=file_menu)
-    file_menu.add_command(label="Select source path...", command=app.select_working_dir)
+    file_menu.add_command(label="Select Source Path...", command=app.select_working_dir)
     file_menu.add_separator()
     file_menu.add_command(label="Open: Source", command=app.open_folder)
     file_menu.add_command(label="Open: Funnel", command=lambda: app.open_folder(app.watch_path))
@@ -80,9 +80,11 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     options_menu.add_cascade(label="File Rules", menu=file_rules_menu)
     file_rules_menu.add_checkbutton(label="Ignore Temp Files", variable=app.ignore_temp_files_var)
     file_rules_menu.add_checkbutton(label="Ignore Temp Firefox Files", variable=app.ignore_firefox_temp_files_var)
-    file_rules_menu.add_checkbutton(label='Auto Extract Zip Files "*\\"', variable=app.auto_extract_zip_var)
     file_rules_menu.add_separator()
-    file_rules_menu.add_checkbutton(label="Overwrite On File Conflict", variable=app.overwrite_on_conflict_var)
+    file_rules_menu.add_checkbutton(label='Auto Extract Zip Files "*\\"', variable=app.auto_extract_zip_var)
+    file_rules_menu.add_checkbutton(label="Auto Delete Zip Files After Extraction", variable=app.auto_delete_zip_var)
+    file_rules_menu.add_separator()
+    file_rules_menu.add_checkbutton(label="Overwrite on File Conflict", variable=app.overwrite_on_conflict_var)
     options_menu.add_separator()
     # Queue submenu
     queue_menu = tk.Menu(options_menu, tearoff=0)
@@ -260,9 +262,9 @@ def _create_message_row(app: 'Main'):
     status_label.pack(side="left")
     Tip(status_label, "Current status of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
     # Foldercount label
-    Foldercount_label = tk.Label(message_frame, textvariable=app.foldercount_var, relief="groove", width=15, anchor="w")
-    Foldercount_label.pack(side="left")
-    Tip(Foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
+    foldercount_label = tk.Label(message_frame, textvariable=app.foldercount_var, relief="groove", width=15, anchor="w")
+    foldercount_label.pack(side="left")
+    Tip(foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
     # Filecount label
     filecount_label = tk.Label(message_frame, textvariable=app.filecount_var, relief="groove", width=15, anchor="w")
     filecount_label.pack(side="left")

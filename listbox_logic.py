@@ -38,11 +38,12 @@ def toggle_history_mode(app: 'Main'):
         app.history_listbox.insert(0, filename)
 
 
-def handle_widget_binds(app: 'Main', list):
-    if list == app.move_history_items:
+def handle_widget_binds(app: 'Main', history_items):
+    """Set appropriate event bindings based on the history item type."""
+    if history_items == app.move_history_items:
         app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_file(app))
         app.history_listbox.bind("<Delete>", lambda e: delete_selected_file(app))
-    elif list == app.duplicate_history_items:
+    elif history_items == app.duplicate_history_items:
         app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_source_file(app))
         app.history_listbox.bind("<Delete>", lambda e: delete_selected_duplicate_file(app))
 
@@ -153,8 +154,8 @@ def delete_selected_file(app: 'Main'):
     if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{filename}'?"):
         try:
             os.remove(filepath)
-            list = get_history_list(app)
-            del list[filename]
+            history_dict = get_history_list(app)
+            del history_dict[filename]
             app.history_listbox.delete(app.history_listbox.curselection())
             app.log(f"Deleted file: {filename}")
         except Exception as e:
@@ -170,8 +171,8 @@ def delete_selected_duplicate_file(app: 'Main'):
     if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete duplicate file '{filename}'?"):
         try:
             os.remove(filepath)
-            list = get_history_list(app)
-            del list[filename]
+            history_dict = get_history_list(app)
+            del history_dict[filename]
             app.history_listbox.delete(app.history_listbox.curselection())
             app.log(f"Deleted duplicate file: {filename}")
             messagebox.showinfo("Success", f"Duplicate file deleted: {filename}")
@@ -180,7 +181,7 @@ def delete_selected_duplicate_file(app: 'Main'):
 
 
 def get_history_list(app: 'Main'):
-    """Return the appropriate history dict based on selected display mode"""
+    """Return the appropriate history dict based on selected display mode."""
     display_mode = app.history_mode_var.get()
     if display_mode == "Moved":
         return app.move_history_items

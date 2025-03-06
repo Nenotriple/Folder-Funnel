@@ -52,6 +52,7 @@ class Main:
         self.ignore_firefox_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files created by Firefox
         self.ignore_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files in the funnel folder
         self.auto_extract_zip_var = tk.BooleanVar(value=False)  # Automatically extract zip files in the funnel folder
+        self.auto_delete_zip_var = tk.BooleanVar(value=False)  # Delete zip files after extraction
         self.overwrite_on_conflict_var = tk.BooleanVar(value=False)  # Overwrite files with the same name in the source folder
 
         # Initialize UI objects
@@ -70,9 +71,9 @@ class Main:
         self.app_path = self.get_app_path()  # The application folder
 
         # Funnel and Duplicate Folders
-        self.watch_path = ""  # The duplicate folder that will be watched
-        self.watch_folder_name = ""  # The name of the duplicate folder
-        self.watch_name_prefix = "#FUNNEL#_"  # Prefix for the duplicate folder name
+        self.watch_path = ""  # The funnel folder that will be watched
+        self.watch_folder_name = ""  # The name of the funnel folder
+        self.watch_name_prefix = "#FUNNEL#_"  # Prefix for the funnel folder name
         self.duplicate_storage_path = ""  # The folder that will store moved duplicate files
         self.duplicate_name_prefix = "#DUPLICATE#_"  # Prefix for duplicate storage folder name
 
@@ -80,7 +81,7 @@ class Main:
         self.messages = []  # Log message list
 
         # History
-        self.max_history_entries = 100 # Maximum number of history items to store
+        self.max_history_entries = 100  # Maximum number of history items to store
 
         # History items and count
         self.move_history_items = {}  # Store history of moved files and their final path as {filename: source_path}

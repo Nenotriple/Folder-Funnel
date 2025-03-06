@@ -65,8 +65,8 @@ def clear_log(app: 'Main'):
 def clear_history(app: 'Main'):
     """Clear the history listbox and the underlying history list."""
     app.history_listbox.delete(0, "end")
-    list = listbox_logic.get_history_list(app)
-    list.clear()
+    history_list = listbox_logic.get_history_list(app)
+    history_list.clear()
 
 
 def toggle_text_wrap(app: 'Main'):

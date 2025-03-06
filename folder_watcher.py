@@ -29,7 +29,7 @@ def start_folder_watcher(app: 'Main'):
     """Start the folder watching process after verification"""
     if not app.check_working_dir_exists():
         return
-    confirm = messagebox.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (Excluding files), and begin the Folder-Funnel process.\n\nContinue?")
+    confirm = messagebox.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (excluding files), and begin the Folder-Funnel process.\n\nContinue?")
     if not confirm:
         return
     app.toggle_indicator(state="start")
@@ -124,7 +124,7 @@ def sync_watch_folders(app: 'Main', silent=False):
                 os.rmdir(dirpath)
                 counter_removed += 1
         if silent in [False, "semi"]:
-            app.log(f"Created: {counter_created}, Removed: {counter_removed}, directories in {app.watch_path}")
+            app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.watch_path}")
         elif silent == "initial":
             folder_count = re.split(" ", app.foldercount_var.get())
             app.log(f"Watching: {folder_count[1]} directories in {app.watch_path}")

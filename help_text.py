@@ -17,16 +17,16 @@ HELP_TEXT = {
     "• Clear logs or history anytime under the *'Edit'* menu.\n"
     "• Check the status bar at the bottom to see progress and queue details.",
 
-    "File Rules":
+    "File Rules:":
     "• **Ignore Temp Files**:\n"
     "   - Files with the following extensions are ignored: *.tmp*, *.temp*, *.part*, *.crdownload*, *.partial*, *.bak*.\n"
     "• **Ignore Temp Firefox Files**:\n"
     "   - Skip placeholder and *.part* files created by Firefox during its download process and only move the finished download.\n"
     "• **Auto-Extract Zip Files '*\\'**:\n"
     "   - Automatically extract zip files to the source folder, creating a new folder with the same name as the zip file.\n"
-    "• **Auto-Delete Zip Files**:\n"
+    "• **Auto Delete Zip Files After Extraction**:\n"
     "   - Automatically delete the zip file after auto-extraction. This option does nothing if auto-extraction is disabled.\n"
-    "• **Overright on File Conflict**:\n"
+    "• **Overwrite on File Conflict**:\n"
     "   - Overwrite existing files in the source folder with incoming files from the funnel folder.",
 
     "Duplicate Handling Options:":
@@ -35,9 +35,9 @@ HELP_TEXT = {
     "   - *Delete*: Remove incoming duplicate files.\n"
     "• **Duplicate Name Matching Mode**:\n"
     "   - *Flexible*: More flexible initial filename matching.\n"
-    "   - *Strict*: More strict initial filename matching\n"
+    "   - *Strict*: More strict initial filename matching.\n"
     "• **Duplicate Checking Mode**:\n"
-    "   - *Similar*: Perform additional MD5 checksum check against files with a similar filename\n"
+    "   - *Similar*: Perform additional MD5 checksum check against files with a similar filename.\n"
     "   - *Single*: Perform an MD5 checksum check only on exact filename match.\n"
     "• **Duplicate Checking: Max Files**:\n"
     "   - The maximum number of similar files to check for duplicates.",

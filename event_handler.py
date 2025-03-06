@@ -44,7 +44,6 @@ def count_folders_and_files(app: 'Main'):
     app.root.after(DELAY, lambda: app.count_folders_and_files())
 
 
-
 #endregion
 #region - cls WatchFolderHandler
 

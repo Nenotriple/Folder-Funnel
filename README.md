@@ -26,15 +26,27 @@ Folder-Funnel is designed to speed up the process of saving files to a specific 
 - Clear logs or history anytime under the *'Edit'* menu.
 - Check the status bar at the bottom to see progress and queue details.
 
+### File Rules
+- **Ignore Temp Files**:
+  - Files with the following extensions are ignored: *.tmp*, *.temp*, *.part*, *.crdownload*, *.partial*, *.bak*.
+- **Ignore Temp Firefox Files**:
+  - Skip placeholder and *.part* files created by Firefox during its download process and only move the finished download.
+- **Auto-Extract Zip Files**:
+  - Automatically extract zip files to the source folder, creating a new folder with the same name as the zip file.
+- **Auto Delete Zip Files After Extraction**:
+  - Automatically delete the zip file after auto-extraction. This option does nothing if auto-extraction is disabled.
+- **Overwrite on File Conflict**:
+  - Overwrite existing files in the source folder with incoming files from the funnel folder.
+
 ### Duplicate Handling Options
 - **Duplicate Handling Mode**:
   - *Move*: Move incoming duplicate files to a *'#DUPLICATE#_'* storage folder.
   - *Delete*: Remove incoming duplicate files.
-- **Duplicate Matching Mode**:
+- **Duplicate Name Matching Mode**:
   - *Flexible*: More flexible initial filename matching.
-  - *Strict*: More strict initial filename matching
+  - *Strict*: More strict initial filename matching.
 - **Duplicate Checking Mode**:
-  - *Similar*: Perform additional MD5 checksum check against files with a similar filename
+  - *Similar*: Perform additional MD5 checksum check against files with a similar filename.
   - *Single*: Perform an MD5 checksum check only on exact filename match.
 - **Duplicate Checking: Max Files**:
   - The maximum number of similar files to check for duplicates.

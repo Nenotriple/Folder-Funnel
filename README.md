@@ -82,3 +82,7 @@ Created and tested on: ![Static Badge](https://img.shields.io/badge/Windows-blue
    - Set up local virtual environment.
    - Install from requirements.txt.
    - Launch the Folder-Funnel application.
+
+### Build from Source
+1. Follow the 'From Source' instructions.
+2. See the [Build Instructions](docs/Build_Instructions.md) for more information on building the executable.

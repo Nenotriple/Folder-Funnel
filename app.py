@@ -103,9 +103,6 @@ class Main:
         # Temporary filetypes
         self.temp_filetypes = [".tmp", ".temp", ".part", ".crdownload", ".partial", ".bak"]
 
-        # Set up close handler
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-
         # Help window
         self.help_window = HelpWindow(self.root)
 
@@ -292,7 +289,8 @@ class Main:
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
         self.root.geometry(f'{window_width}x{window_height}+{x}+{y}')
-        # Load settings after UI is initialized
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        # Load settings
         self.root.after(100, lambda: self.load_and_apply_settings())
 
 
@@ -318,7 +316,6 @@ class Main:
     def on_closing(self):
         """Handle cleanup when closing the application"""
         self.process_pending_moves()
-        # Save settings before closing
         self.save_settings()
         if not self.stop_folder_watcher():
             return

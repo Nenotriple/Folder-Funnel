@@ -23,7 +23,8 @@ if TYPE_CHECKING:
 
 
 def are_files_identical(file1, file2, check_mode="Similar", method='Strict', max_files=10, chunk_size=8192):
-    """Compare files by size/MD5 and/or check similar files in the target directory."""
+    """Compare files by size/MD5 and/or check similar files in the target directory.
+    Returns tuple (is_identical, matching_file_path)"""
     def get_md5(filename):
         m = hashlib.md5()
         with open(filename, 'rb') as f:
@@ -38,19 +39,19 @@ def are_files_identical(file1, file2, check_mode="Similar", method='Strict', max
         similar_files = find_similar_files(file1, target_dir, method, max_files)
         for file in similar_files:
             if os.path.exists(file) and os.path.getsize(file1) == os.path.getsize(file):
-                return True
+                return True, file
         if check_mode == "Similar":
             file1_md5 = get_md5(file1)
             for file in similar_files:
                 if get_md5(file) == file1_md5:
-                    return True
+                    return True, file
         elif check_mode == "Single":
             if os.path.exists(file2) and get_md5(file1) == get_md5(file2):
-                return True
-        return False
+                return True, file2
+        return False, None
     except Exception as e:
         print(f"Error comparing files: {e}")
-        return False
+        return False, None
 
 
 def find_similar_files(filename, target_dir, method='Strict', max_files=10) -> List[str]:

@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 def toggle_history_mode(app: 'Main'):
-    app.history_listbox.delete(0, "end")
+    """Switch between history display modes and update UI elements."""
     # Get display mode
     display_mode = app.history_mode_var.get()
     # Update the history menubutton text
@@ -27,9 +27,19 @@ def toggle_history_mode(app: 'Main'):
     # Determine which list to use for bindings
     if display_mode == "Duplicate":
         handle_widget_binds(app, app.duplicate_history_items)
-        items = app.duplicate_history_items
     elif display_mode == "Moved":
         handle_widget_binds(app, app.move_history_items)
+    refresh_history_listbox(app)
+
+
+def refresh_history_listbox(app: 'Main'):
+    """Clear and repopulate the history listbox based on current display mode."""
+    app.history_listbox.delete(0, "end")
+    # Get display mode and determine which list to use
+    display_mode = app.history_mode_var.get()
+    if display_mode == "Duplicate":
+        items = app.duplicate_history_items
+    elif display_mode == "Moved":
         items = app.move_history_items
     else:
         items = {}
@@ -56,11 +66,7 @@ def update_history_list(app: 'Main', filename, filepath):
     while len(app.move_history_items) > app.max_history_entries:
         oldest_key = next(iter(app.move_history_items))
         del app.move_history_items[oldest_key]
-    # Update listbox only if we're viewing moved files or all files
-    display_mode = app.history_mode_var.get()
-    if display_mode == "Moved":
-        # Clear and repopulate the list widget based on current mode
-        toggle_history_mode(app)
+    refresh_history_listbox(app)
 
 
 def show_history_context_menu(app: 'Main', event):

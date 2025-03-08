@@ -47,7 +47,7 @@ def save_settings(app: 'Main'):
         'overwrite_on_conflict': str(app.overwrite_on_conflict_var.get()),
     }
     # Create the settings file
-    settings_path = os.path.join(app.app_path, 'settings.cfg')
+    settings_path = os.path.join(app.get_data_path(), 'settings.cfg')
     try:
         with open(settings_path, 'w') as configfile:
             config.write(configfile)
@@ -63,7 +63,7 @@ def save_settings(app: 'Main'):
 
 def load_settings(app: 'Main'):
     """Load application settings from config file."""
-    settings_path = os.path.join(app.app_path, 'settings.cfg')
+    settings_path = os.path.join(app.get_data_path(), 'settings.cfg')
     if not os.path.exists(settings_path):
         return False
     config = configparser.ConfigParser()

@@ -313,8 +313,14 @@ class Main:
         return ""
 
 
+    def get_data_path(self):
+        if getattr(sys, 'frozen', False):
+            return os.path.dirname(sys.executable)
+        else:
+            return os.path.dirname(__file__)
+
+
     def on_closing(self):
-        """Handle cleanup when closing the application"""
         self.process_pending_moves()
         self.save_settings()
         if not self.stop_folder_watcher():

@@ -120,8 +120,7 @@ def apply_settings_to_ui(app: 'Main'):
         app.select_working_dir(app.working_dir_var.get())
         app.count_folders_and_files()
     # Update history display based on mode
-    if app.history_menubutton and app.history_listbox:
-        app.toggle_history_mode()
+    app.refresh_history_listbox()
 
 
 #endregion

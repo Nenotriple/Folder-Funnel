@@ -155,6 +155,9 @@ class Main:
     def toggle_history_mode(self):
         listbox_logic.toggle_history_mode(self)
 
+    def refresh_history_listbox(self):
+        listbox_logic.refresh_history_listbox(self)
+
     def update_history_list(self, filename, filepath):
         listbox_logic.update_history_list(self, filename, filepath)
 

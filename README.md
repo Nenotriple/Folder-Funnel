@@ -53,11 +53,11 @@ Folder-Funnel is designed to speed up the process of saving files to a specific 
 - The timer progress bar shows the remaining time before the next move.
 - The timer resets each time a new file is added to the queue.
 
-### Notes and Warnings:
-- **Warning**: *Moving/renaming/deleting* the source or funnel folders while Folder-Funnel is running may cause issues.
+### Notes and Warnings
+- **Warning**: Moving, renaming, or deleting the source or funnel folders while Folder-Funnel is running may cause issues.
 - **Warning**: Avoid creating temporary files in the funnel folder.
-- **Note**: The app creates two base folders: `#FUNNEL#_`, and `#DUPLICATE#_` in the same path as the source folder.
-- **Note**: When closing the app you can choose to keep the duplicate storage folder or delete it.
+- **Note**: The app creates two base folders: `#FUNNEL#_` and `#DUPLICATE#_` in the same path as the source folder.
+- **Note**: When closing the app, you can choose to keep the duplicate storage folder or delete it.
 
 
 ## 🚀 Installation

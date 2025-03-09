@@ -105,6 +105,26 @@ def open_help_window(app: 'Main'):
     app.help_window.open_window(geometry="800x700", help_text=HELP_TEXT)
 
 
+def open_stats_popup(app: 'Main'):
+    """Open the stats popup window."""
+    total_move_time = app.grand_move_count * app.move_action_time
+    total_dupe_time = app.grand_duplicate_count * app.dupe_action_time
+    total_time = total_move_time + total_dupe_time
+
+    formatted_time = f"{total_time // 60} minutes, {total_time % 60} seconds"
+    messagebox.showinfo("Stats",
+                        f"Total moves: {app.grand_move_count}\n"
+                        f"Total duplicates: {app.grand_duplicate_count}\n\n"
+                        "Estimated time saved per action:\n"
+                        f"Move: {app.move_action_time} seconds\n"
+                        f"Duplicate: {app.dupe_action_time} seconds\n\n"
+                        f"Total time for moves: {total_move_time} seconds\n"
+                        f"Total time for duplicates: {total_dupe_time} seconds\n\n"
+                        f"Estimated time saved:\n{formatted_time}"
+                        )
+
+
+
 def update_duplicate_count(app: 'Main'):
     """Update the duplicate count display."""
     app.dupecount_var.set(f"Duplicates: {app.duplicate_count}")

@@ -39,12 +39,19 @@ def save_settings(app: 'Main'):
         'queue_length': str(app.move_queue_length_var.get())
     }
     # File handling options
-    config['FileHandling'] = {
+    config['FileRules'] = {
         'ignore_firefox_temp_files': str(app.ignore_firefox_temp_files_var.get()),
         'ignore_temp_files': str(app.ignore_temp_files_var.get()),
         'auto_extract_zip': str(app.auto_extract_zip_var.get()),
         'auto_delete_zip': str(app.auto_delete_zip_var.get()),
         'overwrite_on_conflict': str(app.overwrite_on_conflict_var.get()),
+    }
+    # Stats settings
+    config['Stats'] = {
+        'grand_move_count': str(app.grand_move_count),
+        'grand_duplicate_count': str(app.grand_duplicate_count),
+        'move_action_time': str(app.move_action_time),
+        'dupe_action_time': str(app.dupe_action_time),
     }
     # Create the settings file
     settings_path = os.path.join(app.get_data_path(), 'settings.cfg')
@@ -69,7 +76,7 @@ def load_settings(app: 'Main'):
     config = configparser.ConfigParser()
     try:
         config.read(settings_path)
-        # Load General settings
+        # General
         if 'General' in config:
             if 'working_directory' in config['General'] and os.path.exists(config['General']['working_directory']):
                 if messagebox.askyesno("Confirmation", "Reload last directory?"):
@@ -78,7 +85,7 @@ def load_settings(app: 'Main'):
                 app.text_log_wrap_var.set(config.getboolean('General', 'text_log_wrap'))
             if 'history_mode' in config['General']:
                 app.history_mode_var.set(config['General']['history_mode'])
-        # Load Duplicates settings
+        # Duplicates
         if 'Duplicates' in config:
             if 'handle_mode' in config['Duplicates']:
                 app.dupe_handle_mode_var.set(config['Duplicates']['handle_mode'])
@@ -88,21 +95,31 @@ def load_settings(app: 'Main'):
                 app.dupe_check_mode_var.set(config['Duplicates']['check_mode'])
             if 'max_files' in config['Duplicates']:
                 app.dupe_max_files_var.set(int(config['Duplicates']['max_files']))
-        # Load Queue settings
+        # Queue
         if 'Queue' in config and 'queue_length' in config['Queue']:
             app.move_queue_length_var.set(int(config['Queue']['queue_length']))
-        # Load FileHandling settings
-        if 'FileHandling' in config:
-            if 'ignore_firefox_temp_files' in config['FileHandling']:
-                app.ignore_firefox_temp_files_var.set(config.getboolean('FileHandling', 'ignore_firefox_temp_files'))
-            if 'ignore_temp_files' in config['FileHandling']:
-                app.ignore_temp_files_var.set(config.getboolean('FileHandling', 'ignore_temp_files'))
-            if 'auto_extract_zip' in config['FileHandling']:
-                app.auto_extract_zip_var.set(config.getboolean('FileHandling', 'auto_extract_zip'))
-            if 'auto_delete_zip' in config['FileHandling']:
-                app.auto_delete_zip_var.set(config.getboolean('FileHandling', 'auto_delete_zip'))
-            if 'overwrite_on_conflict' in config['FileHandling']:
-                app.overwrite_on_conflict_var.set(config.getboolean('FileHandling', 'overwrite_on_conflict'))
+        # FileRules
+        if 'FileRules' in config:
+            if 'ignore_firefox_temp_files' in config['FileRules']:
+                app.ignore_firefox_temp_files_var.set(config.getboolean('FileRules', 'ignore_firefox_temp_files'))
+            if 'ignore_temp_files' in config['FileRules']:
+                app.ignore_temp_files_var.set(config.getboolean('FileRules', 'ignore_temp_files'))
+            if 'auto_extract_zip' in config['FileRules']:
+                app.auto_extract_zip_var.set(config.getboolean('FileRules', 'auto_extract_zip'))
+            if 'auto_delete_zip' in config['FileRules']:
+                app.auto_delete_zip_var.set(config.getboolean('FileRules', 'auto_delete_zip'))
+            if 'overwrite_on_conflict' in config['FileRules']:
+                app.overwrite_on_conflict_var.set(config.getboolean('FileRules', 'overwrite_on_conflict'))
+        # Stats
+        if 'Stats' in config:
+            if 'grand_move_count' in config['Stats']:
+                app.grand_move_count = int(config['Stats']['grand_move_count'])
+            if 'grand_duplicate_count' in config['Stats']:
+                app.grand_duplicate_count = int(config['Stats']['grand_duplicate_count'])
+            if 'move_action_time' in config['Stats']:
+                app.move_action_time = float(config['Stats']['move_action_time'])
+            if 'dupe_action_time' in config['Stats']:
+                app.dupe_action_time = float(config['Stats']['dupe_action_time'])
         return True
     except Exception as e:
         app.log(f"Error loading settings: {str(e)}")

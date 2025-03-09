@@ -217,6 +217,7 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
         original_path = matching_file_path if matching_file_path else dest_path
         app.duplicate_history_items[filename] = {"source": original_path, "duplicate": duplicate_path}
         app.duplicate_count += 1
+        app.grand_duplicate_count += 1
         app.update_duplicate_count()
         # Update history listbox
         app.refresh_history_listbox()
@@ -261,6 +262,7 @@ def _move_file(app: 'Main', source_path):
         app.update_history_list(os.path.basename(dest_path), dest_path)
         # Update counts
         app.move_count += 1
+        app.grand_move_count += 1
         app.movecount_var.set(f"Moved: {app.move_count}")
         app.count_folders_and_files()
         return True

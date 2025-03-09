@@ -29,12 +29,14 @@ from help_window import HelpWindow
 class Main:
     def __init__(self, root: tk.Tk):
         self.root = root
+        self.initialize_app_variables()
 
 
 #endregion
 #region - Variable Registration
 
 
+    def initialize_app_variables(self):
         # tk Variables
         self.working_dir_var = tk.StringVar(value="")  # The source folder
         self.status_label_var = tk.StringVar(value="Status: Idle")  # App status
@@ -106,6 +108,12 @@ class Main:
         # Help window
         self.help_window = HelpWindow(self.root)
 
+        # Stats
+        self.grand_move_count = 0  # Lifetime total of files moved
+        self.grand_duplicate_count = 0  # Lifetime total of duplicate files detected
+        self.move_action_time = 6  # Estimated time saved per move action in seconds
+        self.dupe_action_time = 11  # Estimated time saved per duplicate action in seconds
+
 
 #endregion
 #region - Interface Logic
@@ -137,6 +145,9 @@ class Main:
 
     def open_help_window(self):
         interface_logic.open_help_window(self)
+
+    def open_stats_popup(self):
+        interface_logic.open_stats_popup(self)
 
     def update_duplicate_count(self):
         interface_logic.update_duplicate_count(self)

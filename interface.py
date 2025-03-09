@@ -38,7 +38,7 @@ def _create_menubar(app: 'Main'):
     _create_edit_menu(app, menubar)
     _create_view_menu(app, menubar)
     _create_options_menu(app, menubar)
-    menubar.add_command(label="Help", command=app.open_help_window)
+    _create_help_menu(app, menubar)
 
 
 def _create_file_menu(app: 'Main', menubar: tk.Menu):
@@ -83,7 +83,7 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     file_rules_menu.add_checkbutton(label="Ignore Temp Files", variable=app.ignore_temp_files_var)
     file_rules_menu.add_checkbutton(label="Ignore Temp Firefox Files", variable=app.ignore_firefox_temp_files_var)
     file_rules_menu.add_separator()
-    file_rules_menu.add_checkbutton(label='Auto Extract Zip Files "*\\"', variable=app.auto_extract_zip_var)
+    file_rules_menu.add_checkbutton(label='Auto Extract Zip Files "*\\"', variable=app.auto_extract_zip_var)  # Extract to new folder ("*\")
     file_rules_menu.add_checkbutton(label="Auto Delete Zip Files After Extraction", variable=app.auto_delete_zip_var)
     file_rules_menu.add_separator()
     file_rules_menu.add_checkbutton(label="Overwrite on File Conflict", variable=app.overwrite_on_conflict_var)
@@ -125,6 +125,13 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     dupe_menu.add_radiobutton(label="100", variable=app.dupe_max_files_var, value=100)
     dupe_menu.add_radiobutton(label="1000", variable=app.dupe_max_files_var, value=1000)
     dupe_menu.add_radiobutton(label="10000", variable=app.dupe_max_files_var, value=10000)
+
+
+def _create_help_menu(app: 'Main', menubar: tk.Menu):
+    help_menu = tk.Menu(menubar, tearoff=0)
+    menubar.add_cascade(label="Help", menu=help_menu)
+    help_menu.add_command(label="Show Help", command=app.open_help_window)
+    help_menu.add_command(label="Show Stats", command=app.open_stats_popup)
 
 
 #endregion

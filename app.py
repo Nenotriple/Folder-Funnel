@@ -204,6 +204,14 @@ class Main:
 
 
 #endregion
+#region - Dupe scanner Logic
+
+
+    def show_duplicate_scanner(self):
+        duplicate_handler.show_duplicate_scanner(self)
+
+
+#endregion
 #region - Folder Watcher Logic
     def start_folder_watcher(self, auto_start=False):
         folder_watcher.start_folder_watcher(self, auto_start)

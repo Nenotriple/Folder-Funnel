@@ -61,6 +61,8 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
     edit_menu.add_command(label="Sync Source-and-Funnel Folders", command=app.sync_watch_folders)
     edit_menu.add_command(label="Process Move Queue", command=app.process_move_queue)
     edit_menu.add_separator()
+    edit_menu.add_command(label="Find Duplicate Files...", command=app.show_duplicate_scanner)
+    edit_menu.add_separator()
     edit_menu.add_command(label="Clear: Log", command=app.clear_log)
     edit_menu.add_command(label="Clear: History", command=app.clear_history)
 

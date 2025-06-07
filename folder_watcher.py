@@ -25,13 +25,14 @@ if TYPE_CHECKING:
 #region - Folder Watcher Functions
 
 
-def start_folder_watcher(app: 'Main'):
+def start_folder_watcher(app: 'Main', auto_start=False):
     """Start the folder watching process after verification"""
     if not app.check_working_dir_exists():
         return
-    confirm = messagebox.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (excluding files), and begin the Folder-Funnel process.\n\nContinue?")
-    if not confirm:
-        return
+    if not auto_start:
+        confirm = messagebox.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (excluding files), and begin the Folder-Funnel process.\n\nContinue?")
+        if not confirm:
+            return
     app.toggle_indicator(state="start")
     sync_watch_folders(app, silent="initial")
     _start_folder_watcher(app)

@@ -205,10 +205,8 @@ class Main:
 
 #endregion
 #region - Folder Watcher Logic
-
-
-    def start_folder_watcher(self):
-        folder_watcher.start_folder_watcher(self)
+    def start_folder_watcher(self, auto_start=False):
+        folder_watcher.start_folder_watcher(self, auto_start)
 
     def stop_folder_watcher(self):
         return folder_watcher.stop_folder_watcher(self)

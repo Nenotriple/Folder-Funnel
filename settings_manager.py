@@ -79,8 +79,10 @@ def load_settings(app: 'Main'):
         # General
         if 'General' in config:
             if 'working_directory' in config['General'] and os.path.exists(config['General']['working_directory']):
-                if messagebox.askyesno("Confirmation", "Reload last directory?"):
+                if messagebox.askyesno("Confirmation", "Reload last directory and start funnel process?"):
                     app.working_dir_var.set(config['General']['working_directory'])
+                    # Schedule the funnel process to start after UI is ready
+                    app.root.after(500, lambda: app.start_folder_watcher(auto_start=True))
             if 'text_log_wrap' in config['General']:
                 app.text_log_wrap_var.set(config.getboolean('General', 'text_log_wrap'))
             if 'history_mode' in config['General']:

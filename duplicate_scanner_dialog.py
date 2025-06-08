@@ -1,4 +1,4 @@
-#region - Imports
+#region Imports
 
 
 # Standard
@@ -6,6 +6,7 @@ import os
 import shutil
 import hashlib
 import threading
+import time
 from collections import defaultdict
 from typing import List, Dict
 
@@ -24,7 +25,7 @@ if TYPE_CHECKING:
 
 
 #endregion
-#region - Duplicate Scanning Tool
+#region DuplicateMatchingMode
 
 
 class DuplicateMatchingMode:
@@ -35,8 +36,13 @@ class DuplicateMatchingMode:
     FULL_MD5 = "Full MD5 Hash"
 
 
+#endregion
+#region DuplicateScannerDialog
+
+
 class DuplicateScannerDialog:
     """Dialog for comprehensive duplicate file scanning with configurable options."""
+
     def __init__(self, parent, app: 'Main'):
         self.parent = parent
         self.app = app
@@ -45,12 +51,15 @@ class DuplicateScannerDialog:
         self.is_scanning = False
         self.scan_results = {}
         self.selected_folder = ""
-        self.duplicate_groups = {}  # Store found duplicates
+        self.duplicate_groups = {}
         self.create_dialog()
 
 
+    #region GUI
+
+
+    # --- Dialog Creation ---
     def create_dialog(self):
-        """Create and configure the duplicate scanner dialog."""
         self.dialog = tk.Toplevel(self.parent)
         self.dialog.title("Duplicate File Scanner")
         self.dialog.geometry("700x500")
@@ -58,43 +67,42 @@ class DuplicateScannerDialog:
         self.dialog.transient(self.parent)
         self.dialog.grab_set()
         self.dialog.protocol("WM_DELETE_WINDOW", self.on_close)
-        self.create_widgets()
+        self.create_all_widgets()
         self.center_dialog()
 
 
+    # --- Center Dialog ---
     def center_dialog(self):
-        """Center the dialog on the parent window."""
         self.dialog.update_idletasks()
         x = (self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.dialog.winfo_width() // 2))
         y = (self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.dialog.winfo_height() // 2))
         self.dialog.geometry(f"+{x}+{y}")
 
 
-    def create_widgets(self):
-        """Create all widgets for the dialog."""
+    # --- All Widgets ---
+    def create_all_widgets(self):
         # Configure main dialog grid
         self.dialog.grid_rowconfigure(0, weight=1)
         self.dialog.grid_columnconfigure(0, weight=1)
         # Main container
         main_frame = ttk.Frame(self.dialog, padding="10")
         main_frame.grid(row=0, column=0, sticky="nsew")
-        # Configure main frame grid
-        main_frame.grid_rowconfigure(3, weight=1)  # Results frame row
+        main_frame.grid_rowconfigure(3, weight=1)
         main_frame.grid_columnconfigure(0, weight=1)
         # 1. Folder Selection (row 0)
         self.create_folder_selection_frame(main_frame)
         # 2. Scan Configuration (row 1)
         self.create_scan_config_frame(main_frame)
-        # 3. Control Panel - Progress & Actions (row 2)
+        # 3. Control Panel (row 2)
         self.create_control_panel_frame(main_frame)
-        # 4. Results Display (row 3) - expandable
+        # 4. Results Display (row 3)
         self.create_results_frame(main_frame)
         # 5. Status Bar (row 4)
         self.create_status_bar(main_frame)
 
 
+    # --- Folder Selection ---
     def create_folder_selection_frame(self, parent):
-        """Create the folder selection section."""
         folder_frame = ttk.Frame(parent)
         folder_frame.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         folder_frame.grid_columnconfigure(1, weight=1)
@@ -107,13 +115,12 @@ class DuplicateScannerDialog:
         self.browse_button.grid(row=0, column=2)
 
 
+    # --- Scan Config ---
     def create_scan_config_frame(self, parent):
-        """Create the scan configuration section."""
         config_frame = ttk.LabelFrame(parent, text="Scan Configuration", padding="8")
         config_frame.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         config_frame.grid_columnconfigure(1, weight=1)
         config_frame.grid_columnconfigure(3, weight=1)
-        # Row 0: Matching mode and Include subfolders
         ttk.Label(config_frame, text="Method:").grid(row=0, column=0, sticky="w", padx=(0, 5))
         self.matching_mode_var = tk.StringVar(value=DuplicateMatchingMode.SIZE_ONLY)
         matching_combo = ttk.Combobox(config_frame, textvariable=self.matching_mode_var, values=[DuplicateMatchingMode.SIZE_ONLY, DuplicateMatchingMode.SIZE_AND_NAME, DuplicateMatchingMode.SIZE_AND_MD5, DuplicateMatchingMode.FULL_MD5], state="readonly", width=20)
@@ -121,15 +128,14 @@ class DuplicateScannerDialog:
         self.include_subfolders_var = tk.BooleanVar(value=True)
         include_cb = ttk.Checkbutton(config_frame, text="Include subfolders", variable=self.include_subfolders_var)
         include_cb.grid(row=0, column=2, columnspan=2, sticky="w")
-        # Row 1: Minimum file size
         ttk.Label(config_frame, text="Min size (KB):").grid(row=1, column=0, sticky="w", padx=(0, 5), pady=(8, 0))
         self.min_size_var = tk.IntVar(value=1)
         min_size_spin = ttk.Spinbox(config_frame, from_=0, to=999999, textvariable=self.min_size_var, width=12)
         min_size_spin.grid(row=1, column=1, sticky="w", pady=(8, 0))
 
 
+    # --- Control Panel ---
     def create_control_panel_frame(self, parent):
-        """Create the control panel with scan controls, progress, and actions."""
         control_frame = ttk.Frame(parent)
         control_frame.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         control_frame.grid_columnconfigure(0, weight=1)
@@ -154,33 +160,38 @@ class DuplicateScannerDialog:
         self.delete_button.grid(row=0, column=0, padx=(0, 8))
         self.move_button = ttk.Button(action_frame, text="Move Duplicates", command=self.move_duplicates, state="disabled")
         self.move_button.grid(row=0, column=1, padx=(0, 8))
-        self.interactive_button = ttk.Button(action_frame, text="Interactive Review", command=self.interactive_review, state="disabled")
+        self.interactive_button = ttk.Button(action_frame, text="Interactive Review", command=self.open_interactive_review, state="disabled")
         self.interactive_button.grid(row=0, column=2, padx=(0, 15))
         # Action status info
         self.action_info_var = tk.StringVar(value="Scan for duplicates first")
         action_info_label = ttk.Label(action_frame, textvariable=self.action_info_var, font=("TkDefaultFont", 8), foreground="gray")
         action_info_label.grid(row=0, column=3, sticky="w")
 
+
+    # --- Results Frame ---
     def create_results_frame(self, parent):
-        """Create the results display section."""
         results_frame = ttk.LabelFrame(parent, text="Scan Results", padding="5")
         results_frame.grid(row=3, column=0, sticky="nsew")
         results_frame.grid_rowconfigure(0, weight=1)
         results_frame.grid_columnconfigure(0, weight=1)
-        # Results text with scrollbar
+        # Results text
         self.results_text = scrolledtext.ScrolledText(results_frame, wrap=tk.WORD, height=12)
         self.results_text.grid(row=0, column=0, sticky="nsew")
 
 
+    # --- Status Bar ---
     def create_status_bar(self, parent):
-        """Create the status bar."""
         self.status_var = tk.StringVar(value="Ready to scan")
         status_label = ttk.Label(parent, textvariable=self.status_var, font=("TkDefaultFont", 8), foreground="gray")
         status_label.grid(row=4, column=0, sticky="ew", pady=(8, 0))
 
 
+    #endregion
+    #region Scan Logic
+
+
+    # --- Scan Control ---
     def browse_folder(self):
-        """Open folder selection dialog."""
         folder = filedialog.askdirectory(title="Select folder to scan for duplicates", initialdir=self.folder_var.get())
         if folder:
             self.folder_var.set(folder)
@@ -188,7 +199,6 @@ class DuplicateScannerDialog:
 
 
     def start_scan(self):
-        """Start the duplicate scanning process."""
         if not self.selected_folder or not os.path.exists(self.selected_folder):
             messagebox.showerror("Error", "Please select a valid folder to scan.")
             return
@@ -204,20 +214,20 @@ class DuplicateScannerDialog:
         self.action_info_var.set("Scanning in progress...")
         self.results_text.delete(1.0, tk.END)
         self.progress_var.set(0)
+        self.scan_start_time = time.time()
         # Start scan in separate thread
         self.scan_thread = threading.Thread(target=self.perform_scan, daemon=True)
         self.scan_thread.start()
 
 
     def cancel_scan(self):
-        """Cancel the current scan."""
         self.is_scanning = False
         self.status_var.set("Cancelling scan...")
 
 
     def perform_scan(self):
-        """Perform the actual duplicate scan."""
         try:
+            self.scan_start_time = time.time()
             self.status_var.set("Scanning for files...")
             self.app.root.update()
             # Get all files
@@ -240,8 +250,33 @@ class DuplicateScannerDialog:
             self.dialog.after(0, lambda: self.scan_complete(error_msg, is_error=True))
 
 
+    def scan_complete(self, message: str, is_error: bool = False):
+        self.is_scanning = False
+        self.scan_button.config(state="normal")
+        self.cancel_button.config(state="disabled")
+        self.browse_button.config(state="normal")
+        self.progress_var.set(100 if not is_error else 0)
+        self.status_var.set(message)
+        if is_error:
+            messagebox.showerror("Scan Error", message)
+            self.update_action_buttons(False)
+            # Reset action info for error case
+            self.action_info_var.set("Scan for duplicates first")
+
+
+    def on_close(self):
+        if self.is_scanning:
+            if messagebox.askyesno("Cancel Scan", "A scan is in progress. Cancel and close?"):
+                self.is_scanning = False
+                if self.scan_thread and self.scan_thread.is_alive():
+                    self.scan_thread.join(timeout=1.0)
+            else:
+                return
+        self.dialog.destroy()
+
+
+    # --- File Gathering ---
     def get_all_files(self) -> List[str]:
-        """Get all files to be scanned."""
         files = []
         min_size_bytes = self.min_size_var.get() * 1024  # Convert KB to bytes
         if self.include_subfolders_var.get():
@@ -256,7 +291,7 @@ class DuplicateScannerDialog:
                         if os.path.getsize(filepath) >= min_size_bytes:
                             files.append(filepath)
                     except (OSError, IOError):
-                        continue  # Skip files we can't access
+                        continue
         else:
             try:
                 for filename in os.listdir(self.selected_folder):
@@ -274,8 +309,8 @@ class DuplicateScannerDialog:
         return files
 
 
+    # --- Duplicate Finding ---
     def find_duplicates(self, files: List[str]) -> Dict[str, List[str]]:
-        """Find duplicate files based on the selected matching mode."""
         duplicates = {}
         matching_mode = self.matching_mode_var.get()
         total_files = len(files)
@@ -292,7 +327,6 @@ class DuplicateScannerDialog:
 
 
     def find_duplicates_by_size(self, files: List[str], total_files: int) -> Dict[str, List[str]]:
-        """Find duplicates based on file size only."""
         size_groups = defaultdict(list)
         for i, filepath in enumerate(files):
             if not self.is_scanning:
@@ -300,19 +334,14 @@ class DuplicateScannerDialog:
             try:
                 size = os.path.getsize(filepath)
                 size_groups[f"size_{size}"].append(filepath)
-                # Update progress
-                progress = (i + 1) / total_files * 100
-                self.progress_var.set(progress)
-                if i % 10 == 0:  # Update status every 10 files
-                    self.status_var.set(f"Checking file sizes... {i+1}/{total_files}")
-                    self.app.root.update()
+                if i % 10 == 0:
+                    self.update_progress(i + 1, total_files, self.scan_start_time, "Checking file sizes...")
             except (OSError, IOError):
                 continue
         return dict(size_groups)
 
 
     def find_duplicates_by_size_and_name(self, files: List[str], total_files: int) -> Dict[str, List[str]]:
-        """Find duplicates based on file size and filename."""
         size_name_groups = defaultdict(list)
         for i, filepath in enumerate(files):
             if not self.is_scanning:
@@ -322,19 +351,14 @@ class DuplicateScannerDialog:
                 filename = os.path.basename(filepath).lower()
                 key = f"size_{size}_name_{filename}"
                 size_name_groups[key].append(filepath)
-                # Update progress
-                progress = (i + 1) / total_files * 100
-                self.progress_var.set(progress)
                 if i % 10 == 0:
-                    self.status_var.set(f"Checking size and names... {i+1}/{total_files}")
-                    self.app.root.update()
+                    self.update_progress(i + 1, total_files, self.scan_start_time, "Checking size and names...")
             except (OSError, IOError):
                 continue
         return dict(size_name_groups)
 
 
     def find_duplicates_by_size_then_md5(self, files: List[str], total_files: int) -> Dict[str, List[str]]:
-        """Find duplicates by first grouping by size, then checking MD5 for same-size files."""
         # First group by size
         size_groups = defaultdict(list)
         for i, filepath in enumerate(files):
@@ -343,18 +367,15 @@ class DuplicateScannerDialog:
             try:
                 size = os.path.getsize(filepath)
                 size_groups[size].append(filepath)
-                # Update progress for first pass
-                progress = (i + 1) / total_files * 50  # First 50% for size grouping
-                self.progress_var.set(progress)
                 if i % 10 == 0:
-                    self.status_var.set(f"Grouping by size... {i+1}/{total_files}")
-                    self.app.root.update()
+                    self.update_progress(i + 1, total_files, self.scan_start_time, "Grouping by size...", percent=0.5)
             except (OSError, IOError):
                 continue
         # Now check MD5 for groups with more than one file
         md5_groups = {}
         processed_files = 0
         files_to_hash = sum(len(group) for group in size_groups.values() if len(group) > 1)
+        hash_start_time = time.time()
         for size, file_group in size_groups.items():
             if not self.is_scanning:
                 break
@@ -367,12 +388,8 @@ class DuplicateScannerDialog:
                         md5_hash = self.get_md5_hash(filepath)
                         hash_groups[f"size_{size}_md5_{md5_hash}"].append(filepath)
                         processed_files += 1
-                        # Update progress for second pass
-                        progress = 50 + (processed_files / files_to_hash * 50)
-                        self.progress_var.set(progress)
                         if processed_files % 5 == 0:
-                            self.status_var.set(f"Computing hashes... {processed_files}/{files_to_hash}")
-                            self.app.root.update()
+                            self.update_progress(processed_files, files_to_hash, hash_start_time, "Computing hashes...")
                     except (OSError, IOError):
                         continue
                 md5_groups.update(hash_groups)
@@ -383,7 +400,6 @@ class DuplicateScannerDialog:
 
 
     def find_duplicates_by_md5(self, files: List[str], total_files: int) -> Dict[str, List[str]]:
-        """Find duplicates based on full MD5 hash."""
         md5_groups = defaultdict(list)
         for i, filepath in enumerate(files):
             if not self.is_scanning:
@@ -391,41 +407,25 @@ class DuplicateScannerDialog:
             try:
                 md5_hash = self.get_md5_hash(filepath)
                 md5_groups[f"md5_{md5_hash}"].append(filepath)
-                # Update progress
-                progress = (i + 1) / total_files * 100
-                self.progress_var.set(progress)
-                if i % 5 == 0:  # Update more frequently for MD5 since it's slower
-                    self.status_var.set(f"Computing MD5 hashes... {i+1}/{total_files}")
-                    self.app.root.update()
+                if i % 5 == 0:
+                    self.update_progress(i + 1, total_files, self.scan_start_time, "Computing MD5 hashes...")
             except (OSError, IOError):
                 continue
         return dict(md5_groups)
 
 
-    def get_md5_hash(self, filepath: str, chunk_size: int = 8192) -> str:
-        """Calculate MD5 hash of a file."""
-        hash_md5 = hashlib.md5()
-        with open(filepath, "rb") as f:
-            while chunk := f.read(chunk_size):
-                hash_md5.update(chunk)
-        return hash_md5.hexdigest()
-
-
-    def format_file_size(self, size_bytes: int) -> str:
-        """Format file size in human readable format."""
-        if size_bytes == 0:
-            return "0 B"
-        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
-            if size_bytes < 1024:
-                return f"{size_bytes:.1f} {unit}"
-            size_bytes /= 1024
-        return f"{size_bytes:.1f} PB"
+    # --- Progress & Display ---
+    def update_progress(self, current, total, start_time, status_prefix, percent=1.0):
+        progress = (current / total) * (100 * percent)
+        self.progress_var.set(progress)
+        eta = self.get_eta(current, total, start_time, percent)
+        self.status_var.set(f"{status_prefix} {current}/{total} ({eta})")
+        self.app.root.update()
 
 
     def display_results(self, duplicates: Dict[str, List[str]], total_files: int):
-        """Display the scan results."""
         self.results_text.delete(1.0, tk.END)
-        self.duplicate_groups = duplicates  # Store for actions
+        self.duplicate_groups = duplicates
         if not duplicates:
             self.results_text.insert(tk.END, f"No duplicate files found!\n\n")
             self.results_text.insert(tk.END, f"Scanned {total_files} files in total.\n")
@@ -464,9 +464,10 @@ class DuplicateScannerDialog:
         self.results_text.insert(tk.END, f"Total wasted space: {self.format_file_size(total_wasted_space)}\n")
         self.results_text.insert(tk.END, f"Matching mode used: {self.matching_mode_var.get()}\n")
         self.scan_complete(f"Scan completed - found {duplicate_groups} duplicate groups")
-        self.update_action_buttons(True, duplicate_files - duplicate_groups)  # Subtract originals
+        self.update_action_buttons(True, duplicate_files - duplicate_groups)
+
+
     def update_action_buttons(self, enable: bool, duplicate_count: int = 0):
-        """Enable or disable action buttons based on scan results."""
         if enable and duplicate_count > 0:
             self.delete_button.config(state="normal")
             self.move_button.config(state="normal")
@@ -482,8 +483,8 @@ class DuplicateScannerDialog:
                 self.action_info_var.set("Scan for duplicates first")
 
 
+    # --- File Actions ---
     def delete_duplicates(self):
-        """Delete duplicate files, keeping the first file in each group."""
         if not self.duplicate_groups:
             messagebox.showwarning("No Duplicates", "No duplicate files to delete.")
             return
@@ -504,7 +505,6 @@ class DuplicateScannerDialog:
 
 
     def move_duplicates(self):
-        """Move duplicate files to a storage folder."""
         if not self.duplicate_groups:
             messagebox.showwarning("No Duplicates", "No duplicate files to move.")
             return
@@ -534,21 +534,12 @@ class DuplicateScannerDialog:
         self.perform_file_action("move", files_to_move, storage_folder)
 
 
-    def interactive_review(self):
-        """Open interactive duplicate review dialog."""
-        if not self.duplicate_groups:
-            messagebox.showwarning("No Duplicates", "No duplicate files to review.")
-            return
-        # Create and show the interactive review dialog
-        review_dialog = InteractiveDuplicateReviewDialog(self.dialog, self.duplicate_groups, self.selected_folder, self.app)
-
-
     def perform_file_action(self, action: str, files: List[str], destination: str = None):
-        """Perform the specified action on files with progress tracking."""
         total_files = len(files)
         success_count = 0
         error_count = 0
         errors = []
+        action_start_time = time.time()
         # Disable buttons during action
         self.delete_button.config(state="disabled")
         self.move_button.config(state="disabled")
@@ -573,11 +564,12 @@ class DuplicateScannerDialog:
                     error_count += 1
                     error_msg = f"{os.path.basename(filepath)}: {str(e)}"
                     errors.append(error_msg)
-                # Update progress
                 progress = (i + 1) / total_files * 100
                 self.progress_var.set(progress)
                 action_text = "Deleting" if action == "delete" else "Moving"
-                self.status_var.set(f"{action_text} files... {i+1}/{total_files}")
+                eta = self.get_eta(i + 1, total_files, action_start_time)
+                self.status_var.set(f"{action_text} files... {i+1}/{total_files} ({eta})")
+                self.action_info_var.set(f"{action_text}... {i+1}/{total_files} ({eta})")
                 self.app.root.update()
         finally:
             # Re-enable buttons
@@ -606,35 +598,57 @@ class DuplicateScannerDialog:
         self.update_action_buttons(False)
 
 
-    def scan_complete(self, message: str, is_error: bool = False):
-        """Called when scan is complete or cancelled."""
-        self.is_scanning = False
-        self.scan_button.config(state="normal")
-        self.cancel_button.config(state="disabled")
-        self.browse_button.config(state="normal")
-        self.progress_var.set(100 if not is_error else 0)
-        self.status_var.set(message)
-        if is_error:
-            messagebox.showerror("Scan Error", message)
-            self.update_action_buttons(False)
-            # Reset action info for error case
-            self.action_info_var.set("Scan for duplicates first")
+    # --- Utility ---
+    def get_md5_hash(self, filepath: str, chunk_size: int = 8192) -> str:
+        hash_md5 = hashlib.md5()
+        with open(filepath, "rb") as f:
+            while chunk := f.read(chunk_size):
+                hash_md5.update(chunk)
+        return hash_md5.hexdigest()
 
 
-    def on_close(self):
-        """Handle dialog close event."""
-        if self.is_scanning:
-            if messagebox.askyesno("Cancel Scan", "A scan is in progress. Cancel and close?"):
-                self.is_scanning = False
-                if self.scan_thread and self.scan_thread.is_alive():
-                    self.scan_thread.join(timeout=1.0)
-            else:
-                return
-        self.dialog.destroy()
+    def format_file_size(self, size_bytes: int) -> str:
+        if size_bytes == 0:
+            return "0 B"
+        for unit in ['B', 'KB', 'MB', 'GB', 'TB']:
+            if size_bytes < 1024:
+                return f"{size_bytes:.1f} {unit}"
+            size_bytes /= 1024
+        return f"{size_bytes:.1f} PB"
+
+
+    def get_eta(self, current: int, total: int, start_time: float, percent: float = 1.0) -> str:
+        if current == 0:
+            return "estimating..."
+        elapsed = time.time() - start_time
+        if elapsed < 0.1:
+            return "estimating..."
+        total_est = elapsed / current * (total * percent)
+        remaining = max(total_est - elapsed, 0)
+        if remaining < 2:
+            return "less than 2s"
+        mins, secs = divmod(int(remaining), 60)
+        if mins:
+            return f"ETA {mins}m {secs}s"
+        return f"ETA {secs}s"
+
+
+    def open_interactive_review(self):
+        if not self.duplicate_groups:
+            messagebox.showwarning("No Duplicates", "No duplicate files to review.")
+            return
+        # Create and show the interactive review dialog
+        review_dialog = InteractiveDuplicateReviewDialog(self.dialog, self.duplicate_groups, self.selected_folder, self.app)
+
+
+    #endregion
+
+
+#endregion
+#region show_duplicate_scanner
 
 
 def show_duplicate_scanner(app: 'Main'):
-    """Show the duplicate scanner dialog."""
     if not app.working_dir_var.get():
         messagebox.showwarning("No Source Folder", "Please select a source folder first from File > Select Source Path...")
         return

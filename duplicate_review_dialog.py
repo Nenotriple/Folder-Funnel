@@ -1,4 +1,4 @@
-#region - Imports
+#region Imports
 
 
 # Standard
@@ -13,14 +13,15 @@ from tkinter import messagebox, ttk, filedialog
 # Local imports
 from scalable_image_label import ScalableImageLabel
 
-# Type checking
-from typing import TYPE_CHECKING
-if TYPE_CHECKING:
-    from app import Main
+
+#endregion
+#region InteractiveDuplicateReviewDialog
 
 
 class InteractiveDuplicateReviewDialog:
     """Dialog for interactive review of duplicate files, focused on images and responsive layout."""
+    #region GUI Setup
+
     def __init__(self, parent, duplicate_groups, selected_folder, app):
         self.parent = parent
         self.duplicate_groups = [group for group in duplicate_groups.values() if len(group) > 1]
@@ -42,10 +43,10 @@ class InteractiveDuplicateReviewDialog:
         self.dialog.resizable(True, True)
         self.dialog.grab_set()
         self.dialog.protocol("WM_DELETE_WINDOW", self.on_close)
-        # Main layout: group info (top), image grid (center), navigation/actions (bottom)
         self.dialog.grid_rowconfigure(1, weight=1)
         self.dialog.grid_columnconfigure(0, weight=1)
-        # --- Top: Group info (top), preview size, and fast delete toggle ---
+
+        # --- Top ---
         top = ttk.Frame(self.dialog, padding=(8, 4))
         top.grid(row=0, column=0, sticky="ew")
         top.grid_columnconfigure(1, weight=1)
@@ -61,7 +62,8 @@ class InteractiveDuplicateReviewDialog:
         # Fast delete checkbutton
         fast_delete_cb = ttk.Checkbutton(top, text="Fast delete (no confirm/success)", variable=self.fast_delete_var)
         fast_delete_cb.grid(row=0, column=2, sticky="e", padx=(16, 0))
-        # --- Center: Scrollable image grid ---
+
+        # --- Center ---
         center = ttk.Frame(self.dialog)
         center.grid(row=1, column=0, sticky="nsew", padx=8, pady=4)
         center.grid_rowconfigure(0, weight=1)
@@ -76,7 +78,8 @@ class InteractiveDuplicateReviewDialog:
         self.grid_frame.bind("<Configure>", self._on_frame_configure)
         self.canvas.bind("<Configure>", self._on_canvas_configure)
         self._bind_mousewheel_events()
-        # --- Bottom: Navigation and group actions ---
+
+        # --- Bottom ---
         bottom = ttk.Frame(self.dialog, padding=(8, 8))
         bottom.grid(row=2, column=0, sticky="ew")
         bottom.grid_columnconfigure(1, weight=1)
@@ -95,6 +98,7 @@ class InteractiveDuplicateReviewDialog:
         self.show_current_group()
 
 
+    # --- Dialog positioning ---
     def center_dialog(self):
         self.dialog.update_idletasks()
         x = (self.dialog.winfo_screenwidth() // 2) - (self.dialog.winfo_width() // 2)
@@ -102,6 +106,7 @@ class InteractiveDuplicateReviewDialog:
         self.dialog.geometry(f"+{x}+{y}")
 
 
+    # --- Canvas/scroll handling ---
     def _on_frame_configure(self, event=None):
         self.canvas.configure(scrollregion=self.canvas.bbox("all"))
 
@@ -119,6 +124,7 @@ class InteractiveDuplicateReviewDialog:
         self.dialog.bind("<MouseWheel>", _on_mousewheel)
 
 
+    # --- Group display ---
     def show_current_group(self, redraw_only=False):
         if not self.duplicate_groups or self.current_group_index >= len(self.duplicate_groups):
             self.on_close()
@@ -210,6 +216,10 @@ class InteractiveDuplicateReviewDialog:
         self.show_current_group()
 
 
+    #endregion
+    #region File Operations
+
+
     def format_file_size(self, size_bytes):
         if size_bytes == 0:
             return "0 B"
@@ -233,7 +243,6 @@ class InteractiveDuplicateReviewDialog:
                 os.remove(file_path)
                 self.remove_file_from_group(file_path)
                 self.app.log(f"Deleted duplicate: {filename}")
-                # No success message
             except Exception as e:
                 messagebox.showerror("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
         else:
@@ -279,39 +288,6 @@ class InteractiveDuplicateReviewDialog:
             if self.current_group_index >= len(self.duplicate_groups):
                 self.current_group_index = max(0, len(self.duplicate_groups) - 1)
         self.show_current_group()
-
-
-    def open_file_location(self, file_path):
-        try:
-            os.startfile(os.path.dirname(file_path))
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not open location:\n{str(e)}", parent=self.dialog)
-
-
-    def open_image_file(self, file_path):
-        try:
-            os.startfile(file_path)
-        except Exception as e:
-            messagebox.showerror("Error", f"Could not open image:\n{str(e)}", parent=self.dialog)
-
-
-    def previous_group(self):
-        if self.current_group_index > 0:
-            self.current_group_index -= 1
-            self.show_current_group()
-
-
-    def next_group(self):
-        if self.current_group_index < len(self.duplicate_groups) - 1:
-            self.current_group_index += 1
-            self.show_current_group()
-
-
-    def skip_group(self):
-        if self.current_group_index < len(self.duplicate_groups) - 1:
-            self.next_group()
-        else:
-            self.on_close()
 
 
     def delete_all_but_first(self):
@@ -365,5 +341,46 @@ class InteractiveDuplicateReviewDialog:
                 self.show_current_group()
 
 
+    #endregion
+    #region Navigation/Helpers
+
+
+    def open_file_location(self, file_path):
+        try:
+            os.startfile(os.path.dirname(file_path))
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open location:\n{str(e)}", parent=self.dialog)
+
+
+    def open_image_file(self, file_path):
+        try:
+            os.startfile(file_path)
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open image:\n{str(e)}", parent=self.dialog)
+
+
+    def previous_group(self):
+        if self.current_group_index > 0:
+            self.current_group_index -= 1
+            self.show_current_group()
+
+
+    def next_group(self):
+        if self.current_group_index < len(self.duplicate_groups) - 1:
+            self.current_group_index += 1
+            self.show_current_group()
+
+
+    def skip_group(self):
+        if self.current_group_index < len(self.duplicate_groups) - 1:
+            self.next_group()
+        else:
+            self.on_close()
+
+
     def on_close(self):
         self.dialog.destroy()
+
+
+    #endregion
+#endregion

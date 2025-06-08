@@ -28,12 +28,13 @@ class InteractiveDuplicateReviewDialog:
         self.app = app
         self.current_group_index = 0
         self.preview_sizes = {
-            "Small": (80, 80),
-            "Medium": (140, 140),
-            "Large": (200, 200),
-            "Extra Large": (300, 300)
+            "Small": (128, 128),
+            "Medium": (200, 200),
+            "Large": (256, 256),
+            "Extra Large": (512, 512),
+            "Giant": (768, 768)
         }
-        self.current_preview_size = tk.StringVar(value="Medium")
+        self.current_preview_size = tk.StringVar(value="Large")
         self.fast_delete_var = tk.BooleanVar(value=False)
         self.dialog = tk.Toplevel(parent)
         self.dialog.title("Interactive Duplicate Review")
@@ -200,9 +201,9 @@ class InteractiveDuplicateReviewDialog:
 
 
     def create_action_buttons_compact(self, parent, file_path):
-        ttk.Button(parent, text="Delete", width=7, command=lambda fp=file_path: self.delete_file(fp)).pack(side="left", padx=1)
-        ttk.Button(parent, text="Move", width=7, command=lambda fp=file_path: self.move_file(fp)).pack(side="left", padx=1)
-        ttk.Button(parent, text="Skip", width=7, command=lambda fp=file_path: self.ignore_file(fp)).pack(side="left", padx=1)
+        ttk.Button(parent, text="Delete", command=lambda fp=file_path: self.delete_file(fp)).pack(side="left", fill="x", expand=True, padx=1)
+        ttk.Button(parent, text="Move", command=lambda fp=file_path: self.move_file(fp)).pack(side="left", fill="x", expand=True, padx=1)
+        ttk.Button(parent, text="Skip", command=lambda fp=file_path: self.ignore_file(fp)).pack(side="left", fill="x", expand=True, padx=1)
 
 
     def on_preview_size_changed(self, event=None):

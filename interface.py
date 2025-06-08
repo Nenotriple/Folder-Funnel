@@ -207,7 +207,9 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     textlog_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
     Tip(textlog_menubutton, "Log of events and actions", delay=250, pady=25, origin="widget")
     # Text
-    app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1)
+    app.text_log = scrolledtext.ScrolledText(
+        text_frame, wrap="word", state="disable", width=1, height=1, font=("Consolas", 10)
+    )
     app.text_log.pack(fill="both", expand=True)
     app.log("Welcome to Folder-Funnel - Please see the help menu for more information.")
 
@@ -228,7 +230,7 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     history_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     Tip(app.history_menubutton, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
     # Listbox
-    app.history_listbox = tk.Listbox(list_frame, width=1, height=1)
+    app.history_listbox = tk.Listbox(list_frame, width=1, height=1, font=("Consolas", 10))
     app.history_listbox.pack(fill="both", expand=True)
     app.history_listbox.bind("<Button-3>", app.show_history_context_menu)
     # Context menu

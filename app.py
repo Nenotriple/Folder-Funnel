@@ -61,6 +61,7 @@ class Main:
         # Initialize UI objects
         self.dir_entry: Optional[ttk.Entry] = None
         self.dir_entry_tooltip: Optional[tk.Widget] = None
+        self.browse_button: Optional[ttk.Button] = None
         self.start_button: Optional[ttk.Button] = None
         self.stop_button: Optional[ttk.Button] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None

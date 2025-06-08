@@ -79,15 +79,22 @@ def toggle_button_state(app: 'Main', state="idle"):
     """Toggle the state of start and stop buttons based on application state."""
     start = app.start_button
     stop = app.stop_button
+    browse = app.browse_button
     if state == "running":
         start.configure(state="disabled")
         stop.configure(state="normal")
+        if browse:
+            browse.configure(state="disabled")
     elif state == "idle":
         start.configure(state="normal")
         stop.configure(state="disabled")
+        if browse:
+            browse.configure(state="normal")
     elif state == "disabled":
         start.configure(state=state)
         stop.configure(state=state)
+        if browse:
+            browse.configure(state=state)
 
 
 def toggle_indicator(app: 'Main', state=None):

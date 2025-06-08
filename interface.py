@@ -164,9 +164,9 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     app.dir_entry.pack(side="left", fill="x", expand=True)
     app.dir_entry_tooltip = Tip(app.dir_entry, tip_text, delay=250, pady=25, origin="widget")
     # Browse
-    browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=app.select_working_dir)
-    browse_button.pack(side="left")
-    Tip(browse_button, tip_text, delay=250, pady=25, origin="widget")
+    app.browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=app.select_working_dir)
+    app.browse_button.pack(side="left")
+    Tip(app.browse_button, tip_text, delay=250, pady=25, origin="widget")
     # Open
     open_button = ttk.Button(dir_selection_frame, text="Open", command=app.open_folder)
     open_button.pack(side="left")

@@ -17,6 +17,7 @@ Folder-Funnel is designed to speed up the process of saving files to a specific 
 4) Click *Stop* to remove the funnel folder *(and any detected duplicates)* and end the process.
 
 ### Basic Tips
+- Scan for duplicates via `Edit > Find Duplicate Files...`, allowing you review and manage duplicate files.
 - View *Moved* or *Duplicate* history via `View > History View`.
 - Double or right-click items in the *'History'* list to open or locate them quickly.
 - Clear logs or history anytime under the *'Edit'* menu.
@@ -62,14 +63,14 @@ Folder-Funnel is designed to speed up the process of saving files to a specific 
 
 ## 🚀 Installation
 
-Created and tested on: ![Static Badge](https://img.shields.io/badge/Windows-blue)
+Created and tested on: ![Static Badge](https://img.shields.io/badge/Windows-blue) ![Static Badge](https://img.shields.io/badge/Python-3.10.6-green)
 
 ### From Release
 1. Download the [latest release](https://github.com/Nenotriple/Folder-Funnel/releases/latest).
 2. Run the portable executable file.
 
 ### From Source
-1. Ensure [Python](https://www.python.org/downloads/) is installed on your system.
+1. Ensure [Python 3.10](https://www.python.org/downloads/) is installed on your system.
 2. Clone the repository:
    ```bash
    git clone https://github.com/Nenotriple/Folder-Funnel.git
@@ -79,6 +80,6 @@ Created and tested on: ![Static Badge](https://img.shields.io/badge/Windows-blue
    - Install from requirements.txt.
    - Launch the Folder-Funnel application.
 
-### Build from Source
+### Build executable
 1. Follow the 'From Source' instructions.
 2. See the [Build Instructions](docs/Build_Instructions.md) for more information on building the executable.

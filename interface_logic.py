@@ -76,23 +76,19 @@ def toggle_text_wrap(app: 'Main'):
 
 
 def toggle_button_state(app: 'Main', state="idle"):
-    """Toggle the state of start and stop buttons based on application state."""
-    start = app.start_button
-    stop = app.stop_button
+    """Toggle the state of start/stop button based on application state."""
+    button = app.start_stop_button
     browse = app.browse_button
     if state == "running":
-        start.configure(state="disabled")
-        stop.configure(state="normal")
+        button.configure(text="Stop", command=app.stop_folder_watcher, state="normal")
         if browse:
             browse.configure(state="disabled")
     elif state == "idle":
-        start.configure(state="normal")
-        stop.configure(state="disabled")
+        button.configure(text="Start", command=app.start_folder_watcher, state="normal")
         if browse:
             browse.configure(state="normal")
     elif state == "disabled":
-        start.configure(state=state)
-        stop.configure(state=state)
+        button.configure(state=state)
         if browse:
             browse.configure(state=state)
 

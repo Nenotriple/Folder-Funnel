@@ -148,7 +148,6 @@ def _create_control_row(app: 'Main'):
     ttk.Separator(control_frame, orient="horizontal").pack(side="bottom", fill="x")
     # Widgets
     _create_dir_entry(app, control_frame)
-    _create_buttons(app, control_frame)
 
 
 def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
@@ -171,16 +170,10 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     open_button = ttk.Button(dir_selection_frame, text="Open", command=app.open_folder)
     open_button.pack(side="left")
     Tip(open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
-
-
-def _create_buttons(app: 'Main', control_frame: tk.Frame):
-    app.start_button = ttk.Button(control_frame, text="Start", command=app.start_folder_watcher)
-    app.start_button.pack(side="left")
-    Tip(app.start_button, "Start the Folder-Funnel process", delay=250, pady=25, origin="widget")
-    # Stop
-    app.stop_button = ttk.Button(control_frame, text="Stop", state="disabled", command=app.stop_folder_watcher)
-    app.stop_button.pack(side="left")
-    Tip(app.stop_button, "Stop the Folder-Funnel process and remove temp folders", delay=250, pady=25, origin="widget")
+    # Start/Stop
+    app.start_stop_button = ttk.Button(control_frame, text="Start", command=app.start_folder_watcher)
+    app.start_stop_button.pack(side="left")
+    Tip(app.start_stop_button, "Start/Stop the Folder-Funnel process", delay=250, pady=25, origin="widget")
 
 
 #endregion

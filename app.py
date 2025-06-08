@@ -62,8 +62,7 @@ class Main:
         self.dir_entry: Optional[ttk.Entry] = None
         self.dir_entry_tooltip: Optional[tk.Widget] = None
         self.browse_button: Optional[ttk.Button] = None
-        self.start_button: Optional[ttk.Button] = None
-        self.stop_button: Optional[ttk.Button] = None
+        self.start_stop_button: Optional[ttk.Button] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
         self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None

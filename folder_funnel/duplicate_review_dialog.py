@@ -137,15 +137,67 @@ class InteractiveDuplicateReviewDialog:
         self.next_button.config(state="normal" if self.current_group_index < total_groups - 1 else "disabled")
         for widget in self.grid_frame.winfo_children():
             widget.destroy()
-        width = self.dialog.winfo_width() or 1000
-        img_w, img_h = self.preview_sizes[self.current_preview_size.get()]
-        min_card_width = img_w + 60
-        cols = max(1, width // min_card_width)
-        for idx, file_path in enumerate(current_group):
-            row, col = divmod(idx, cols)
-            self.create_file_card(self.grid_frame, file_path, idx).grid(row=row, column=col, padx=8, pady=8, sticky="n")
+        # Use side-by-side layout for 2 images
+        if len(current_group) == 2 and all(self.is_image_file(fp) for fp in current_group):
+            self.create_side_by_side_comparison(current_group)
+        else:
+            # Original grid layout
+            width = self.dialog.winfo_width() or 1000
+            img_w, img_h = self.preview_sizes[self.current_preview_size.get()]
+            min_card_width = img_w + 60
+            cols = max(1, width // min_card_width)
+            for idx, file_path in enumerate(current_group):
+                row, col = divmod(idx, cols)
+                self.create_file_card(self.grid_frame, file_path, idx).grid(row=row, column=col, padx=8, pady=8, sticky="n")
         self.grid_frame.update_idletasks()
         self.canvas.yview_moveto(0)
+
+
+    def create_side_by_side_comparison(self, file_paths):
+        """Create a side-by-side comparison layout for exactly 2 images."""
+        # Calculate available space
+        dialog_width = self.dialog.winfo_width() or 1000
+        dialog_height = self.dialog.winfo_height() or 700
+        # Account for UI elements (top bar ~50px, bottom bar ~60px, padding ~50px)
+        available_height = dialog_height - 160
+        available_width = dialog_width - 40  # Account for padding and scrollbar
+        # Each image gets half the width minus some padding
+        max_image_width = (available_width - 30) // 2  # 30px for spacing between images
+        max_image_height = available_height - 150  # Reserve space for file info and buttons
+        # Create main container
+        comparison_frame = ttk.Frame(self.grid_frame)
+        comparison_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        for i, file_path in enumerate(file_paths):
+            # Create side frame for each image
+            side_frame = ttk.Frame(comparison_frame, relief="ridge", borderwidth=1, padding=8)
+            side_frame.grid(row=0, column=i, sticky="nsew", padx=(0, 15) if i == 0 else (15, 0))
+            side_frame.grid_rowconfigure(0, weight=1)
+            side_frame.grid_columnconfigure(0, weight=1)
+            # Image preview with dynamic sizing
+            image_frame = ttk.Frame(side_frame)
+            image_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
+            try:
+                image_label = ScalableImageLabel(image_frame, width=max_image_width, height=max_image_height, keep_aspect=True)
+                image_label.pack(expand=True, fill="both")
+                image_label.set_image(file_path)
+                image_label.configure(cursor="hand2")
+                image_label.bind("<Button-1>", lambda e, fp=file_path: self.open_image_file(fp))
+                if hasattr(image_label, 'label'):
+                    image_label.label.configure(cursor="hand2")
+                    image_label.label.bind("<Button-1>", lambda e, fp=file_path: self.open_image_file(fp))
+            except Exception:
+                ttk.Label(image_frame, text="Preview Error", foreground="red").pack()
+            # File info
+            info_frame = ttk.Frame(side_frame)
+            info_frame.grid(row=1, column=0, sticky="ew", pady=(0, 10))
+            self.create_file_info_compact(info_frame, file_path)
+            # Action buttons
+            actions_frame = ttk.Frame(side_frame)
+            actions_frame.grid(row=2, column=0, sticky="ew")
+            self.create_action_buttons_compact(actions_frame, file_path)
+        # Configure grid weights for equal distribution
+        comparison_frame.grid_columnconfigure(0, weight=1)
+        comparison_frame.grid_columnconfigure(1, weight=1)
 
 
     def create_file_card(self, parent, file_path, index):

@@ -118,9 +118,6 @@ def create_duplicate_storage_folder(app: 'Main'):
 
 def show_duplicate_scanner(app: 'Main'):
     """Show the duplicate scanner dialog."""
-    if not app.working_dir_var.get():
-        messagebox.showwarning("No Source Folder", "Please select a source folder first from File > Select Source Path...")
-        return
     scanner = DuplicateScannerDialog(app.root, app)
 
 

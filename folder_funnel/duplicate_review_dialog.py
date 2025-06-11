@@ -10,8 +10,16 @@ from datetime import datetime
 import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 
+# Third-party
+from TkToolTip.TkToolTip import TkToolTip as Tip
+
 # Local imports
 from scalable_image_label import ScalableImageLabel
+
+# Set TkToolTip defaults
+Tip.DELAY = 250
+Tip.PADY = 25
+Tip.ORIGIN = "widget"
 
 
 #endregion
@@ -19,9 +27,7 @@ from scalable_image_label import ScalableImageLabel
 
 
 class InteractiveDuplicateReviewDialog:
-    """Dialog for interactive review of duplicate files, focused on images and responsive layout."""
     #region GUI Setup
-
     def __init__(self, parent, duplicate_groups, selected_folder, app):
         self.parent = parent
         self.duplicate_groups = [group for group in duplicate_groups.values() if len(group) > 1]
@@ -59,9 +65,11 @@ class InteractiveDuplicateReviewDialog:
         preview_combo = ttk.Combobox(preview_ctrl, textvariable=self.current_preview_size, values=list(self.preview_sizes.keys()), state="readonly", width=12)
         preview_combo.pack(side="left")
         preview_combo.bind("<<ComboboxSelected>>", self.on_preview_size_changed)
+        Tip(preview_combo, "Change the size of image previews")
         # Fast delete checkbutton
         fast_delete_cb = ttk.Checkbutton(top, text="Fast delete (no confirm/success)", variable=self.fast_delete_var)
         fast_delete_cb.grid(row=0, column=2, sticky="e", padx=(16, 0))
+        Tip(fast_delete_cb, "Delete files immediately without confirmation or success dialogs")
 
         # --- Center ---
         center = ttk.Frame(self.dialog)
@@ -87,13 +95,21 @@ class InteractiveDuplicateReviewDialog:
         nav.grid(row=0, column=0, sticky="w")
         self.prev_button = ttk.Button(nav, text="◀ Prev", command=self.previous_group, width=10)
         self.prev_button.pack(side="left", padx=2)
+        Tip(self.prev_button, "Go to previous duplicate group")
         self.next_button = ttk.Button(nav, text="Next ▶", command=self.next_group, width=10)
         self.next_button.pack(side="left", padx=2)
+        Tip(self.next_button, "Go to next duplicate group")
         group_actions = ttk.Frame(bottom)
         group_actions.grid(row=0, column=1, sticky="e")
-        ttk.Button(group_actions, text="Skip Group", command=self.skip_group, width=14).pack(side="left", padx=(0,4))
-        ttk.Button(group_actions, text="Keep First, Delete Rest", command=self.delete_all_but_first, width=22).pack(side="left", padx=(0,4))
-        ttk.Button(group_actions, text="Close", command=self.on_close, width=10).pack(side="left")
+        skip_btn = ttk.Button(group_actions, text="Skip Group", command=self.skip_group, width=14)
+        skip_btn.pack(side="left", padx=(0,4))
+        Tip(skip_btn, "Skip this group and review it later")
+        keep_first_btn = ttk.Button(group_actions, text="Keep First, Delete Rest", command=self.delete_all_but_first, width=22)
+        keep_first_btn.pack(side="left", padx=(0,4))
+        Tip(keep_first_btn, "Keep the first file and delete all others in this group")
+        close_btn = ttk.Button(group_actions, text="Close", command=self.on_close, width=10)
+        close_btn.pack(side="left")
+        Tip(close_btn, "Close the duplicate review dialog")
         self.center_dialog()
         self.show_current_group()
 
@@ -125,7 +141,7 @@ class InteractiveDuplicateReviewDialog:
 
 
     # --- Group display ---
-    def show_current_group(self, redraw_only=False):
+    def show_current_group(self):
         if not self.duplicate_groups or self.current_group_index >= len(self.duplicate_groups):
             self.on_close()
             return
@@ -228,7 +244,7 @@ class InteractiveDuplicateReviewDialog:
             mod_time = datetime.fromtimestamp(stat.st_mtime)
             filename = os.path.basename(file_path)
             rel_path = os.path.relpath(file_path, self.selected_folder)
-            # Filename (clickable, truncated if too long)
+            # Filename
             name = filename if len(filename) <= 36 else filename[:33] + "..."
             name_label = ttk.Label(parent, text=name, foreground="blue", cursor="hand2")
             name_label.grid(row=0, column=0, sticky="w")
@@ -236,9 +252,10 @@ class InteractiveDuplicateReviewDialog:
             # Details
             details = f"{self.format_file_size(file_size)} • {mod_time.strftime('%m/%d/%y %H:%M')}"
             ttk.Label(parent, text=details, foreground="gray").grid(row=1, column=0, sticky="w")
-            # Relative path (truncated)
             rel = rel_path if len(rel_path) <= 40 else "..." + rel_path[-37:]
-            ttk.Label(parent, text=rel, foreground="gray").grid(row=2, column=0, sticky="w")
+            rel_label = ttk.Label(parent, text=rel, foreground="gray")
+            rel_label.grid(row=2, column=0, sticky="w")
+            Tip(rel_label, rel_path)
         except (OSError, IOError):
             ttk.Label(parent, text="⚠ Error reading file", foreground="red").grid(row=0, column=0, sticky="w")
 
@@ -259,9 +276,15 @@ class InteractiveDuplicateReviewDialog:
 
 
     def create_action_buttons_compact(self, parent, file_path):
-        ttk.Button(parent, text="Delete", command=lambda fp=file_path: self.delete_file(fp)).pack(side="left", fill="x", expand=True, padx=1)
-        ttk.Button(parent, text="Move", command=lambda fp=file_path: self.move_file(fp)).pack(side="left", fill="x", expand=True, padx=1)
-        ttk.Button(parent, text="Skip", command=lambda fp=file_path: self.ignore_file(fp)).pack(side="left", fill="x", expand=True, padx=1)
+        delete_btn = ttk.Button(parent, text="Delete", command=lambda fp=file_path: self.delete_file(fp))
+        delete_btn.pack(side="left", fill="x", expand=True, padx=1)
+        Tip(delete_btn, "Delete this file")
+        move_btn = ttk.Button(parent, text="Move", command=lambda fp=file_path: self.move_file(fp))
+        move_btn.pack(side="left", fill="x", expand=True, padx=1)
+        Tip(move_btn, "Move this file to another folder")
+        skip_btn = ttk.Button(parent, text="Skip", command=lambda fp=file_path: self.ignore_file(fp))
+        skip_btn.pack(side="left", fill="x", expand=True, padx=1)
+        Tip(skip_btn, "Ignore this file for now")
 
 
     def on_preview_size_changed(self, event=None):

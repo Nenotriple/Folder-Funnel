@@ -8,6 +8,11 @@ from tkinter import ttk, scrolledtext
 # Third-party
 from TkToolTip.TkToolTip import TkToolTip as Tip
 
+# Set TkToolTip defaults
+Tip.DELAY = 250
+Tip.PADY = 25
+Tip.ORIGIN = "widget"
+
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -157,23 +162,23 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     #Label
     dir_label = tk.Label(dir_selection_frame, text="Source Folder:")
     dir_label.pack(side="left")
-    Tip(dir_label, tip_text, delay=250, pady=25, origin="widget")
+    Tip(dir_label, tip_text)
     # Entry
     app.dir_entry = ttk.Entry(dir_selection_frame, textvariable=app.working_dir_var)
     app.dir_entry.pack(side="left", fill="x", expand=True)
-    app.dir_entry_tooltip = Tip(app.dir_entry, tip_text, delay=250, pady=25, origin="widget")
+    app.dir_entry_tooltip = Tip(app.dir_entry, tip_text)
     # Browse
     app.browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=app.select_working_dir)
     app.browse_button.pack(side="left")
-    Tip(app.browse_button, tip_text, delay=250, pady=25, origin="widget")
+    Tip(app.browse_button, tip_text)
     # Open
     open_button = ttk.Button(dir_selection_frame, text="Open", command=app.open_folder)
     open_button.pack(side="left")
-    Tip(open_button, "Open the selected folder in File Explorer", delay=250, pady=25, origin="widget")
+    Tip(open_button, "Open the selected folder in File Explorer")
     # Start/Stop
     app.start_stop_button = ttk.Button(control_frame, text="Start", command=app.start_folder_watcher)
     app.start_stop_button.pack(side="left")
-    Tip(app.start_stop_button, "Start/Stop the Folder-Funnel process", delay=250, pady=25, origin="widget")
+    Tip(app.start_stop_button, "Start/Stop the Folder-Funnel process")
 
 
 #endregion
@@ -205,11 +210,9 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     textlog_menu.add_command(label="Clear Log", command=app.clear_log)
     textlog_menu.add_separator()
     textlog_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
-    Tip(textlog_menubutton, "Log of events and actions", delay=250, pady=25, origin="widget")
+    Tip(textlog_menubutton, "Log of events and actions")
     # Text
-    app.text_log = scrolledtext.ScrolledText(
-        text_frame, wrap="word", state="disable", width=1, height=1, font=("Consolas", 10)
-    )
+    app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1, font=("Consolas", 10))
     app.text_log.pack(fill="both", expand=True)
     app.log("Welcome to Folder-Funnel - Please see the help menu for more information.")
 
@@ -228,7 +231,7 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     history_menu.add_separator()
     history_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     history_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
-    Tip(app.history_menubutton, "List of files moved to the source folder", delay=250, pady=25, origin="widget")
+    Tip(app.history_menubutton, "List of files moved to the source folder")
     # Listbox
     app.history_listbox = tk.Listbox(list_frame, width=1, height=1, font=("Consolas", 10))
     app.history_listbox.pack(fill="both", expand=True)
@@ -266,32 +269,32 @@ def _create_message_row(app: 'Main'):
     # Status label
     status_label = tk.Label(message_frame, textvariable=app.status_label_var, relief="groove", width=15, anchor="w")
     status_label.pack(side="left")
-    Tip(status_label, "Current status of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
+    Tip(status_label, "Current status of the Folder-Funnel process", pady=-25)
     # Foldercount label
     foldercount_label = tk.Label(message_frame, textvariable=app.foldercount_var, relief="groove", width=15, anchor="w")
     foldercount_label.pack(side="left")
-    Tip(foldercount_label, "Number of folders in the source folder", delay=250, pady=-25, origin="widget")
+    Tip(foldercount_label, "Number of folders in the source folder", pady=-25)
     # Filecount label
     filecount_label = tk.Label(message_frame, textvariable=app.filecount_var, relief="groove", width=15, anchor="w")
     filecount_label.pack(side="left")
-    Tip(filecount_label, "Number of files in the source folder", delay=250, pady=-25, origin="widget")
+    Tip(filecount_label, "Number of files in the source folder", pady=-25)
     # Movecount label
     movecount_label = tk.Label(message_frame, textvariable=app.movecount_var, relief="groove", width=15, anchor="w")
     movecount_label.pack(side="left")
-    Tip(movecount_label, "Number of files moved to the source folder", delay=250, pady=-25, origin="widget")
+    Tip(movecount_label, "Number of files moved to the source folder", pady=-25)
     # Duplicate count label
     dupecount_label = tk.Label(message_frame, textvariable=app.dupecount_var, relief="groove", width=15, anchor="w")
     dupecount_label.pack(side="left")
-    Tip(dupecount_label, "Number of duplicate files found", delay=250, pady=-25, origin="widget")
+    Tip(dupecount_label, "Number of duplicate files found", pady=-25)
     # Queuecount label
     queuecount_label = tk.Label(message_frame, textvariable=app.queuecount_var, relief="groove", width=15, anchor="w")
     queuecount_label.pack(side="left")
-    Tip(queuecount_label, "Number of files in the move queue", delay=250, pady=-25, origin="widget")
+    Tip(queuecount_label, "Number of files in the move queue", pady=-25)
     # Running indicator
     app.running_indicator = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
     app.running_indicator.pack(side="left", fill="x", expand=True)
-    Tip(app.running_indicator, "Running indicator of the Folder-Funnel process", delay=250, pady=-25, origin="widget")
+    Tip(app.running_indicator, "Running indicator of the Folder-Funnel process", pady=-25)
     # Queue Timer
     app.queue_progressbar = ttk.Progressbar(message_frame, mode="determinate")
     app.queue_progressbar.pack(side="left", fill="x", expand=True)
-    Tip(app.queue_progressbar, "Progress of the move queue timer", delay=250, pady=-25, origin="widget")
+    Tip(app.queue_progressbar, "Progress of the move queue timer", pady=-25)

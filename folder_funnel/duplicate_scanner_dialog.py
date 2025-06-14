@@ -328,10 +328,16 @@ class DuplicateScannerDialog:
         min_size_bytes = self.min_size_var.get() * 1024  # Min in KB -> bytes
         max_size_mb = self.max_size_var.get()
         max_size_bytes = max_size_mb * 1024 * 1024 if max_size_mb > 0 else None  # Max in MB -> bytes
+        file_count = 0
+        folder_count = 0
         if self.include_subfolders_var.get():
             for root, dirs, filenames in os.walk(self.selected_folder):
                 if not self.is_scanning:
                     break
+                folder_count += 1
+                self.status_var.set(f"Scanning for files... Folder: {os.path.relpath(root, self.selected_folder)} ({folder_count})")
+                self.progress_var.set(0)
+                self.app.root.update()
                 for filename in filenames:
                     if not self.is_scanning:
                         break
@@ -340,6 +346,11 @@ class DuplicateScannerDialog:
                         size = os.path.getsize(filepath)
                         if size >= min_size_bytes and (max_size_bytes is None or size <= max_size_bytes):
                             files.append(filepath)
+                            file_count += 1
+                            if file_count % 25 == 0:
+                                self.status_var.set(f"Scanning for files... {file_count} found (Current: {os.path.relpath(filepath, self.selected_folder)})")
+                                self.progress_var.set(min(100, file_count / 10))
+                                self.app.root.update()
                     except (OSError, IOError):
                         continue
         else:
@@ -353,10 +364,18 @@ class DuplicateScannerDialog:
                             size = os.path.getsize(filepath)
                             if size >= min_size_bytes and (max_size_bytes is None or size <= max_size_bytes):
                                 files.append(filepath)
+                                file_count += 1
+                                if file_count % 25 == 0:
+                                    self.status_var.set(f"Scanning for files... {file_count} found (Current: {os.path.relpath(filepath, self.selected_folder)})")
+                                    self.progress_var.set(min(100, file_count / 10))
+                                    self.app.root.update()
                         except (OSError, IOError):
                             continue
             except (OSError, IOError):
                 pass
+        self.status_var.set(f"Scanning for files... {file_count} found.")
+        self.progress_var.set(100)
+        self.app.root.update()
         return files
 
 

@@ -117,15 +117,26 @@ class DuplicateScannerDialog:
         config_frame.grid(row=1, column=0, sticky="ew", pady=(0, 8))
         config_frame.grid_columnconfigure(1, weight=1)
         config_frame.grid_columnconfigure(3, weight=1)
-        ttk.Label(config_frame, text="Method:").grid(row=0, column=0, sticky="w", padx=(0, 5))
+        ttk.Label(config_frame, text="Method:").grid(row=0, column=0, sticky="w", padx=(0, 10))
         self.duplicate_scan_modes = {
-        "SIZE_ONLY": "Size Only (Fast)",
-        "SIZE_AND_NAME": "Size + Filename",
-        "SIZE_AND_MD5": "Size + MD5 Hash",
-        "FULL_MD5": "Full MD5 Hash"
+            "SIZE_ONLY": "Size Only (Fast)",
+            "SIZE_AND_NAME": "Size + Filename",
+            "SIZE_AND_MD5": "Size + MD5 Hash",
+            "SIZE_AND_PARTIAL_HASH": "Size + Partial Hash (Recommended)",
+            "PARTIAL_HASH": "Partial Hash Only (Fastest)",
+            "FULL_MD5": "Full MD5 Hash (Slowest)"
         }
-        self.matching_mode_var = tk.StringVar(value=self.duplicate_scan_modes["SIZE_ONLY"])
-        matching_combo = ttk.Combobox(config_frame, textvariable=self.matching_mode_var, values=list(self.duplicate_scan_modes.values()), state="readonly", width=20)
+        # Organize scan modes for combobox
+        scan_mode_order = [
+            self.duplicate_scan_modes["SIZE_ONLY"],
+            self.duplicate_scan_modes["SIZE_AND_NAME"],
+            self.duplicate_scan_modes["SIZE_AND_PARTIAL_HASH"],
+            self.duplicate_scan_modes["PARTIAL_HASH"],
+            self.duplicate_scan_modes["SIZE_AND_MD5"],
+            self.duplicate_scan_modes["FULL_MD5"]
+        ]
+        self.matching_mode_var = tk.StringVar(value=self.duplicate_scan_modes["SIZE_AND_PARTIAL_HASH"])
+        matching_combo = ttk.Combobox(config_frame, textvariable=self.matching_mode_var, values=scan_mode_order, state="readonly", width=28)
         matching_combo.grid(row=0, column=1, sticky="w", padx=(0, 15))
         Tip(matching_combo, "Choose how to match duplicate files")
         self.include_subfolders_var = tk.BooleanVar(value=True)
@@ -136,16 +147,59 @@ class DuplicateScannerDialog:
         same_folder_cb = ttk.Checkbutton(config_frame, text="Match only within same folder", variable=self.same_folder_only_var)
         same_folder_cb.grid(row=1, column=2, sticky="w", padx=(0, 0))
         Tip(same_folder_cb, "Only match duplicates within the same folder")
-        ttk.Label(config_frame, text="Min size (KB):").grid(row=1, column=0, sticky="w", padx=(0, 5), pady=(8, 0))
+        ttk.Label(config_frame, text="Min size (KB):").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
         self.min_size_var = tk.IntVar(value=1)
         min_size_spin = ttk.Spinbox(config_frame, from_=0, to=999999, textvariable=self.min_size_var, width=12)
         min_size_spin.grid(row=1, column=1, sticky="w", pady=(8, 0))
         Tip(min_size_spin, "Minimum file size (in KB) to include")
-        ttk.Label(config_frame, text="Max size (MB):").grid(row=2, column=0, sticky="w", padx=(0, 5), pady=(8, 0))
+        ttk.Label(config_frame, text="Max size (MB):").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
         self.max_size_var = tk.IntVar(value=0)
         max_size_spin = ttk.Spinbox(config_frame, from_=0, to=1024*1024, textvariable=self.max_size_var, width=12)
         max_size_spin.grid(row=2, column=1, sticky="w", pady=(8, 0))
         Tip(max_size_spin, "Maximum file size (in MB) to include (0 = no max)")
+        # --- File Type Filtering ---
+        self.filetype_filtering_var = tk.BooleanVar(value=False)
+        filetype_cb = ttk.Checkbutton(config_frame, text="Type Filtering", variable=self.filetype_filtering_var, command=self.toggle_filetype_entry)
+        filetype_cb.grid(row=3, column=0, sticky="w", pady=(8, 0))
+        Tip(filetype_cb, "Enabled to filter files by extensions")
+        self.filetype_entry_var = tk.StringVar(value=".png, .webp, .jpg")
+        self.filetype_entry = ttk.Entry(config_frame, textvariable=self.filetype_entry_var, state="disabled", width=30)
+        self.filetype_entry.grid(row=3, column=1, sticky="w", pady=(8, 0), padx=(0, 5))
+        Tip(self.filetype_entry, "Separate extensions with a comma and space: (.png, .webp, .jpg)")
+        # --- Partial Hash Size Selection ---
+        self.partial_sizes = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
+        self.partial_size_labels = [
+            "256 bytes (super fast)",
+            "512 bytes",
+            "1 KB",
+            "2 KB",
+            "4 KB (default)",
+            "8 KB",
+            "16 KB",
+            "32 KB (most accurate)"
+        ]
+        self.partial_size_map = dict(zip(self.partial_size_labels, self.partial_sizes))
+        self.partial_size_var = tk.StringVar(value="4 KB (default)")
+        ttk.Label(config_frame, text="Partial Hash Size:").grid(row=4, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
+        self.partial_size_combo = ttk.Combobox(config_frame, textvariable=self.partial_size_var, values=self.partial_size_labels, state="readonly", width=20)
+        self.partial_size_combo.grid(row=4, column=1, sticky="w", pady=(8, 0))
+        Tip(self.partial_size_combo, "Partial hash size for 'Partial Hash (Fast)' mode")
+        # Only enable when Partial Hash mode is selected
+        def on_mode_change(*args):
+            mode = self.matching_mode_var.get()
+            if mode in [self.duplicate_scan_modes["PARTIAL_HASH"], self.duplicate_scan_modes["SIZE_AND_PARTIAL_HASH"]]:
+                self.partial_size_combo.config(state="readonly")
+            else:
+                self.partial_size_combo.config(state="disabled")
+        self.matching_mode_var.trace_add("write", on_mode_change)
+        on_mode_change()
+
+
+    def toggle_filetype_entry(self):
+        if self.filetype_filtering_var.get():
+            self.filetype_entry.config(state="normal")
+        else:
+            self.filetype_entry.config(state="disabled")
 
 
     # --- Control Panel ---
@@ -330,6 +384,18 @@ class DuplicateScannerDialog:
         max_size_bytes = max_size_mb * 1024 * 1024 if max_size_mb > 0 else None  # Max in MB -> bytes
         file_count = 0
         folder_count = 0
+        # --- File type filtering logic ---
+        filter_enabled = getattr(self, 'filetype_filtering_var', None) and self.filetype_filtering_var.get()
+        allowed_exts = set()
+        if filter_enabled:
+            raw = self.filetype_entry_var.get()
+            # Split by comma and/or space, strip, and ensure extensions start with .
+            parts = [p.strip() for p in raw.replace(',', ' ').split() if p.strip()]
+            allowed_exts = set()
+            for ext in parts:
+                if not ext.startswith('.'):
+                    ext = '.' + ext
+                allowed_exts.add(ext.lower())
         if self.include_subfolders_var.get():
             for root, dirs, filenames in os.walk(self.selected_folder):
                 if not self.is_scanning:
@@ -344,6 +410,11 @@ class DuplicateScannerDialog:
                     filepath = os.path.join(root, filename)
                     try:
                         size = os.path.getsize(filepath)
+                        # File type filter check
+                        if filter_enabled:
+                            ext = os.path.splitext(filename)[1].lower()
+                            if ext not in allowed_exts:
+                                continue
                         if size >= min_size_bytes and (max_size_bytes is None or size <= max_size_bytes):
                             files.append(filepath)
                             file_count += 1
@@ -362,6 +433,11 @@ class DuplicateScannerDialog:
                     if os.path.isfile(filepath):
                         try:
                             size = os.path.getsize(filepath)
+                            # File type filter check
+                            if filter_enabled:
+                                ext = os.path.splitext(filename)[1].lower()
+                                if ext not in allowed_exts:
+                                    continue
                             if size >= min_size_bytes and (max_size_bytes is None or size <= max_size_bytes):
                                 files.append(filepath)
                                 file_count += 1
@@ -389,6 +465,24 @@ class DuplicateScannerDialog:
             return self.find_duplicates_by_size_then_md5(files, total_files)
         elif matching_mode == self.duplicate_scan_modes["FULL_MD5"]:
             return self.find_duplicates_by_md5(files, total_files)
+        elif matching_mode == self.duplicate_scan_modes["PARTIAL_HASH"]:
+            # Get selected partial size from combobox
+            selected_label = getattr(self, 'partial_size_var', None)
+            if selected_label:
+                size_label = self.partial_size_var.get()
+                partial_size = self.partial_size_map.get(size_label, 4096)
+            else:
+                partial_size = 4096
+            return self.find_duplicates_by_partial_hash(files, total_files, partial_size=partial_size)
+        elif matching_mode == self.duplicate_scan_modes["SIZE_AND_PARTIAL_HASH"]:
+            # Get selected partial size from combobox
+            selected_label = getattr(self, 'partial_size_var', None)
+            if selected_label:
+                size_label = self.partial_size_var.get()
+                partial_size = self.partial_size_map.get(size_label, 4096)
+            else:
+                partial_size = 4096
+            return self.find_duplicates_by_size_and_partial_hash(files, total_files, partial_size=partial_size)
         else:
             return {}
 
@@ -515,6 +609,72 @@ class DuplicateScannerDialog:
             except (OSError, IOError):
                 continue
         return dict(md5_groups)
+
+
+    def find_duplicates_by_partial_hash(self, files: List[str], total_files: int, partial_size: int = 1024) -> Dict[str, List[str]]:
+        """Find duplicates by hashing only the first partial_size bytes of each file."""
+        partial_hash_groups = defaultdict(list)
+        for i, filepath in enumerate(files):
+            if not self.is_scanning:
+                break
+            try:
+                partial_hash = self.get_partial_hash(filepath, partial_size)
+                key = f"partial_{partial_size}_{partial_hash}"
+                partial_hash_groups[key].append(filepath)
+                if i % 10 == 0:
+                    self.update_progress(i + 1, total_files, self.scan_start_time, f"Computing partial hashes ({partial_size} bytes)...")
+            except (OSError, IOError):
+                continue
+        return dict(partial_hash_groups)
+
+
+    def find_duplicates_by_size_and_partial_hash(self, files: List[str], total_files: int, partial_size: int = 4096) -> Dict[str, List[str]]:
+        """Find duplicates by grouping by size, then by partial hash of the file."""
+        size_groups = defaultdict(list)
+        for i, filepath in enumerate(files):
+            if not self.is_scanning:
+                break
+            try:
+                size = os.path.getsize(filepath)
+                size_groups[size].append(filepath)
+            except (OSError, IOError):
+                continue
+        # Now check partial hash for groups with more than one file
+        partial_hash_groups = {}
+        processed_files = 0
+        files_to_hash = sum(len(group) for group in size_groups.values() if len(group) > 1)
+        hash_start_time = time.time()
+        for size, file_group in size_groups.items():
+            if not self.is_scanning:
+                break
+            if len(file_group) > 1:
+                hash_groups = defaultdict(list)
+                for filepath in file_group:
+                    if not self.is_scanning:
+                        break
+                    try:
+                        partial_hash = self.get_partial_hash(filepath, partial_size)
+                        key = f"size_{size}_partial_{partial_size}_{partial_hash}"
+                        hash_groups[key].append(filepath)
+                        processed_files += 1
+                        if processed_files % 5 == 0:
+                            self.update_progress(processed_files, files_to_hash, hash_start_time, f"Computing partial hashes ({partial_size} bytes)...")
+                    except (OSError, IOError):
+                        continue
+                partial_hash_groups.update(hash_groups)
+            else:
+                # Single file, add with unique key
+                partial_hash_groups[f"size_{size}_single_{file_group[0]}"] = file_group
+        return partial_hash_groups
+
+
+    def get_partial_hash(self, filepath: str, partial_size: int = 1024) -> str:
+        """Compute MD5 hash of the first partial_size bytes of a file."""
+        hash_md5 = hashlib.md5()
+        with open(filepath, "rb") as f:
+            chunk = f.read(partial_size)
+            hash_md5.update(chunk)
+        return hash_md5.hexdigest()
 
 
     def update_overall_progress(self, current, total, start_time):

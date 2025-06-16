@@ -43,16 +43,13 @@ def are_files_identical(file1, file2, check_mode="Similar", method='Strict', max
     try:
         target_dir = os.path.dirname(file2)
         similar_files = find_similar_files(file1, target_dir, method, max_files)
+        file1_md5 = get_md5(file1, chunk_size)
         for file in similar_files:
             if os.path.exists(file) and os.path.getsize(file1) == os.path.getsize(file):
-                return True, file
-        if check_mode == "Similar":
-            file1_md5 = get_md5(file1, chunk_size)
-            for file in similar_files:
                 if get_md5(file, chunk_size) == file1_md5:
                     return True, file
-        elif check_mode == "Single":
-            if os.path.exists(file2) and get_md5(file1, chunk_size) == get_md5(file2, chunk_size):
+        if check_mode == "Single":
+            if os.path.exists(file2) and get_md5(file2, chunk_size) == file1_md5:
                 return True, file2
         return False, None
     except Exception as e:

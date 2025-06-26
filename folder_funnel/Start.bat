@@ -5,23 +5,26 @@ setlocal enabledelayedexpansion
 REM ======================================================
 REM Python Virtual Environment Setup and Script Launcher
 REM Created by: github.com/Nenotriple
-REM Version: 1.0
+set "SCRIPT_VERSION=1.01"
 REM ======================================================
 
 
 REM Configuration
 set "PYTHON_SCRIPT=app.py"
-set "VENV_DIR=venv"
 set "REQUIREMENTS_FILE=requirements.txt"
+
 set "FAST_START=FALSE"
 set "AUTO_FAST_START=TRUE"
-set "AUTO_CLOSE_CONSOLE=TRUE"
+set "AUTO_CLOSE_CONSOLE=FALSE"
+
 set "ENABLE_COLORS=TRUE"
-set "QUIET_MODE=TRUE"
+set "QUIET_MODE=FALSE"
+set "SETUP_ONLY=FALSE"
 
 REM Runtime Variables
 set "SCRIPT_DIR=%~dp0"
 set "PIP_TIMEOUT=30"
+set "VENV_DIR=venv"
 
 
 REM ==============================================
@@ -39,11 +42,20 @@ pushd "%SCRIPT_DIR%" || (call :LogError "Failed to set working directory" & exit
 
 call :SetupVirtualEnvironment || exit /b 1
 
+REM Check if only setup is requested
+if "%SETUP_ONLY%"=="TRUE" (
+    call :LogInfo "SETUP_ONLY is enabled. Skipping script launch."
+    call :LogInfo "Dropping into interactive shell inside the virtual environment."
+    call "%VENV_DIR%\Scripts\activate.bat"
+    cmd /k
+    goto :EOF
+)
+
 call :LaunchPythonScript || exit /b 1
 
 if "%AUTO_CLOSE_CONSOLE%"=="FALSE" (
     echo.
-    call :LogInfo "Script completed. Console will remain open in virtual environment."
+    call :LogInfo "Script completed."
     echo.
     cmd /k
 )
@@ -179,7 +191,7 @@ exit /b 0
 
 :PrintHeader
     echo %COLOR_INFO%============================================================%COLOR_RESET%
-    echo %COLOR_INFO%  v1.0 Python Virtual Environment Setup and Script Launcher%COLOR_RESET%
+    echo %COLOR_INFO%  %SCRIPT_VERSION% Python Virtual Environment Setup and Script Launcher%COLOR_RESET%
     echo %COLOR_INFO%  Created by: github.com/Nenotriple%COLOR_RESET%
     echo %COLOR_INFO%============================================================%COLOR_RESET%
     echo.

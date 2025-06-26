@@ -6,7 +6,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext
 
 # Third-party
-from TkToolTip.TkToolTip import TkToolTip as Tip
+from TkToolTip import TkToolTip as Tip
 
 # Set TkToolTip defaults
 Tip.DELAY = 250

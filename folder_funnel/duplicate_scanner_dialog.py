@@ -17,7 +17,7 @@ from tkinter import scrolledtext
 
 # Local imports
 from duplicate_review_dialog import InteractiveDuplicateReviewDialog
-from TkToolTip.TkToolTip import TkToolTip as Tip
+from TkToolTip import TkToolTip as Tip
 
 # Set TkToolTip defaults
 Tip.DELAY = 250

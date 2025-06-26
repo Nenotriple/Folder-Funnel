@@ -11,7 +11,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 
 # Third-party
-from TkToolTip.TkToolTip import TkToolTip as Tip
+from TkToolTip import TkToolTip as Tip
 
 # Local imports
 from scalable_image_label import ScalableImageLabel

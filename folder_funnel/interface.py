@@ -99,6 +99,7 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     queue_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="Queue Timer", menu=queue_menu)
     queue_menu.add_command(label="Queue Timer Length", state="disabled")
+    queue_menu.add_radiobutton(label="1 second", variable=app.move_queue_length_var, value=1000)
     queue_menu.add_radiobutton(label="5 seconds", variable=app.move_queue_length_var, value=5000)
     queue_menu.add_radiobutton(label="15 seconds", variable=app.move_queue_length_var, value=15000)
     queue_menu.add_radiobutton(label="30 seconds", variable=app.move_queue_length_var, value=30000)

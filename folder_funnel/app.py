@@ -67,6 +67,7 @@ class Main:
         self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None
         self.history_menu: Optional[tk.Menu] = None
+        self.file_menu: Optional[tk.Menu] = None
         self.running_indicator: Optional[ttk.Progressbar] = None
         self.queue_progressbar: Optional[ttk.Progressbar] = None
 
@@ -137,8 +138,8 @@ class Main:
     def toggle_text_wrap(self):
         interface_logic.toggle_text_wrap(self)
 
-    def toggle_button_state(self, state="idle"):
-        interface_logic.toggle_button_state(self, state)
+    def toggle_widgets_state(self, state="idle"):
+        interface_logic.toggle_widgets_state(self, state)
 
     def toggle_indicator(self, state=None):
         interface_logic.toggle_indicator(self, state)

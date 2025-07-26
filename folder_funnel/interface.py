@@ -58,6 +58,7 @@ def _create_file_menu(app: 'Main', menubar: tk.Menu):
     file_menu.add_command(label="Reset App Settings", command=app.reset_settings)
     file_menu.add_separator()
     file_menu.add_command(label="Exit", command=app.on_closing)
+    app.file_menu = file_menu
 
 
 def _create_edit_menu(app: 'Main', menubar: tk.Menu):

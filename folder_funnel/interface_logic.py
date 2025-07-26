@@ -75,22 +75,36 @@ def toggle_text_wrap(app: 'Main'):
     app.text_log.configure(wrap="word" if wrap else "none")
 
 
-def toggle_button_state(app: 'Main', state="idle"):
-    """Toggle the state of start/stop button based on application state."""
+def toggle_widgets_state(app: 'Main', state="idle"):
+    """Toggle the state of UI widgets based on application state."""
     button = app.start_stop_button
     browse = app.browse_button
+    dir_entry = app.dir_entry
+    file_menu = app.file_menu
     if state == "running":
         button.configure(text="Stop", command=app.stop_folder_watcher, state="normal")
         if browse:
             browse.configure(state="disabled")
+        if dir_entry:
+            dir_entry.configure(state="disabled")
+        if file_menu:
+            file_menu.entryconfig("Select Source Path...", state="disabled")
     elif state == "idle":
         button.configure(text="Start", command=app.start_folder_watcher, state="normal")
         if browse:
             browse.configure(state="normal")
+        if dir_entry:
+            dir_entry.configure(state="normal")
+        if file_menu:
+            file_menu.entryconfig("Select Source Path...", state="normal")
     elif state == "disabled":
         button.configure(state=state)
         if browse:
             browse.configure(state=state)
+        if dir_entry:
+            dir_entry.configure(state=state)
+        if file_menu:
+            file_menu.entryconfig("Select Source Path...", state=state)
 
 
 def toggle_indicator(app: 'Main', state=None):

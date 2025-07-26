@@ -44,7 +44,7 @@ def start_folder_watcher(app: 'Main', auto_start=False):
     app.movecount_var.set("Moved: 0")
     app.duplicate_count = 0
     app.update_duplicate_count()
-    app.toggle_button_state(state="running")
+    app.toggle_widgets_state(state="running")
 
 
 def _start_folder_watcher(app: 'Main'):
@@ -74,7 +74,7 @@ def stop_folder_watcher(app: 'Main'):
     _stop_folder_watcher(app)
     app.log("Stopping Folder-Funnel process...")
     app.status_label_var.set("Status: Idle")
-    app.toggle_button_state(state="idle")
+    app.toggle_widgets_state(state="idle")
     if app.watch_path and os.path.exists(app.watch_path):
         shutil.rmtree(app.watch_path)
         app.log(f"Removed watch folder: {app.watch_path}")

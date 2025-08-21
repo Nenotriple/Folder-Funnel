@@ -13,7 +13,7 @@ from tkinter import messagebox
 from watchdog.observers import Observer
 
 # Custom
-from event_handler import WatchFolderHandler, SourceFolderHandler
+from .event_handler import WatchFolderHandler, SourceFolderHandler
 
 # Type checking
 from typing import TYPE_CHECKING

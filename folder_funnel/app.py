@@ -12,14 +12,14 @@ import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 
 # Custom
-import interface
-import move_queue
-import listbox_logic
-import folder_watcher
-import interface_logic
-import duplicate_handler
-import settings_manager
-from help_window import HelpWindow
+from main.ui import interface
+from main.ui import listbox_logic
+from main.ui import interface_logic
+from main.ui import help_window
+from main.utils import move_queue
+from main.utils import folder_watcher
+from main.utils import duplicate_handler
+from main.utils import settings_manager
 
 
 #endregion
@@ -107,7 +107,7 @@ class Main:
         self.temp_filetypes = [".tmp", ".temp", ".part", ".crdownload", ".partial", ".bak"]
 
         # Help window
-        self.help_window = HelpWindow(self.root)
+        self.help_window = help_window.HelpWindow(self.root)
 
         # Stats
         self.grand_move_count = 0  # Lifetime total of files moved
@@ -321,7 +321,7 @@ class Main:
 
 
     def set_icon(self):
-        icon_path = os.path.join(self.app_path, "icon.png")
+        icon_path = os.path.join(self.app_path, "main", "icon.png")
         if os.path.exists(icon_path):
             self.root.iconphoto(True, tk.PhotoImage(file=icon_path))
 

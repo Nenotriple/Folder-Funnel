@@ -6,7 +6,7 @@ import os
 from tkinter import messagebox
 
 # Custom
-import interface
+from . import interface
 
 # Type checking
 from typing import TYPE_CHECKING

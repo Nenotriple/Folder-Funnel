@@ -13,7 +13,7 @@ from difflib import SequenceMatcher
 from tkinter import messagebox
 
 # Local imports
-from main.ui.duplicate_scanner_dialog import DuplicateScannerDialog
+from main.ui.interactive_duplicate_scanner import duplicate_scanner_dialog
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -115,7 +115,7 @@ def create_duplicate_storage_folder(app: 'Main'):
 
 def show_duplicate_scanner(app: 'Main'):
     """Show the duplicate scanner dialog."""
-    scanner = DuplicateScannerDialog(app.root, app)
+    scanner = duplicate_scanner_dialog.DuplicateScannerDialog(app.root, app)
 
 
 #endregion

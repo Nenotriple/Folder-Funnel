@@ -3,8 +3,7 @@ from . import interface_logic
 
 from . import listbox_logic
 
-from . import duplicate_scanner_dialog
-from . import duplicate_review_dialog
+from . import interactive_duplicate_scanner
 
 from . import scalable_image_label
 

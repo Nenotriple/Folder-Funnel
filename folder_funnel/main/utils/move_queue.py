@@ -8,7 +8,7 @@ import shutil
 import zipfile  # Added import for ZIP handling
 
 # Custom
-import duplicate_handler
+from . import duplicate_handler
 
 # Type checking
 from typing import TYPE_CHECKING

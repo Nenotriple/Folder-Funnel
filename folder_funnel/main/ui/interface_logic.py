@@ -8,7 +8,7 @@ from tkinter import filedialog, messagebox
 
 # Custom
 from . import listbox_logic
-from help_text import HELP_TEXT
+from . help_text import HELP_TEXT
 
 # Type checking
 from typing import TYPE_CHECKING

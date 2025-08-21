@@ -15,11 +15,11 @@ from tkinter import ttk, messagebox, scrolledtext
 from main.ui import interface
 from main.ui import listbox_logic
 from main.ui import interface_logic
-import move_queue
-import folder_watcher
-import duplicate_handler
-import settings_manager
-from help_window import HelpWindow
+from main.ui import help_window
+from main.utils import move_queue
+from main.utils import folder_watcher
+from main.utils import duplicate_handler
+from main.utils import settings_manager
 
 
 #endregion
@@ -107,7 +107,7 @@ class Main:
         self.temp_filetypes = [".tmp", ".temp", ".part", ".crdownload", ".partial", ".bak"]
 
         # Help window
-        self.help_window = HelpWindow(self.root)
+        self.help_window = help_window.HelpWindow(self.root)
 
         # Stats
         self.grand_move_count = 0  # Lifetime total of files moved

@@ -321,7 +321,7 @@ class Main:
 
 
     def set_icon(self):
-        icon_path = os.path.join(self.app_path, "icon.png")
+        icon_path = os.path.join(self.app_path, "main", "icon.png")
         if os.path.exists(icon_path):
             self.root.iconphoto(True, tk.PhotoImage(file=icon_path))
 

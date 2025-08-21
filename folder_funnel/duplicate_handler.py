@@ -13,7 +13,7 @@ from difflib import SequenceMatcher
 from tkinter import messagebox
 
 # Local imports
-from duplicate_scanner_dialog import DuplicateScannerDialog
+from main.ui.duplicate_scanner_dialog import DuplicateScannerDialog
 
 # Type checking
 from typing import TYPE_CHECKING

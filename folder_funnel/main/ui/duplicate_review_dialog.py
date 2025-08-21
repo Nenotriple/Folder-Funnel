@@ -14,7 +14,7 @@ from tkinter import messagebox, ttk, filedialog
 from TkToolTip import TkToolTip as Tip
 
 # Local imports
-from scalable_image_label import ScalableImageLabel
+from .scalable_image_label import ScalableImageLabel
 
 # Set TkToolTip defaults
 Tip.DELAY = 250

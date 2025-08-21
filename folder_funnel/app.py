@@ -12,11 +12,11 @@ import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 
 # Custom
-import interface
+from main.ui import interface
+from main.ui import listbox_logic
+from main.ui import interface_logic
 import move_queue
-import listbox_logic
 import folder_watcher
-import interface_logic
 import duplicate_handler
 import settings_manager
 from help_window import HelpWindow

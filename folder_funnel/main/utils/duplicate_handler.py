@@ -92,7 +92,7 @@ def confirm_duplicate_storage_removal(app: 'Main'):
         elif response:  # Yes was selected
             try:
                 shutil.rmtree(app.duplicate_storage_path)
-                app.log(f"Removed duplicate storage folder: {app.duplicate_storage_path}")
+                app.log(f"Removed duplicate storage folder: {app.duplicate_storage_path}", mode="info")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to remove duplicate folder: {str(e)}")
         # If No was selected, keep the folder
@@ -107,7 +107,7 @@ def create_duplicate_storage_folder(app: 'Main'):
     app.duplicate_storage_path = os.path.normpath(os.path.join(parent_dir, duplicate_folder_name))
     try:
         os.makedirs(app.duplicate_storage_path, exist_ok=True)
-        app.log(f"Created duplicate storage folder: {app.duplicate_storage_path}")
+        app.log(f"Created duplicate storage folder: {app.duplicate_storage_path}", mode="info")
     except Exception as e:
         messagebox.showerror("Error", f"Failed to create duplicate storage folder: {str(e)}")
         app.duplicate_storage_path = ""

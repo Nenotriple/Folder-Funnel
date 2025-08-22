@@ -216,7 +216,7 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1, font=("Consolas", 10))
     app.text_log.pack(fill="both", expand=True)
-    app.log("Welcome to Folder-Funnel - Please see the help menu for more information.")
+    app.log("Welcome to Folder-Funnel - Please see the help menu for more information.", mode="info")
 
 
 def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):

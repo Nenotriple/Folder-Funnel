@@ -30,7 +30,7 @@ def select_working_dir(app: 'Main', path=None):
     if os.path.exists(path):
         app.working_dir_var.set(path)
         app.dir_entry_tooltip.config(text=path)
-        app.log(f"\nSelected folder: {path}\n")
+        app.log(f"\nSelected folder: {path}\n", mode="info")
         app.count_folders_and_files()
 
 
@@ -40,15 +40,30 @@ def open_folder(app: 'Main', path=None):
         os.startfile(path)
     else:
         messagebox.showerror("Error", "Folder not found")
+        app.log(f"Folder not found: {path}", mode="error")
 
 
-def log(app: 'Main', message):
-    """Add a message to the log if it's not the same as the last one."""
-    if app.messages and app.messages[-1] == message:
+def log(app: 'Main', message, mode="simple"):
+    """Add a message to the log with an optional mode prefix."""
+    prefixes = {
+        "info": "[INFO] ",
+        "warning": "[WARNING] ",
+        "error": "[ERROR] ",
+        "simple": ""
+    }
+    prefix = prefixes.get(mode, f"[{mode.upper()}] ")
+    # Move leading newlines to the very start of the printout
+    leading_newlines = ""
+    rest = message
+    while rest.startswith("\n"):
+        leading_newlines += "\n"
+        rest = rest[1:]
+    full_message = f"{leading_newlines}{prefix}{rest}"
+    if app.messages and app.messages[-1] == full_message:
         return
-    app.messages.append(message)
+    app.messages.append(full_message)
     app.text_log.configure(state="normal")
-    app.text_log.insert("end", f"{message}\n")
+    app.text_log.insert("end", f"{full_message}\n")
     app.text_log.configure(state="disable")
     app.text_log.see("end")
 

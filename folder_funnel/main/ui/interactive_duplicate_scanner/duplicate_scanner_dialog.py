@@ -821,7 +821,7 @@ class DuplicateScannerDialog:
                 try:
                     if action == "delete":
                         os.remove(filepath)
-                        self.app.log(f"Deleted duplicate: {os.path.basename(filepath)}")
+                        self.app.log(f"Deleted duplicate: {os.path.basename(filepath)}", mode="info")
                     elif action == "move" and destination:
                         # Preserve directory structure
                         rel_path = os.path.relpath(filepath, self.selected_folder)
@@ -829,7 +829,7 @@ class DuplicateScannerDialog:
                         dest_dir = os.path.dirname(dest_path)
                         os.makedirs(dest_dir, exist_ok=True)
                         shutil.move(filepath, dest_path)
-                        self.app.log(f"Moved duplicate: {os.path.basename(filepath)} -> {rel_path}")
+                        self.app.log(f"Moved duplicate: {os.path.basename(filepath)} -> {rel_path}", mode="info")
                     success_count += 1
                 except Exception as e:
                     error_count += 1

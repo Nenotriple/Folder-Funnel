@@ -60,7 +60,7 @@ def _start_folder_watcher(app: 'Main'):
     source_handler = SourceFolderHandler(app)
     app.source_observer.schedule(source_handler, path=app.working_dir_var.get(), recursive=True)
     app.source_observer.start()
-    app.log("Ready!\n")
+    app.log("Ready!\n", mode="info")
 
 
 def stop_folder_watcher(app: 'Main'):
@@ -71,12 +71,12 @@ def stop_folder_watcher(app: 'Main'):
     if not confirm:
         return False
     _stop_folder_watcher(app)
-    app.log("Stopping Folder-Funnel process...")
+    app.log("Stopping Folder-Funnel process...", mode="info")
     app.status_label_var.set("Status: Idle")
     app.toggle_widgets_state(state="idle")
     if app.watch_path and os.path.exists(app.watch_path):
         shutil.rmtree(app.watch_path)
-        app.log(f"Removed watch folder: {app.watch_path}")
+    app.log(f"Removed watch folder: {app.watch_path}", mode="info")
     return True
 
 
@@ -107,7 +107,7 @@ def sync_watch_folders(app: 'Main', silent=False):
         # Create watch folder
         os.makedirs(app.watch_path, exist_ok=True)
         if not silent:
-            app.log("Initializing synced folder...")
+            app.log("Initializing synced folder...", mode="info")
         # Walk through the source directory and create corresponding directories in the watch folder
         for dirpath, dirnames, filenames in os.walk(source_path):
             relpath = os.path.relpath(dirpath, source_path)
@@ -132,12 +132,14 @@ def sync_watch_folders(app: 'Main', silent=False):
                     # Directory is not empty or cannot be removed, skip it
                     pass
         if silent in [False, "semi"]:
-            app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.watch_path}")
+            app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.watch_path}", mode="info")
         elif silent == "initial":
             folder_count = re.split(" ", app.foldercount_var.get())
-            app.log(f"Watching: {folder_count[1]} directories in {app.watch_path}")
+            file_count = re.split(" ", app.filecount_var.get())
+            app.log(f"Watching: {folder_count[1]} directories and {file_count[1]} files in the selected folder.", mode="info")
     except Exception as e:
         messagebox.showerror("Error: sync_watch_folders()", f"{str(e)}")
+        app.log(f"Error syncing watch folders: {str(e)}", mode="error")
 
 
 def _scan_for_existing_files(app: 'Main'):
@@ -169,12 +171,12 @@ def _scan_for_existing_files(app: 'Main'):
                 if file_path not in app.move_queue:
                     app.move_queue.append(file_path)
             app.update_queue_count()
-            app.log(f"Added {file_count} pre-existing file{'s' if file_count != 1 else ''} to the move queue")
+            app.log(f"Added {file_count} pre-existing file{'s' if file_count != 1 else ''} to the move queue", mode="info")
             # Start the queue timer to process these files
             from move_queue import start_queue
             start_queue(app)
         else:
-            app.log(f"Ignored {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder")
+            app.log(f"Ignored {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder", mode="info")
 
 
 #endregion

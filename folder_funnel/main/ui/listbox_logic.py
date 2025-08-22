@@ -163,7 +163,7 @@ def delete_selected_file(app: 'Main'):
             history_dict = get_history_list(app)
             del history_dict[filename]
             app.history_listbox.delete(app.history_listbox.curselection())
-            app.log(f"Deleted file: {filename}")
+            app.log(f"Deleted file: {filename}", mode="info")
         except Exception as e:
             messagebox.showerror("Error", f"Could not delete file: {str(e)}")
 
@@ -180,7 +180,7 @@ def delete_selected_duplicate_file(app: 'Main'):
             history_dict = get_history_list(app)
             del history_dict[filename]
             app.history_listbox.delete(app.history_listbox.curselection())
-            app.log(f"Deleted duplicate file: {filename}")
+            app.log(f"Deleted duplicate file: {filename}", mode="info")
             messagebox.showinfo("Success", f"Duplicate file deleted: {filename}")
         except Exception as e:
             messagebox.showerror("Error", f"Could not delete file: {str(e)}")

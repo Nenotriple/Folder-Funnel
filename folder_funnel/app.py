@@ -133,8 +133,8 @@ class Main:
     def open_folder(self, path=None):
         interface_logic.open_folder(self, path)
 
-    def log(self, message):
-        interface_logic.log(self, message)
+    def log(self, message, mode="simple"):
+        interface_logic.log(self, message, mode)
 
     def clear_log(self):
         interface_logic.clear_log(self)

@@ -60,7 +60,7 @@ def save_settings(app: 'Main'):
             cfg.write(configfile)
         return True
     except Exception as e:
-        app.log(f"Error saving settings: {str(e)}")
+        app.log(f"Error saving settings: {str(e)}", mode="error")
         return False
 
 
@@ -128,7 +128,7 @@ def load_settings(app: 'Main'):
                 app.dupe_action_time = float(cfg['Stats']['dupe_action_time'])
         return True
     except Exception as e:
-        app.log(f"Error loading settings: {str(e)}")
+        app.log(f"Error loading settings: {str(e)}", mode="error")
         return False
 
 
@@ -173,7 +173,8 @@ def reset_settings(app: 'Main'):
         apply_settings_to_ui(app)
         # Save the new settings
         save_settings(app)
+        app.log("Settings reset to default values.", mode="info")
         return True
     except Exception as e:
-        app.log(f"Error resetting settings: {str(e)}")
+        app.log(f"Error resetting settings: {str(e)}", mode="error")
         return False

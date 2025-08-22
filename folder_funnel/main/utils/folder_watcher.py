@@ -33,7 +33,6 @@ def start_folder_watcher(app: 'Main', auto_start=False):
         confirm = messagebox.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (excluding files), and begin the Folder-Funnel process.\n\nContinue?")
         if not confirm:
             return
-    app.toggle_indicator(state="start")
     sync_watch_folders(app, silent="initial")
     # Check for pre-existing files in the funnel folder
     _scan_for_existing_files(app)
@@ -78,7 +77,6 @@ def stop_folder_watcher(app: 'Main'):
     if app.watch_path and os.path.exists(app.watch_path):
         shutil.rmtree(app.watch_path)
         app.log(f"Removed watch folder: {app.watch_path}")
-    app.toggle_indicator(state="stop")
     return True
 
 

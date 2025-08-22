@@ -269,33 +269,29 @@ def _create_message_row(app: 'Main'):
     message_frame.pack(side="bottom", fill="x")
     ttk.Separator(message_frame, orient="horizontal").pack(fill="x")
     # Status label
-    status_label = tk.Label(message_frame, textvariable=app.status_label_var, relief="groove", width=15, anchor="w")
-    status_label.pack(side="left")
+    status_label = tk.Label(message_frame, textvariable=app.status_label_var, relief="groove", anchor="w")
+    status_label.pack(side="left", fill="x", expand=True)
     Tip(status_label, "Current status of the Folder-Funnel process", pady=-25)
     # Foldercount label
-    foldercount_label = tk.Label(message_frame, textvariable=app.foldercount_var, relief="groove", width=15, anchor="w")
-    foldercount_label.pack(side="left")
+    foldercount_label = tk.Label(message_frame, textvariable=app.foldercount_var, relief="groove", anchor="w")
+    foldercount_label.pack(side="left", fill="x", expand=True)
     Tip(foldercount_label, "Number of folders in the source folder", pady=-25)
     # Filecount label
-    filecount_label = tk.Label(message_frame, textvariable=app.filecount_var, relief="groove", width=15, anchor="w")
-    filecount_label.pack(side="left")
+    filecount_label = tk.Label(message_frame, textvariable=app.filecount_var, relief="groove", anchor="w")
+    filecount_label.pack(side="left", fill="x", expand=True)
     Tip(filecount_label, "Number of files in the source folder", pady=-25)
     # Movecount label
-    movecount_label = tk.Label(message_frame, textvariable=app.movecount_var, relief="groove", width=15, anchor="w")
-    movecount_label.pack(side="left")
+    movecount_label = tk.Label(message_frame, textvariable=app.movecount_var, relief="groove", anchor="w")
+    movecount_label.pack(side="left", fill="x", expand=True)
     Tip(movecount_label, "Number of files moved to the source folder", pady=-25)
     # Duplicate count label
-    dupecount_label = tk.Label(message_frame, textvariable=app.dupecount_var, relief="groove", width=15, anchor="w")
-    dupecount_label.pack(side="left")
+    dupecount_label = tk.Label(message_frame, textvariable=app.dupecount_var, relief="groove", anchor="w")
+    dupecount_label.pack(side="left", fill="x", expand=True)
     Tip(dupecount_label, "Number of duplicate files found", pady=-25)
     # Queuecount label
-    queuecount_label = tk.Label(message_frame, textvariable=app.queuecount_var, relief="groove", width=15, anchor="w")
-    queuecount_label.pack(side="left")
+    queuecount_label = tk.Label(message_frame, textvariable=app.queuecount_var, relief="groove", anchor="w")
+    queuecount_label.pack(side="left", fill="x", expand=True)
     Tip(queuecount_label, "Number of files in the move queue", pady=-25)
-    # Running indicator
-    app.running_indicator = ttk.Progressbar(message_frame, maximum=20, mode="determinate")
-    app.running_indicator.pack(side="left", fill="x", expand=True)
-    Tip(app.running_indicator, "Running indicator of the Folder-Funnel process", pady=-25)
     # Queue Timer
     app.queue_progressbar = ttk.Progressbar(message_frame, mode="determinate")
     app.queue_progressbar.pack(side="left", fill="x", expand=True)

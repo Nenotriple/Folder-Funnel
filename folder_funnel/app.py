@@ -76,7 +76,6 @@ class Main:
         self.history_listbox: Optional[tk.Listbox] = None
         self.history_menu: Optional[tk.Menu] = None
         self.file_menu: Optional[tk.Menu] = None
-        self.running_indicator: Optional[ttk.Progressbar] = None
         self.queue_progressbar: Optional[ttk.Progressbar] = None
 
         # App Path
@@ -148,9 +147,6 @@ class Main:
 
     def toggle_widgets_state(self, state="idle"):
         interface_logic.toggle_widgets_state(self, state)
-
-    def toggle_indicator(self, state=None):
-        interface_logic.toggle_indicator(self, state)
 
     def open_help_window(self):
         interface_logic.open_help_window(self)

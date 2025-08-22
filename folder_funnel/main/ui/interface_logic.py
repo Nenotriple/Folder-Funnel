@@ -105,16 +105,6 @@ def toggle_widgets_state(app: 'Main', state="idle"):
             file_menu.entryconfig("Select Source Path...", state=state)
 
 
-def toggle_indicator(app: 'Main', state=None):
-    """Toggle the activity indicator (progressbar) state."""
-    if state == "start":
-        app.running_indicator.configure(mode="indeterminate")
-        app.running_indicator.start()
-    else:
-        app.running_indicator.configure(mode="determinate")
-        app.running_indicator.stop()
-
-
 def open_help_window(app: 'Main'):
     """Open the help window with the application help text."""
     app.help_window.open_window(geometry="800x700", help_text=help_text.ABOUT_FOLDER_FUNNEL)

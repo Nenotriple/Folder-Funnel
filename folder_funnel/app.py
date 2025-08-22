@@ -349,11 +349,11 @@ class Main:
 
     def on_closing(self):
         self.process_pending_moves()
-        self.save_settings()
         if not self.stop_folder_watcher():
             return
         if not duplicate_handler.confirm_duplicate_storage_removal(self):
             return
+        self.save_settings()
         self.root.quit()
 
 

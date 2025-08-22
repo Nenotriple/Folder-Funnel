@@ -35,9 +35,7 @@ def select_working_dir(app: 'Main', path=None):
 
 
 def open_folder(app: 'Main', path=None):
-    """Open a folder in the file explorer; if no path is provided, use the working directory."""
-    if not path:
-        path = app.working_dir_var.get()
+    """Open a folder in the file explorer"""
     if os.path.exists(path):
         os.startfile(path)
     else:

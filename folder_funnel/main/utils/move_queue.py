@@ -327,7 +327,10 @@ def process_move_queue(app: 'Main'):
                 success_count += 1
         else:
             app.log(f"File not found, skipping: {source_path}")
-    app.log(f"Batch move complete: {success_count}/{len(app.move_queue)} files moved successfully\n")
+    if len(app.move_queue) == 1:
+        app.log(f"Move complete: {success_count}/1 file moved successfully\n")
+    else:
+        app.log(f"Batch move complete: {success_count}/{len(app.move_queue)} files moved successfully\n")
     app.move_queue.clear()
     app.update_queue_count()
 

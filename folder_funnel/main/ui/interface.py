@@ -79,7 +79,7 @@ def _create_view_menu(app: 'Main', menubar: tk.Menu):
     view_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     view_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     view_menu.add_separator()
-    view_menu.add_checkbutton(label="Toggle: Text Wrap", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
+    view_menu.add_command(label="Toggle: Text Wrap", command=app.toggle_text_wrap)
 
 
 def _create_options_menu(app: 'Main', menubar: tk.Menu):
@@ -216,7 +216,7 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1, font=("Consolas", 10))
     app.text_log.pack(fill="both", expand=True)
-    app.log("Welcome to Folder-Funnel - Please see the help menu for more information.", mode="info")
+    app.log("Welcome to Folder-Funnel - Please see the help menu for more information.")
 
 
 def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):

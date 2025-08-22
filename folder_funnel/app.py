@@ -352,7 +352,8 @@ class Main:
         self.save_settings()
         if not self.stop_folder_watcher():
             return
-        duplicate_handler.confirm_duplicate_storage_removal(self)
+        if not duplicate_handler.confirm_duplicate_storage_removal(self):
+            return
         self.root.quit()
 
 

@@ -67,16 +67,16 @@ def stop_folder_watcher(app: 'Main'):
     """Stop the folder watching process with confirmation"""
     if not (app.watch_observer or app.source_observer):
         return True
-    confirm = messagebox.askokcancel("Stop Process?", "This will stop the Folder-Funnel process and remove the duplicate folder.\n\nContinue?")
+    confirm = messagebox.askokcancel("Stop Process?", "This will stop the Folder-Funnel process and remove the funnel folder.\n\nContinue?")
     if not confirm:
         return False
     _stop_folder_watcher(app)
     app.log("Stopping Folder-Funnel process...", mode="info")
-    app.status_label_var.set("Status: Idle")
-    app.toggle_widgets_state(state="idle")
     if app.watch_path and os.path.exists(app.watch_path):
         shutil.rmtree(app.watch_path)
     app.log(f"Removed watch folder: {app.watch_path}", mode="info")
+    app.status_label_var.set("Status: Idle")
+    app.toggle_widgets_state(state="idle")
     return True
 
 

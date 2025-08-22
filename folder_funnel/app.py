@@ -1,3 +1,11 @@
+"""
+Main (app) is the main application module for Folder-Funnel.
+All public functionality is exposed here.
+
+To add new tools or methods, implement them in `main/.../your_new_tool.py` (accepting the `Main` instance), then import and expose them here.
+Other modules can then access new features via the `Main` instance.
+"""
+
 #region - Imports
 
 

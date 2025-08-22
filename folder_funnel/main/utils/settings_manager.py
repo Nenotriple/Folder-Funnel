@@ -144,6 +144,7 @@ def apply_settings_to_ui(app: 'Main'):
         app.count_folders_and_files()
     # Update history display based on mode
     app.refresh_history_listbox()
+    app.toggle_history_mode()
 
 
 #endregion

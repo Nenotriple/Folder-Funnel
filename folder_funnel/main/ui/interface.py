@@ -174,7 +174,7 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     app.browse_button.pack(side="left")
     Tip(app.browse_button, tip_text)
     # Open
-    open_button = ttk.Button(dir_selection_frame, text="Open", command=app.open_folder)
+    open_button = ttk.Button(dir_selection_frame, text="Open", command=lambda: app.open_folder(app.working_dir_var.get()))
     open_button.pack(side="left")
     Tip(open_button, "Open the selected folder in File Explorer")
     # Start/Stop

@@ -1,4 +1,4 @@
-HELP_TEXT = {
+ABOUT_FOLDER_FUNNEL = {
     "v1.02 - Folder-Funnel":
     "Folder-Funnel was created to help speed up the process of saving files to a directory by removing the need to "
     "manually create a unique filename. It does this by creating a copy of a folder with no other files. This allows "

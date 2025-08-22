@@ -8,7 +8,7 @@ from tkinter import filedialog, messagebox
 
 # Custom
 from . import listbox_logic
-from . help_text import HELP_TEXT
+from main.ui.help_window import help_text
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -119,7 +119,7 @@ def toggle_indicator(app: 'Main', state=None):
 
 def open_help_window(app: 'Main'):
     """Open the help window with the application help text."""
-    app.help_window.open_window(geometry="800x700", help_text=HELP_TEXT)
+    app.help_window.open_window(geometry="800x700", help_text=help_text.ABOUT_FOLDER_FUNNEL)
 
 
 def open_stats_popup(app: 'Main'):

@@ -24,24 +24,28 @@ DRAW_METHODS = {
 
 
 class ScalableImageLabel(tk.Label):
-    def __init__(self, master=None, image_path="", keep_aspect=True, width=None, height=None, draw_method='lanczos', scale_mode="fill", hq_delay_ms=200, *args, **kwargs):
-        """Initialize the ScalableImageLabel widget.
-        Args:
-            master: Parent widget
-            image_path (str | PIL.Image.Image): Path to the image file or a PIL Image instance
-            keep_aspect (bool): Whether to maintain aspect ratio when scaling
-            width (int, optional): Initial width of the widget
-            height (int, optional): Initial height of the widget
-            draw_method (str): The draw method to use ('nearest', 'bilinear', 'bicubic', or 'lanczos')
-            scale_mode (str): "fill" (default) scales the image to fill the widget.
-                              "center" shows the image at its original size centered within the widget;
-                              if the image is larger than the widget, it gets scaled using "fill".
-        """
+    """
+    A Tkinter Label widget that displays a scalable image with optional aspect ratio preservation.
+
+    Args:
+        master: Parent widget.
+        image_path (str | PIL.Image.Image): Path to the image file or a PIL Image instance.
+        width (int, optional): Initial width of the widget.
+        height (int, optional): Initial height of the widget.
+        keep_aspect (bool): Whether to maintain aspect ratio when scaling.
+        draw_method (str): The draw method to use ('nearest', 'bilinear', 'bicubic', or 'lanczos').
+        scale_mode (str): "fill" scales the image to fill the widget. "center" shows the image at its original size centered within the widget; if the image is larger than the widget, it gets scaled using "fill".
+        hq_delay_ms (int): Delay in milliseconds before applying high-quality resize after resizing stops.
+        *args: Additional positional arguments for tk.Label.
+        **kwargs: Additional keyword arguments for tk.Label.
+    """
+
+    def __init__(self, master=None, image_path="", width=None, height=None, keep_aspect=True, draw_method='lanczos', scale_mode="fill", hq_delay_ms=200, *args, **kwargs):
         super().__init__(master, *args, **kwargs)
         # args
         self.image_path = ""
-        self.keep_aspect = keep_aspect
         self._init_dimensions(width, height)
+        self.keep_aspect = keep_aspect
         self.draw_method = self._validate_draw_method(draw_method)
         scale_mode = self._init_scale_mode(scale_mode)
         self.resize_delay_ms = int(hq_delay_ms)
@@ -256,7 +260,7 @@ def example():
     root = tk.Tk()
     root.title("ScalableImageLabel Example")
 
-    image = ScalableImageLabel(root, image_path="image.png", keep_aspect=True, width=None, height=None, draw_method='lanczos', scale_mode="center")
+    image = ScalableImageLabel(root, image_path="image.png", width=None, height=None, keep_aspect=True, draw_method='lanczos', scale_mode="center")
     image.pack(fill=tk.BOTH, expand=True)
 
     root.mainloop()

@@ -152,7 +152,7 @@ def _scan_for_existing_files(app: 'Main'):
         for filename in filenames:
             file_path = os.path.join(dirpath, filename)
             # Apply same filtering logic as the regular queue system
-            from move_queue import _should_process_firefox_temp_files, _is_temp_file
+            from .move_queue import _should_process_firefox_temp_files, _is_temp_file
             # Check if file should be processed based on Firefox temp files setting
             if not _should_process_firefox_temp_files(app, file_path):
                 continue
@@ -173,7 +173,7 @@ def _scan_for_existing_files(app: 'Main'):
             app.update_queue_count()
             app.log(f"Added {file_count} pre-existing file{'s' if file_count != 1 else ''} to the move queue", mode="info")
             # Start the queue timer to process these files
-            from move_queue import start_queue
+            from .move_queue import start_queue
             start_queue(app)
         else:
             app.log(f"Ignored {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder", mode="info")

@@ -19,12 +19,6 @@ from tkinter import scrolledtext
 from .duplicate_review_dialog import InteractiveDuplicateReviewDialog
 from TkToolTip import TkToolTip as Tip
 
-# Set TkToolTip defaults
-Tip.DELAY = 250
-Tip.PADY = 25
-Tip.ORIGIN = "widget"
-
-
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -105,10 +99,10 @@ class DuplicateScannerDialog:
         self.selected_folder = self.folder_var.get()
         self.folder_entry = ttk.Entry(folder_frame, textvariable=self.folder_var, state="readonly")
         self.folder_entry.grid(row=0, column=1, sticky="ew", padx=(0, 8))
-        Tip(self.folder_entry, "Folder to scan for duplicate files")
+        Tip(widget=self.folder_entry, text="Folder to scan for duplicate files", widget_anchor="sw", pady=2)
         self.browse_button = ttk.Button(folder_frame, text="Browse...", command=self.browse_folder)
         self.browse_button.grid(row=0, column=2)
-        Tip(self.browse_button, "Browse for folder to scan")
+        Tip(widget=self.browse_button, text="Browse for folder to scan", widget_anchor="sw", pady=2)
 
 
     # --- Scan Config ---
@@ -138,34 +132,34 @@ class DuplicateScannerDialog:
         self.matching_mode_var = tk.StringVar(value=self.duplicate_scan_modes["SIZE_AND_PARTIAL_HASH"])
         matching_combo = ttk.Combobox(config_frame, textvariable=self.matching_mode_var, values=scan_mode_order, state="readonly", width=28)
         matching_combo.grid(row=0, column=1, sticky="w", padx=(0, 15))
-        Tip(matching_combo, "Choose how to match duplicate files")
+        Tip(widget=matching_combo, text="Choose how to match duplicate files", tooltip_anchor="sw", pady=-2)
         self.include_subfolders_var = tk.BooleanVar(value=True)
         include_cb = ttk.Checkbutton(config_frame, text="Include subfolders", variable=self.include_subfolders_var)
         include_cb.grid(row=0, column=2, sticky="w")
-        Tip(include_cb, "Include files in subfolders during scan")
+        Tip(widget=include_cb, text="Include files in subfolders during scan", tooltip_anchor="sw", pady=-2)
         self.same_folder_only_var = tk.BooleanVar(value=False)
         same_folder_cb = ttk.Checkbutton(config_frame, text="Match only within same folder", variable=self.same_folder_only_var)
         same_folder_cb.grid(row=1, column=2, sticky="w", padx=(0, 0))
-        Tip(same_folder_cb, "Only match duplicates within the same folder")
+        Tip(widget=same_folder_cb, text="Only match duplicates within the same folder", tooltip_anchor="sw", pady=-2)
         ttk.Label(config_frame, text="Min size (KB):").grid(row=1, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
         self.min_size_var = tk.IntVar(value=1)
         min_size_spin = ttk.Spinbox(config_frame, from_=0, to=999999, textvariable=self.min_size_var, width=12)
         min_size_spin.grid(row=1, column=1, sticky="w", pady=(8, 0))
-        Tip(min_size_spin, "Minimum file size (in KB) to include")
+        Tip(widget=min_size_spin, text="Minimum file size (in KB) to include", tooltip_anchor="sw", pady=-2)
         ttk.Label(config_frame, text="Max size (MB):").grid(row=2, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
         self.max_size_var = tk.IntVar(value=0)
         max_size_spin = ttk.Spinbox(config_frame, from_=0, to=1024*1024, textvariable=self.max_size_var, width=12)
         max_size_spin.grid(row=2, column=1, sticky="w", pady=(8, 0))
-        Tip(max_size_spin, "Maximum file size (in MB) to include (0 = no max)")
+        Tip(widget=max_size_spin, text="Maximum file size (in MB) to include (0 = no max)", tooltip_anchor="sw", pady=-2)
         # --- File Type Filtering ---
         self.filetype_filtering_var = tk.BooleanVar(value=False)
         filetype_cb = ttk.Checkbutton(config_frame, text="Type Filtering", variable=self.filetype_filtering_var, command=self.toggle_filetype_entry)
         filetype_cb.grid(row=3, column=0, sticky="w", pady=(8, 0))
-        Tip(filetype_cb, "Enabled to filter files by extensions")
+        Tip(widget=filetype_cb, text="Enabled to filter files by extensions", tooltip_anchor="sw", pady=-2)
         self.filetype_entry_var = tk.StringVar(value=".png, .webp, .jpg")
         self.filetype_entry = ttk.Entry(config_frame, textvariable=self.filetype_entry_var, state="disabled", width=30)
         self.filetype_entry.grid(row=3, column=1, sticky="w", pady=(8, 0), padx=(0, 5))
-        Tip(self.filetype_entry, "Separate extensions with a comma and space: (.png, .webp, .jpg)")
+        Tip(widget=self.filetype_entry, text="Separate extensions with a comma and space: (.png, .webp, .jpg)", tooltip_anchor="sw", pady=-2)
         # --- Partial Hash Size Selection ---
         self.partial_sizes = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
         self.partial_size_labels = [
@@ -183,7 +177,7 @@ class DuplicateScannerDialog:
         ttk.Label(config_frame, text="Partial Hash Size:").grid(row=4, column=0, sticky="w", padx=(0, 10), pady=(8, 0))
         self.partial_size_combo = ttk.Combobox(config_frame, textvariable=self.partial_size_var, values=self.partial_size_labels, state="readonly", width=20)
         self.partial_size_combo.grid(row=4, column=1, sticky="w", pady=(8, 0))
-        Tip(self.partial_size_combo, "Partial hash size for 'Partial Hash (Fast)' mode")
+        Tip(widget=self.partial_size_combo, text="Partial hash size for 'Partial Hash (Fast)' mode", tooltip_anchor="sw", pady=-2)
         # Only enable when Partial Hash mode is selected
         def on_mode_change(*args):
             mode = self.matching_mode_var.get()
@@ -212,13 +206,13 @@ class DuplicateScannerDialog:
         scan_frame.grid(row=0, column=0, sticky="ew", pady=(0, 5))
         self.scan_button = ttk.Button(scan_frame, text="Start Scan", command=self.start_scan)
         self.scan_button.pack(side="left", padx=(0, 8))
-        Tip(self.scan_button, "Start scanning for duplicate files")
+        Tip(widget=self.scan_button, text="Start scanning for duplicate files", tooltip_anchor="sw", pady=-2)
         self.cancel_button = ttk.Button(scan_frame, text="Cancel", command=self.cancel_scan, state="disabled")
         self.cancel_button.pack(side="left", padx=(0, 8))
-        Tip(self.cancel_button, "Cancel the current scan")
+        Tip(widget=self.cancel_button, text="Cancel the current scan", tooltip_anchor="sw", pady=-2)
         self.close_button = ttk.Button(scan_frame, text="Close", command=self.on_close)
         self.close_button.pack(side="right")
-        Tip(self.close_button, "Close this dialog")
+        Tip(widget=self.close_button, text="Close this dialog", tooltip_anchor="sw", pady=-2)
         # Progress Bar Row
         self.progress_var = tk.DoubleVar()
         self.progress_bar = ttk.Progressbar(control_frame, variable=self.progress_var, mode='determinate')
@@ -233,13 +227,13 @@ class DuplicateScannerDialog:
         action_frame.grid_columnconfigure(3, weight=1)
         self.delete_button = ttk.Button(action_frame, text="Delete Duplicates", command=self.delete_duplicates, state="disabled")
         self.delete_button.grid(row=0, column=0, padx=(0, 8))
-        Tip(self.delete_button, "Delete all but one file in each duplicate group")
+        Tip(widget=self.delete_button, text="Delete all but one file in each duplicate group", tooltip_anchor="sw", pady=-2)
         self.move_button = ttk.Button(action_frame, text="Move Duplicates", command=self.move_duplicates, state="disabled")
         self.move_button.grid(row=0, column=1, padx=(0, 8))
-        Tip(self.move_button, "Move duplicate files to a separate folder")
+        Tip(widget=self.move_button, text="Move duplicate files to a separate folder", tooltip_anchor="sw", pady=-2)
         self.interactive_button = ttk.Button(action_frame, text="Interactive Review", command=self.open_interactive_review, state="disabled")
         self.interactive_button.grid(row=0, column=2, padx=(0, 15))
-        Tip(self.interactive_button, "Review and process duplicates interactively")
+        Tip(widget=self.interactive_button, text="Review and process duplicates interactively", tooltip_anchor="sw", pady=-2)
         # Action status info
         self.action_info_var = tk.StringVar(value="Scan for duplicates first")
         action_info_label = ttk.Label(action_frame, textvariable=self.action_info_var, foreground="gray")
@@ -255,7 +249,7 @@ class DuplicateScannerDialog:
         # Results text
         self.results_text = scrolledtext.ScrolledText(results_frame, wrap=tk.WORD, height=12)
         self.results_text.grid(row=0, column=0, sticky="nsew")
-        Tip(self.results_text, "Results of the duplicate scan")
+        Tip(widget=self.results_text, text="Results of the duplicate scan", tooltip_anchor="sw", pady=-2)
 
 
     # --- Status Bar ---
@@ -269,11 +263,11 @@ class DuplicateScannerDialog:
         status_bar_frame.grid_columnconfigure(2, weight=1)
         status_label = ttk.Label(status_bar_frame, textvariable=self.status_var, foreground="gray")
         status_label.grid(row=0, column=0, sticky="w")
-        Tip(status_label, "Current scan status")
+        Tip(widget=status_label, text="Current scan status", tooltip_anchor="sw", pady=-2)
         self.overall_eta_label = ttk.Label(status_bar_frame, textvariable=self.overall_eta_var, foreground="gray")
         self.overall_eta_label.grid(row=0, column=2, sticky="e")
         self.overall_eta_label.grid_remove()
-        Tip(self.overall_eta_label, "Overall scan progress and ETA")
+        Tip(widget=self.overall_eta_label, text="Overall scan progress and ETA", tooltip_anchor="sw", pady=-2)
 
 
     #endregion

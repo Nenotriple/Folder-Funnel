@@ -123,6 +123,17 @@ def toggle_widgets_state(app: 'Main', state="idle"):
             file_menu.entryconfig("Select Source Path...", state=state)
 
 
+def reset_status_row(app: 'Main'):
+    """Reset the status row."""
+    app.status_label_var.set("Status: Idle")
+    app.foldercount_var.set("Folders: 0")
+    app.filecount_var.set("Files: 0")
+    app.movecount_var.set("Moved: 0")
+    app.dupecount_var.set("Duplicates: 0")
+    app.queuecount_var.set("Queue: 0")
+    app.queue_progressbar.configure(value=0)
+
+
 def open_help_window(app: 'Main'):
     """Open the help window with the application help text."""
     window = ntk.tkmarktext.TextWindow(master=app.root, title="Help", text=help_text.ABOUT_FOLDER_FUNNEL, geometry="600x400", icon=app.icon_path)

@@ -34,6 +34,7 @@ def start_folder_watcher(app: 'Main', auto_start=False):
     # Show activity on progress bar during initialization
     app.status_label_var.set("Status: Counting files...")
     app.root.update_idletasks()
+    app.toggle_widgets_state(state="running")
     app.count_folders_and_files()
     app.status_label_var.set("Status: Syncing folders...")
     app.root.update_idletasks()
@@ -46,7 +47,6 @@ def start_folder_watcher(app: 'Main', auto_start=False):
     app.movecount_var.set("Moved: 0")
     app.duplicate_count = 0
     app.update_duplicate_count()
-    app.toggle_widgets_state(state="running")
 
 
 def _start_folder_watcher(app: 'Main'):
@@ -78,7 +78,8 @@ def stop_folder_watcher(app: 'Main'):
     if app.funnel_dir and os.path.exists(app.funnel_dir):
         shutil.rmtree(app.funnel_dir)
     app.log(f"Removed watch folder: {app.funnel_dir}", mode="info")
-    app.status_label_var.set("Status: Idle")
+    app.reset_status_row()
+    app.clear_history()
     app.toggle_widgets_state(state="idle")
     return True
 

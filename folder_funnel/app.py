@@ -143,9 +143,6 @@ class Main:
     def clear_log(self):
         interface_logic.clear_log(self)
 
-    def clear_history(self):
-        interface_logic.clear_history(self)
-
     def toggle_text_wrap(self):
         interface_logic.toggle_text_wrap(self)
 
@@ -171,6 +168,9 @@ class Main:
 #endregion
 #region - Listbox Logic
 
+
+    def clear_history(self):
+        interface_logic.clear_history(self)
 
     def toggle_history_mode(self):
         listbox_logic.toggle_history_mode(self)
@@ -219,6 +219,9 @@ class Main:
 
     def delete_selected_file_smart(self):
         listbox_logic.delete_selected_file_smart(self)
+
+    def reset_status_row(self):
+        interface_logic.reset_status_row(self)
 
 
 #endregion

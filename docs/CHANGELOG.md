@@ -13,7 +13,7 @@
 
 - [💾](https://github.com/Nenotriple/folder-funnel/releases/tag/v1.03)
 
-## New
+**New**:
 
 - The app can now be minimized to the system tray if `Options > Minimize to Tray on Close` is enabled.
   - When minimized to tray, the app can be restored by double-clicking the tray icon or via the tray context menu.
@@ -26,7 +26,7 @@
   - Duplicates can be previewed and selectively dealt with or in bulk.
 - Added improved detail reporting during the funnel warm-up phase.
 
-## Changes
+**Changes**:
 
 - Stop/Start buttons are consolidated into a single button.
 - The Browse button and directory input are now disabled while the funnel is active.
@@ -35,7 +35,7 @@
 - Logs are now prefixed which can help spot specific types of messages more easily.
 - Improved shutdown flow.
 
-## Fixed
+**Fixed:**
 
 - Fix state issue with text wrap option.
 
@@ -45,7 +45,7 @@
 
 - [💾](https://github.com/Nenotriple/folder-funnel/releases/tag/v1.02)
 
-## Fixed
+**Fixed:**
 
 - Fixed the `settings.cfg` file not being created or loaded.
 
@@ -55,7 +55,7 @@
 
 - [💾](https://github.com/Nenotriple/folder-funnel/releases/tag/v1.01)
 
-## New
+**New:**
 
 - **File Rules**:
   - `Ignore Temp Files`:
@@ -69,7 +69,7 @@
   - `Overwrite on File Conflict`:
     - Overwrite existing files in the source folder with incoming files from the funnel folder.
 
-## Other Changes
+**Other Changes:**
 
 - All actions now have an additional 2-second delay to allow files to "settle".
 - Updated some labels and tooltips to better reflect their purpose.

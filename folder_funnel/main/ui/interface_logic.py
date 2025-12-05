@@ -28,7 +28,7 @@ def select_working_dir(app: 'Main', path=None):
             return
         path = os.path.normpath(path)
     if os.path.exists(path):
-        app.working_dir_var.set(path)
+        app.source_dir_var.set(path)
         app.dir_entry_tooltip.config(text=path)
         app.log(f"\nSelected folder: {path}\n", mode="info")
         app.count_folders_and_files()

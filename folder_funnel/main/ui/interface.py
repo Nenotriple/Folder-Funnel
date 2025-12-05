@@ -52,7 +52,7 @@ def _create_file_menu(app: 'Main', menubar: tk.Menu):
     file_menu.add_command(label="Select Source Path...", command=app.select_working_dir)
     file_menu.add_separator()
     file_menu.add_command(label="Open: Source", command=app.open_folder)
-    file_menu.add_command(label="Open: Funnel", command=lambda: app.open_folder(app.watch_path))
+    file_menu.add_command(label="Open: Funnel", command=lambda: app.open_folder(app.funnel_dir))
     file_menu.add_command(label="Open: Duplicates", command=lambda: app.open_folder(app.duplicate_storage_path))
     file_menu.add_separator()
     file_menu.add_command(label="Reset App Settings", command=app.reset_settings)
@@ -64,7 +64,7 @@ def _create_file_menu(app: 'Main', menubar: tk.Menu):
 def _create_edit_menu(app: 'Main', menubar: tk.Menu):
     edit_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Edit", menu=edit_menu)
-    edit_menu.add_command(label="Sync Source-and-Funnel Folders", command=app.sync_watch_folders)
+    edit_menu.add_command(label="Sync Source-and-Funnel Folders", command=app.sync_funnel_folders)
     edit_menu.add_command(label="Process Move Queue", command=app.process_move_queue)
     edit_menu.add_separator()
     edit_menu.add_command(label="Find Duplicate Files...", command=app.show_duplicate_scanner)
@@ -171,7 +171,7 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     dir_label.pack(side="left")
     Tip(widget=dir_label, text=tip_text, widget_anchor="sw", pady=2)
     # Entry
-    app.dir_entry = ttk.Entry(dir_selection_frame, textvariable=app.working_dir_var)
+    app.dir_entry = ttk.Entry(dir_selection_frame, textvariable=app.source_dir_var)
     app.dir_entry.pack(side="left", fill="x", expand=True)
     app.dir_entry_tooltip = Tip(widget=app.dir_entry, text=tip_text, widget_anchor="sw", pady=2)
     # Browse
@@ -179,7 +179,7 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     app.browse_button.pack(side="left")
     Tip(widget=app.browse_button, text=tip_text, widget_anchor="sw", pady=2)
     # Open
-    open_button = ttk.Button(dir_selection_frame, text="Open", command=lambda: app.open_folder(app.working_dir_var.get()))
+    open_button = ttk.Button(dir_selection_frame, text="Open", command=lambda: app.open_folder(app.source_dir_var.get()))
     open_button.pack(side="left")
     Tip(widget=open_button, text="Open the selected folder in File Explorer", widget_anchor="sw", pady=2)
     # Start/Stop

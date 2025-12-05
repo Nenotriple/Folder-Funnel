@@ -60,7 +60,7 @@ def _should_process_firefox_temp_files(app: 'Main', file_path):
     if not app.ignore_firefox_temp_files_var.get():
         return True
     # Get relative path for logging
-    rel_path = os.path.relpath(file_path, app.watch_path)
+    rel_path = os.path.relpath(file_path, app.funnel_dir)
     # Check if file is empty (0 bytes) - The Firefox 0-byte placeholder
     if _is_empty_file(file_path):
         return False
@@ -126,8 +126,8 @@ def _extract_zip(app: 'Main', zip_path, extract_dir):
             # Extract all contents, overwriting existing files
             zip_ref.extractall(path=extract_dir)
         # Log the extraction
-        rel_path = os.path.relpath(zip_path, app.working_dir_var.get())
-        rel_extract = os.path.relpath(extract_dir, app.working_dir_var.get())
+        rel_path = os.path.relpath(zip_path, app.source_dir_var.get())
+        rel_extract = os.path.relpath(extract_dir, app.source_dir_var.get())
         app.log(f"Extracted ZIP: {rel_path} → {rel_extract}", mode="info")
         # Remove the original ZIP file if enabled
         if app.auto_delete_zip_var.get():
@@ -147,8 +147,8 @@ def _handle_new_folder(app: 'Main', source_path):
     """Handle a new folder being created in the watch directory."""
     try:
         # Get relative path from watch folder
-        rel_path = os.path.relpath(source_path, app.watch_path)
-        dest_path = os.path.join(app.working_dir_var.get(), rel_path)
+        rel_path = os.path.relpath(source_path, app.funnel_dir)
+        dest_path = os.path.join(app.source_dir_var.get(), rel_path)
         # Create folder structure in both locations
         os.makedirs(dest_path, exist_ok=True)
         app.log(f"Created folder: {rel_path}", mode="info")
@@ -159,9 +159,9 @@ def _handle_new_folder(app: 'Main', source_path):
             # Create subdirectories in both locations
             for dirname in dirnames:
                 rel_dir = os.path.join(rel_path, rel_dirpath, dirname)
-                watch_dir = os.path.join(app.watch_path, rel_dir)
-                dest_dir = os.path.join(app.working_dir_var.get(), rel_dir)
-                os.makedirs(watch_dir, exist_ok=True)
+                funnel_dir = os.path.join(app.funnel_dir, rel_dir)
+                dest_dir = os.path.join(app.source_dir_var.get(), rel_dir)
+                os.makedirs(funnel_dir, exist_ok=True)
                 os.makedirs(dest_dir, exist_ok=True)
                 app.log(f"Created subfolder: {rel_dir}", mode="info")
             # Queue all files for moving
@@ -237,9 +237,9 @@ def _move_file(app: 'Main', source_path):
     """Internal method to move a file when the queue is ready."""
     try:
         # Get the relative path from the watch folder
-        rel_path = os.path.relpath(source_path, app.watch_path)
+        rel_path = os.path.relpath(source_path, app.funnel_dir)
         # Calculate the destination path in the source folder
-        dest_path = os.path.join(app.working_dir_var.get(), rel_path)
+        dest_path = os.path.join(app.source_dir_var.get(), rel_path)
         # Ensure the destination directory exists
         os.makedirs(os.path.dirname(dest_path), exist_ok=True)
         # If file exists, handle based on settings
@@ -314,7 +314,7 @@ def queue_move_file(app: 'Main', source_path):
             return
         app.move_queue.append(source_path)
         app.update_queue_count()
-        app.log(f"Queued file: {os.path.relpath(source_path, app.watch_path)}", mode="info")
+        app.log(f"Queued file: {os.path.relpath(source_path, app.funnel_dir)}", mode="info")
     # Start or restart the queue timer
     start_queue(app)
 

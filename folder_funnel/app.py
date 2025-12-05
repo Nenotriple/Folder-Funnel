@@ -46,7 +46,7 @@ class Main:
 
     def initialize_app_variables(self):
         # tk Variables
-        self.working_dir_var = tk.StringVar(value="")  # The source folder
+        self.source_dir_var = tk.StringVar(value="")  # The source folder
         self.status_label_var = tk.StringVar(value="Status: Idle")  # App status
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
@@ -84,9 +84,9 @@ class Main:
         self.app_path = self.get_app_path()  # The application folder
 
         # Funnel and Duplicate Folders
-        self.watch_path = ""  # The funnel folder that will be watched
-        self.watch_folder_name = ""  # The name of the funnel folder
-        self.watch_name_prefix = "#FUNNEL#_"  # Prefix for the funnel folder name
+        self.funnel_dir = ""  # The funnel folder that will be watched
+        self.funnel_dir_name = ""  # The name of the funnel folder
+        self.funnel_name_prefix = "#FUNNEL#_"  # Prefix for the funnel folder name
         self.duplicate_storage_path = ""  # The folder that will store moved duplicate files
         self.duplicate_name_prefix = "#DUPLICATE#_"  # Prefix for duplicate storage folder name
 
@@ -110,7 +110,7 @@ class Main:
         self.queue_start_time = None  # Store when the queue timer started
 
         # Observers for file watching
-        self.watch_observer = None
+        self.funnel_observer = None
         self.source_observer = None
 
         # Temporary filetypes
@@ -238,8 +238,8 @@ class Main:
     def stop_folder_watcher(self):
         return folder_watcher.stop_folder_watcher(self)
 
-    def sync_watch_folders(self, silent=False):
-        folder_watcher.sync_watch_folders(self, silent)
+    def sync_funnel_folders(self, silent=False):
+        folder_watcher.sync_funnel_folders(self, silent)
 
 
 #endregion
@@ -265,7 +265,7 @@ class Main:
 
     def check_working_dir_exists(self):
         """Check if the source folder exists."""
-        path = self.working_dir_var.get()
+        path = self.source_dir_var.get()
         if not path:
             messagebox.showerror("Error", "No folder selected")
             return False
@@ -279,7 +279,7 @@ class Main:
         """Count the number of folders and files in the source folder."""
         folder_count = 0
         file_count = 0
-        for root, dirs, files in os.walk(self.working_dir_var.get()):
+        for root, dirs, files in os.walk(self.source_dir_var.get()):
             folder_count += len(dirs)
             file_count += len(files)
         self.foldercount_var.set(f"Folders: {folder_count}")

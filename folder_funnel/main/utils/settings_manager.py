@@ -23,7 +23,7 @@ def save_settings(app: 'Main'):
     cfg = configparser.ConfigParser()
     # General settings
     cfg['General'] = {
-        'working_directory': app.working_dir_var.get(),
+        'working_directory': app.source_dir_var.get(),
         'text_log_wrap': str(app.text_log_wrap_var.get()),
         'history_mode': app.history_mode_var.get(),
     }
@@ -82,7 +82,7 @@ def load_settings(app: 'Main'):
         if 'General' in cfg:
             if 'working_directory' in cfg['General'] and os.path.exists(cfg['General']['working_directory']):
                 if messagebox.askyesno("Confirmation", "Reload last directory and start funnel process?"):
-                    app.working_dir_var.set(cfg['General']['working_directory'])
+                    app.source_dir_var.set(cfg['General']['working_directory'])
                     # Schedule the funnel process to start after UI is ready
                     app.root.after(500, lambda: app.start_folder_watcher(auto_start=True))
             if 'text_log_wrap' in cfg['General']:
@@ -145,8 +145,8 @@ def apply_settings_to_ui(app: 'Main'):
         wrap_mode = 'word' if app.text_log_wrap_var.get() else 'none'
         app.text_log.configure(wrap=wrap_mode)
     # Apply working directory if it exists
-    if app.working_dir_var.get() and os.path.exists(app.working_dir_var.get()):
-        app.select_working_dir(app.working_dir_var.get())
+    if app.source_dir_var.get() and os.path.exists(app.source_dir_var.get()):
+        app.select_working_dir(app.source_dir_var.get())
         app.count_folders_and_files()
     # Update history display based on mode
     app.refresh_history_listbox()

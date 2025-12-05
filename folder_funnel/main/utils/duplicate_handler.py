@@ -331,7 +331,7 @@ def confirm_duplicate_storage_removal(app: 'Main'):
 
 def create_duplicate_storage_folder(app: 'Main'):
     """Create a folder to store duplicate files when in 'Move' mode."""
-    source_path = app.working_dir_var.get()
+    source_path = app.source_dir_var.get()
     source_folder_name = os.path.basename(source_path)
     parent_dir = os.path.dirname(source_path)
     duplicate_folder_name = f"{app.duplicate_name_prefix}{source_folder_name}"

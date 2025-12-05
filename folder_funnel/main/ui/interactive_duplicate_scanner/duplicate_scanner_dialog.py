@@ -309,7 +309,7 @@ class DuplicateScannerDialog:
         folder_frame.grid(row=0, column=0, sticky="ew", pady=(0, 8))
         folder_frame.grid_columnconfigure(1, weight=1)
         ttk.Label(folder_frame, text="Scan Folder:").grid(row=0, column=0, sticky="w", padx=(0, 8))
-        self.folder_var = tk.StringVar(value=self.app.working_dir_var.get())
+        self.folder_var = tk.StringVar(value=self.app.source_dir_var.get())
         self.selected_folder = self.folder_var.get()
         self.folder_entry = ttk.Entry(folder_frame, textvariable=self.folder_var, state="readonly")
         self.folder_entry.grid(row=0, column=1, sticky="ew", padx=(0, 8))

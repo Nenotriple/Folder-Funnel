@@ -6,9 +6,12 @@ import os
 # Standard GUI
 from tkinter import filedialog, messagebox
 
+# Third-Party
+import nenotk as ntk
+
 # Custom
 from . import listbox_logic
-from main.ui.help_window import help_text
+from main.utils import help_text
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -123,7 +126,8 @@ def toggle_widgets_state(app: 'Main', state="idle"):
 
 def open_help_window(app: 'Main'):
     """Open the help window with the application help text."""
-    app.help_window.open_window(geometry="800x700", help_text=help_text.ABOUT_FOLDER_FUNNEL)
+    window = ntk.tkmarktext.TextWindow(master=app.root, title="Help", text=help_text.ABOUT_FOLDER_FUNNEL, geometry="600x400", icon=app.icon_path)
+    window.open_window()
 
 
 def open_stats_popup(app: 'Main'):

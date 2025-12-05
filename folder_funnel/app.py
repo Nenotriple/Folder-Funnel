@@ -26,7 +26,6 @@ import nenotk
 from main.ui import interface
 from main.ui import listbox_logic
 from main.ui import interface_logic
-from main.ui.help_window import help_win
 from main.utils import move_queue
 from main.utils import folder_watcher
 from main.utils import duplicate_handler
@@ -86,6 +85,7 @@ class Main:
 
         # App Path
         self.app_path = self.get_app_path()  # The application folder
+        self.icon_path = ""  # Path to the application icon
 
         # Funnel and Duplicate Folders
         self.funnel_dir = ""  # The funnel folder that will be watched
@@ -119,9 +119,6 @@ class Main:
 
         # Temporary filetypes
         self.temp_filetypes = [".tmp", ".temp", ".part", ".crdownload", ".partial", ".bak"]
-
-        # Help window
-        self.help_window = help_win.HelpWindow(self.root)
 
         # Stats
         self.grand_move_count = 0  # Lifetime total of files moved
@@ -343,9 +340,9 @@ class Main:
 
 
     def set_icon(self):
-        icon_path = os.path.join(self.app_path, "main", "ui", "icon.png")
-        if os.path.exists(icon_path):
-            self.root.iconphoto(True, tk.PhotoImage(file=icon_path))
+        self.icon_path = os.path.join(self.app_path, "main", "ui", "icon.png")
+        if os.path.exists(self.icon_path):
+            self.root.iconphoto(True, tk.PhotoImage(file=self.icon_path))
 
 
     def get_app_path(self):

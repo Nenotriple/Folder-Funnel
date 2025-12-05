@@ -31,7 +31,12 @@ def start_folder_watcher(app: 'Main', auto_start=False):
         confirm = ntk.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (excluding files), and begin the Folder-Funnel process.\n\nContinue?")
         if not confirm:
             return
+    # Show activity on progress bar during initialization
+    app.status_label_var.set("Status: Counting files...")
+    app.root.update_idletasks()
     app.count_folders_and_files()
+    app.status_label_var.set("Status: Syncing folders...")
+    app.root.update_idletasks()
     sync_funnel_folders(app, silent="initial")
     # Check for pre-existing files in the funnel folder
     _scan_for_existing_files(app)
@@ -101,12 +106,20 @@ def sync_funnel_folders(app: 'Main', silent=False):
     app.funnel_dir = os.path.normpath(os.path.join(parent_dir, app.funnel_dir_name))
     counter_created = 0
     counter_removed = 0
+    # Set progress bar to determinate mode for manual animation
+    app.queue_progressbar.configure(mode="determinate")
+    app.queue_progressbar['value'] = 0
+    app.root.update_idletasks()
+    progress_value = 0
+    progress_step = 10
+    progress_max = 100
     try:
         # Create watch folder
         os.makedirs(app.funnel_dir, exist_ok=True)
         if not silent:
             app.log("Initializing synced folder...", mode="info")
         # Walk through the source directory and create corresponding directories in the watch folder
+        item_counter = 0
         for dirpath, dirnames, filenames in os.walk(source_path):
             relpath = os.path.relpath(dirpath, source_path)
             if relpath == '.':
@@ -115,20 +128,33 @@ def sync_funnel_folders(app: 'Main', silent=False):
             if not os.path.exists(funnel_dirpath):
                 os.makedirs(funnel_dirpath)
                 counter_created += 1
+            item_counter += 1
+            if item_counter % 20 == 0:
+                progress_value += progress_step
+                if progress_value > progress_max:
+                    progress_value = 0
+                app.queue_progressbar['value'] = progress_value
+                app.root.update_idletasks()
         # Walk through the watch folder and remove directories that no longer exist in the source path
+        item_counter = 0
         for dirpath, dirnames, filenames in os.walk(app.funnel_dir, topdown=False):
             relpath = os.path.relpath(dirpath, app.funnel_dir)
             source_dirpath = os.path.join(source_path, relpath)
             if not os.path.exists(source_dirpath):
                 # Only remove directories that are empty (no files or subdirectories)
                 try:
-                    # Check if directory is empty
                     if not os.listdir(dirpath):
                         os.rmdir(dirpath)
                         counter_removed += 1
                 except OSError:
-                    # Directory is not empty or cannot be removed, skip it
                     pass
+            item_counter += 1
+            if item_counter % 20 == 0:
+                progress_value += progress_step
+                if progress_value > progress_max:
+                    progress_value = 0
+                app.queue_progressbar['value'] = progress_value
+                app.root.update_idletasks()
         if silent in [False, "semi"]:
             app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.funnel_dir}", mode="info")
         elif silent == "initial":
@@ -138,6 +164,10 @@ def sync_funnel_folders(app: 'Main', silent=False):
     except Exception as e:
         ntk.showinfo("Error: sync_funnel_folders()", f"{str(e)}")
         app.log(f"Error syncing funnel folders: {str(e)}", mode="error")
+    finally:
+        # Reset progress bar to determinate mode
+        app.queue_progressbar['value'] = 0
+        app.queue_progressbar.configure(mode="determinate")
 
 
 def _scan_for_existing_files(app: 'Main'):

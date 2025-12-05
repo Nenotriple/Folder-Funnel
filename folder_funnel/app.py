@@ -277,12 +277,19 @@ class Main:
 
 
     def count_folders_and_files(self):
-        """Count the number of folders and files in the source folder."""
+        """Count the number of folders and files in the source folder, updating the progress bar."""
+        # Set progress bar to indeterminate mode to show activity
         folder_count = 0
         file_count = 0
-        for root, dirs, files in os.walk(self.source_dir_var.get()):
+        i = 0
+        for root_dir, dirs, files in os.walk(self.source_dir_var.get()):
             folder_count += len(dirs)
             file_count += len(files)
+            i += 1
+            if i % 20 == 0:
+                self.foldercount_var.set(f"Folders: {folder_count}")
+                self.filecount_var.set(f"Files: {file_count}")
+                self.root.update_idletasks()
         self.foldercount_var.set(f"Folders: {folder_count}")
         self.filecount_var.set(f"Files: {file_count}")
 

@@ -15,10 +15,13 @@ import tkinter as tk
 from tkinter import messagebox, ttk, filedialog
 from tkinter import scrolledtext
 
+# Third-party
+import nenotk as ntk
+from nenotk import ToolTip as Tip
+
 # Local imports
 from .duplicate_review_dialog import InteractiveDuplicateReviewDialog
 from main.utils.duplicate_handler import get_md5 as cached_get_md5
-from TkToolTip import TkToolTip as Tip
 
 # Type checking
 from typing import TYPE_CHECKING, List, Dict, Tuple, Union
@@ -313,6 +316,7 @@ class DuplicateScannerDialog:
         self.selected_folder = self.folder_var.get()
         self.folder_entry = ttk.Entry(folder_frame, textvariable=self.folder_var, state="readonly")
         self.folder_entry.grid(row=0, column=1, sticky="ew", padx=(0, 8))
+        ntk.bind_helpers(self.folder_entry)
         Tip(widget=self.folder_entry, text="Folder to scan for duplicate files", widget_anchor="sw", pady=2)
         self.browse_button = ttk.Button(folder_frame, text="Browse...", command=self.browse_folder)
         self.browse_button.grid(row=0, column=2)
@@ -379,6 +383,7 @@ class DuplicateScannerDialog:
         self.filetype_entry_var = tk.StringVar(value=".png, .webp, .jpg")
         self.filetype_entry = ttk.Entry(config_frame, textvariable=self.filetype_entry_var, state="disabled", width=30)
         self.filetype_entry.grid(row=3, column=1, sticky="w", pady=(8, 0), padx=(0, 5))
+        ntk.bind_helpers(self.filetype_entry)
         Tip(widget=self.filetype_entry, text="Separate extensions with a comma and space: (.png, .webp, .jpg)", tooltip_anchor="sw", pady=-2)
         # --- Partial Hash Size Selection ---
         self.partial_sizes = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768]
@@ -491,12 +496,20 @@ class DuplicateScannerDialog:
     def create_results_frame(self, parent):
         results_frame = ttk.LabelFrame(parent, text="Scan Results", padding="5")
         results_frame.grid(row=3, column=0, sticky="nsew")
-        results_frame.grid_rowconfigure(0, weight=1)
+        results_frame.grid_rowconfigure(1, weight=1)
         results_frame.grid_columnconfigure(0, weight=1)
         # Results text
         self.results_text = scrolledtext.ScrolledText(results_frame, wrap=tk.WORD, height=12)
-        self.results_text.grid(row=0, column=0, sticky="nsew")
+        self.results_text.grid(row=1, column=0, sticky="nsew")
         Tip(widget=self.results_text, text="Results of the duplicate scan", tooltip_anchor="sw", pady=-2)
+        # Search
+        text_search = ntk.FindReplaceEntry(results_frame, self.results_text, show_replace=False)
+        text_search.grid(row=0, column=0, sticky="ew")
+        text_search.grid_remove()
+        # Bind keyboard shortcuts from the text widget to the find/replace widget
+        self.results_text.bind("<Control-f>", text_search.show_widget)
+        self.results_text.bind("<KeyRelease>", text_search.perform_search)
+        self.results_text.bind("<Escape>", text_search.hide_widget)
 
 
     # --- Status Bar ---

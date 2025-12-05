@@ -19,6 +19,9 @@ from typing import Optional
 import tkinter as tk
 from tkinter import ttk, messagebox, scrolledtext
 
+# Third-party
+import nenotk
+
 # Custom
 from main.ui import interface
 from main.ui import listbox_logic
@@ -73,6 +76,7 @@ class Main:
         self.dir_entry_tooltip: Optional[tk.Widget] = None
         self.browse_button: Optional[ttk.Button] = None
         self.start_stop_button: Optional[ttk.Button] = None
+        self.text_search: Optional[nenotk.FindReplaceEntry] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
         self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None

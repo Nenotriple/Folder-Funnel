@@ -70,6 +70,8 @@ goto :EOF
 REM ==============================================
 REM Initialization (colors, project name, header)
 REM ==============================================
+
+
 :initialize_colors
     if "%ENABLE_COLORS%"=="TRUE" (
         for /f %%A in ('echo prompt $E ^| cmd') do set "ESC=%%A"
@@ -106,6 +108,8 @@ exit /b 0
 REM ==============================================
 REM Validation
 REM ==============================================
+
+
 :ValidatePython
     call :LogInfo "Checking Python installation..."
     where python >nul 2>&1 || (
@@ -120,6 +124,8 @@ exit /b 0
 REM ==============================================
 REM Virtual Environment lifecycle
 REM ==============================================
+
+
 :CreateVirtualEnvironment
     if exist "%VENV_DIR%\Scripts\python.exe" (
         call :LogInfo "Using existing virtual environment"
@@ -173,11 +179,15 @@ exit /b 0
 REM ==============================================
 REM Package management (pip / requirements)
 REM ==============================================
+
+
 :InstallOrUpdatePackages
     call :LogInfo "Upgrading pip..."
     set "PIP_FLAGS=--timeout %PIP_TIMEOUT%"
     if "%QUIET_MODE%"=="TRUE" set "PIP_FLAGS=!PIP_FLAGS! --quiet"
     python -m pip install --upgrade pip !PIP_FLAGS! 2>nul
+    call :LogInfo "Upgrading setuptools..."
+    python -m pip install --upgrade setuptools !PIP_FLAGS! 2>nul
     call :InstallRequirements
 exit /b 0
 
@@ -199,6 +209,8 @@ exit /b 0
 REM ==============================================
 REM Execution / Launch
 REM ==============================================
+
+
 :LaunchPythonScript
     if "%PYTHON_SCRIPT%"=="" (call :LogInfo "No Python script specified" & exit /b 0)
     if not exist "%PYTHON_SCRIPT%" (call :LogError "Python script not found: %PYTHON_SCRIPT%" & exit /b 1)
@@ -215,6 +227,8 @@ exit /b 0
 REM ==============================================
 REM Utilities / Logging
 REM ==============================================
+
+
 :LogInfo
     echo %COLOR_INFO%[INFO] %~1%COLOR_RESET%
 exit /b 0

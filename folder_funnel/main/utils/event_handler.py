@@ -53,7 +53,7 @@ def invalidate_dir_cache(dir_path: str = None):
 
 
 #endregion
-#region - cls WatchFolderHandler
+#region - cls FunnelFolderHandler
 
 
 class FunnelFolderHandler(FileSystemEventHandler):

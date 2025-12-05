@@ -6,9 +6,10 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext
 
 # Third-party
-from TkToolTip import TkToolTip as Tip
+import nenotk as ntk
+from nenotk import ToolTip as Tip
 
-# Set TkToolTip defaults
+# Set Tooltip defaults
 Tip.SHOW_DELAY = 250
 Tip.ORIGIN = "widget"
 Tip.ANIMATION = "slide"
@@ -174,6 +175,7 @@ def _create_dir_entry(app: 'Main', control_frame: tk.Frame):
     app.dir_entry = ttk.Entry(dir_selection_frame, textvariable=app.source_dir_var)
     app.dir_entry.pack(side="left", fill="x", expand=True)
     app.dir_entry_tooltip = Tip(widget=app.dir_entry, text=tip_text, widget_anchor="sw", pady=2)
+    ntk.bind_helpers(app.dir_entry)
     # Browse
     app.browse_button = ttk.Button(dir_selection_frame, text="Browse...", command=app.select_working_dir)
     app.browse_button.pack(side="left")
@@ -209,9 +211,11 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     text_frame = tk.Frame(main_pane)
     main_pane.add(text_frame, stretch="always")
     main_pane.paneconfigure(text_frame, minsize=200, width=400)
+    text_frame.grid_rowconfigure(2, weight=1)
+    text_frame.grid_columnconfigure(0, weight=1)
     # Label/Menu
     textlog_menubutton = ttk.Menubutton(text_frame, text="Log")
-    textlog_menubutton.pack(fill="x")
+    textlog_menubutton.grid(row=0, column=0, sticky="ew")
     textlog_menu = tk.Menu(textlog_menubutton, tearoff=0)
     textlog_menubutton.config(menu=textlog_menu)
     textlog_menu.add_command(label="Clear Log", command=app.clear_log)
@@ -219,9 +223,17 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     textlog_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
     Tip(widget=textlog_menubutton, text="Log of events and actions", widget_anchor="sw", pady=2)
     # Text
-    app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disable", width=1, height=1, font=("Consolas", 10))
-    app.text_log.pack(fill="both", expand=True)
+    app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disabled", width=1, height=1, font=("Consolas", 10))
+    app.text_log.grid(row=2, column=0, sticky="nsew")
     app.log("Welcome to Folder-Funnel - Please see the help menu for more information.")
+    # Search
+    app.text_search = ntk.FindReplaceEntry(text_frame, app.text_log, show_replace=False)
+    app.text_search.grid(row=1, column=0, sticky="ew")
+    app.text_search.grid_remove()
+    # Bind keyboard shortcuts from the text widget to the find/replace widget
+    app.text_log.bind("<Control-f>", app.text_search.show_widget)
+    app.text_log.bind("<KeyRelease>", app.text_search.perform_search)
+    app.text_log.bind("<Escape>", app.text_search.hide_widget)
 
 
 def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):

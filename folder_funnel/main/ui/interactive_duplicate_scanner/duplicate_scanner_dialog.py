@@ -273,15 +273,7 @@ class DuplicateScannerDialog:
         self.dialog.grab_set()
         self.dialog.protocol("WM_DELETE_WINDOW", self.on_close)
         self.create_all_widgets()
-        self.center_dialog()
-
-
-    # --- Center Dialog ---
-    def center_dialog(self):
-        self.dialog.update_idletasks()
-        x = (self.parent.winfo_x() + (self.parent.winfo_width() // 2) - (self.dialog.winfo_width() // 2))
-        y = (self.parent.winfo_y() + (self.parent.winfo_height() // 2) - (self.dialog.winfo_height() // 2))
-        self.dialog.geometry(f"+{x}+{y}")
+        ntk.center_window(self.dialog, to="parent")
 
 
     # --- All Widgets ---

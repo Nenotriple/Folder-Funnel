@@ -106,16 +106,8 @@ class InteractiveDuplicateReviewDialog:
         close_btn = ttk.Button(group_actions, text="Close", command=self.on_close, width=10)
         close_btn.pack(side="left")
         Tip(widget=close_btn, text="Close the duplicate review dialog", tooltip_anchor="sw", pady=-2)
-        self.center_dialog()
+        ntk.center_window(self.dialog, to="parent")
         self.show_current_group()
-
-
-    # --- Dialog positioning ---
-    def center_dialog(self):
-        self.dialog.update_idletasks()
-        x = (self.dialog.winfo_screenwidth() // 2) - (self.dialog.winfo_width() // 2)
-        y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
-        self.dialog.geometry(f"+{x}+{y}")
 
 
     # --- Canvas/scroll handling ---

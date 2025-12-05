@@ -13,6 +13,7 @@ Other modules can then access new features via the `Main` instance.
 import os
 import sys
 import ctypes
+import threading
 from typing import Optional
 
 # Standard GUI
@@ -20,7 +21,9 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext
 
 # Third-party
+import pystray
 import nenotk as ntk
+from PIL import Image
 
 # Custom
 from main.ui import interface
@@ -69,6 +72,11 @@ class Main:
         self.auto_extract_zip_var = tk.BooleanVar(value=False)  # Automatically extract zip files in the funnel folder
         self.auto_delete_zip_var = tk.BooleanVar(value=False)  # Delete zip files after extraction
         self.overwrite_on_conflict_var = tk.BooleanVar(value=False)  # Overwrite files with the same name in the source folder
+        self.minimize_to_tray_var = tk.BooleanVar(value=False)  # Minimize to system tray instead of closing
+
+        # System tray
+        self.tray_icon = None  # pystray Icon instance
+        self.tray_thread = None  # Thread running the tray icon
 
         # Initialize UI objects
         self.dir_entry: Optional[ttk.Entry] = None
@@ -366,13 +374,78 @@ class Main:
 
 
     def on_closing(self):
+        """Handle window close - minimize to tray or exit."""
+        if self.minimize_to_tray_var.get():
+            confirm = ntk.askyesnocancel("Minimize to Tray", "Minimize Folder-Funnel to the system tray?", detail="You can restore it later from the tray icon.", yes_text="Minimize", no_text="Cancel", cancel_text="Close Window")
+            if confirm is None: # User cancelled
+                self.exit_application()
+            elif confirm: # User confirmed
+                self.minimize_to_tray()
+            # User declined - do nothing
+        else:
+            self.exit_application()
+
+
+    def exit_application(self):
+        """Fully exit the application."""
         self.process_pending_moves()
         if not self.stop_folder_watcher():
             return
         if not duplicate_handler.confirm_duplicate_storage_removal(self):
             return
         self.save_settings()
+        self.stop_tray_icon()
         self.root.quit()
+
+
+    def minimize_to_tray(self):
+        """Minimize the application to the system tray."""
+        self.root.withdraw()
+        self.start_tray_icon()
+
+
+    def reveal_from_tray(self):
+        """Restore the application window from the system tray."""
+        self.stop_tray_icon()
+        self.root.deiconify()
+        self.root.lift()
+        self.root.focus_force()
+
+
+    def start_tray_icon(self):
+        """Start the system tray icon."""
+        menu = pystray.Menu(
+            pystray.MenuItem("Reveal Folder-Funnel", lambda: self.root.after(0, self.reveal_from_tray), default=True),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(lambda item: self.status_label_var.get(), None, enabled=False),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem("Exit Folder-Funnel", lambda: self.root.after(0, self._tray_exit)),
+        )
+        # Load icon image
+        if os.path.exists(self.icon_path):
+            icon_image = Image.open(self.icon_path)
+        else:
+            # Fallback: create a simple colored icon
+            icon_image = Image.new('RGB', (64, 64), color='blue')
+        # Create and run tray icon
+        self.tray_icon = pystray.Icon("Folder-Funnel", icon_image, "Folder-Funnel", menu)
+        self.tray_thread = threading.Thread(target=self.tray_icon.run, daemon=True)
+        self.tray_thread.start()
+
+
+    def stop_tray_icon(self):
+        """Stop and remove the system tray icon."""
+        if self.tray_icon:
+            self.tray_icon.stop()
+            self.tray_icon = None
+            self.tray_thread = None
+
+
+    def _tray_exit(self):
+        """Exit from tray - restore window first then exit."""
+        self.stop_tray_icon()
+        self.root.deiconify()
+        self.exit_application()
 
 
 # Run the application

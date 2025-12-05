@@ -87,6 +87,9 @@ def _create_view_menu(app: 'Main', menubar: tk.Menu):
 def _create_options_menu(app: 'Main', menubar: tk.Menu):
     options_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="Options", menu=options_menu)
+    # System tray option
+    options_menu.add_checkbutton(label="Minimize to Tray on Close", variable=app.minimize_to_tray_var)
+    options_menu.add_separator()
     # File rules submenu
     file_rules_menu = tk.Menu(options_menu, tearoff=0)
     options_menu.add_cascade(label="File Rules", menu=file_rules_menu)

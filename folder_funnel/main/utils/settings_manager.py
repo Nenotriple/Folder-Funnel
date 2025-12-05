@@ -26,6 +26,7 @@ def save_settings(app: 'Main'):
         'working_directory': app.source_dir_var.get(),
         'text_log_wrap': str(app.text_log_wrap_var.get()),
         'history_mode': app.history_mode_var.get(),
+        'minimize_to_tray': str(app.minimize_to_tray_var.get()),
     }
     # Duplicate handling settings
     cfg['Duplicates'] = {
@@ -89,6 +90,8 @@ def load_settings(app: 'Main'):
                 app.text_log_wrap_var.set(cfg.getboolean('General', 'text_log_wrap'))
             if 'history_mode' in cfg['General']:
                 app.history_mode_var.set(cfg['General']['history_mode'])
+            if 'minimize_to_tray' in cfg['General']:
+                app.minimize_to_tray_var.set(cfg.getboolean('General', 'minimize_to_tray'))
         # Duplicates
         if 'Duplicates' in cfg:
             if 'handle_mode' in cfg['Duplicates']:
@@ -161,6 +164,7 @@ def reset_settings(app: 'Main'):
         # General
         app.text_log_wrap_var.set(True)
         app.history_mode_var.set("Moved")
+        app.minimize_to_tray_var.set(False)
         # Duplicate handling
         app.dupe_handle_mode_var.set("Move")
         app.dupe_filter_mode_var.set("Flexible")

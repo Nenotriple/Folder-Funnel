@@ -63,7 +63,7 @@ def _start_folder_watcher(app: 'Main'):
     source_handler = SourceFolderHandler(app)
     app.source_observer.schedule(source_handler, path=app.source_dir_var.get(), recursive=True)
     app.source_observer.start()
-    app.log("Ready!\n", mode="info")
+    app.log("Ready!\n", mode="system")
 
 
 def stop_folder_watcher(app: 'Main'):
@@ -74,10 +74,10 @@ def stop_folder_watcher(app: 'Main'):
     if not confirm:
         return False
     _stop_folder_watcher(app)
-    app.log("Stopping Folder-Funnel process...", mode="info")
+    app.log("Stopping Folder-Funnel process...", mode="system")
     if app.funnel_dir and os.path.exists(app.funnel_dir):
         shutil.rmtree(app.funnel_dir)
-    app.log(f"Removed watch folder: {app.funnel_dir}", mode="info")
+    app.log(f"Removed watch folder: {app.funnel_dir}", mode="system")
     app.reset_status_row()
     app.clear_history()
     app.toggle_widgets_state(state="idle")
@@ -118,7 +118,7 @@ def sync_funnel_folders(app: 'Main', silent=False):
         # Create watch folder
         os.makedirs(app.funnel_dir, exist_ok=True)
         if not silent:
-            app.log("Initializing synced folder...", mode="info")
+            app.log("Initializing synced folder...", mode="system")
         # Walk through the source directory and create corresponding directories in the watch folder
         item_counter = 0
         for dirpath, dirnames, filenames in os.walk(source_path):
@@ -157,11 +157,11 @@ def sync_funnel_folders(app: 'Main', silent=False):
                 app.queue_progressbar['value'] = progress_value
                 app.root.update_idletasks()
         if silent in [False, "semi"]:
-            app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.funnel_dir}", mode="info")
+            app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.funnel_dir}", mode="system")
         elif silent == "initial":
             folder_count = re.split(" ", app.foldercount_var.get())
             file_count = re.split(" ", app.filecount_var.get())
-            app.log(f"Watching: {folder_count[1]} directories and {file_count[1]} files in the selected folder.", mode="info")
+            app.log(f"Watching: {folder_count[1]} directories and {file_count[1]} files in the selected folder.", mode="system")
     except Exception as e:
         ntk.showinfo("Error: sync_funnel_folders()", f"{str(e)}")
         app.log(f"Error syncing funnel folders: {str(e)}", mode="error")

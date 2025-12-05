@@ -33,7 +33,7 @@ def select_working_dir(app: 'Main', path=None):
     if os.path.exists(path):
         app.source_dir_var.set(path)
         app.dir_entry_tooltip.config(text=path)
-        app.log(f"\nSelected folder: {path}\n", mode="info")
+        app.log(f"\nSelected folder: {path}\n", mode="system")
 
 
 def open_folder(app: 'Main', path=None):

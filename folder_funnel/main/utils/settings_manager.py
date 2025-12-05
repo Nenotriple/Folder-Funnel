@@ -5,8 +5,8 @@
 import os
 import configparser
 
-# Standard GUI
-from tkinter import messagebox
+# Third-party
+import nenotk as ntk
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -81,7 +81,7 @@ def load_settings(app: 'Main'):
         # General
         if 'General' in cfg:
             if 'working_directory' in cfg['General'] and os.path.exists(cfg['General']['working_directory']):
-                if messagebox.askyesno("Confirmation", "Reload last directory and start funnel process?"):
+                if ntk.askyesno("Confirmation", prompt="Reload the last directory and start the funnel?", detail=f"{cfg['General']['working_directory']}"):
                     app.source_dir_var.set(cfg['General']['working_directory'])
                     # Schedule the funnel process to start after UI is ready
                     app.root.after(500, lambda: app.start_folder_watcher(auto_start=True))
@@ -147,7 +147,6 @@ def apply_settings_to_ui(app: 'Main'):
     # Apply working directory if it exists
     if app.source_dir_var.get() and os.path.exists(app.source_dir_var.get()):
         app.select_working_dir(app.source_dir_var.get())
-        app.count_folders_and_files()
     # Update history display based on mode
     app.refresh_history_listbox()
     app.toggle_history_mode()

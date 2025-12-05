@@ -6,11 +6,9 @@ import os
 import re
 import shutil
 
-# Standard GUI
-from tkinter import messagebox
-
 # Third-party
 from watchdog.observers import Observer
+import nenotk as ntk
 
 # Custom
 from .event_handler import FunnelFolderHandler, SourceFolderHandler
@@ -30,15 +28,15 @@ def start_folder_watcher(app: 'Main', auto_start=False):
     if not app.check_working_dir_exists():
         return
     if not auto_start:
-        confirm = messagebox.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (excluding files), and begin the Folder-Funnel process.\n\nContinue?")
+        confirm = ntk.askokcancel("Begin Process?", "This will create a copy of the selected folder and all sub-folders (excluding files), and begin the Folder-Funnel process.\n\nContinue?")
         if not confirm:
             return
+    app.count_folders_and_files()
     sync_funnel_folders(app, silent="initial")
     # Check for pre-existing files in the funnel folder
     _scan_for_existing_files(app)
     _start_folder_watcher(app)
     app.status_label_var.set("Status: Running")
-    app.count_folders_and_files()
     app.move_count = 0
     app.movecount_var.set("Moved: 0")
     app.duplicate_count = 0
@@ -67,7 +65,7 @@ def stop_folder_watcher(app: 'Main'):
     """Stop the folder watching process with confirmation"""
     if not (app.funnel_observer or app.source_observer):
         return True
-    confirm = messagebox.askokcancel("Stop Process?", "This will stop the Folder-Funnel process and remove the funnel folder.\n\nContinue?")
+    confirm = ntk.askokcancel("Stop Process?", "This will stop the Folder-Funnel process and remove the funnel folder.\n\nContinue?")
     if not confirm:
         return False
     _stop_folder_watcher(app)
@@ -138,7 +136,7 @@ def sync_funnel_folders(app: 'Main', silent=False):
             file_count = re.split(" ", app.filecount_var.get())
             app.log(f"Watching: {folder_count[1]} directories and {file_count[1]} files in the selected folder.", mode="info")
     except Exception as e:
-        messagebox.showerror("Error: sync_funnel_folders()", f"{str(e)}")
+        ntk.showinfo("Error: sync_funnel_folders()", f"{str(e)}")
         app.log(f"Error syncing funnel folders: {str(e)}", mode="error")
 
 
@@ -164,7 +162,7 @@ def _scan_for_existing_files(app: 'Main'):
     if existing_files:
         file_count = len(existing_files)
         message = f"Found {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder.\n\nWould you like to add {'them' if file_count != 1 else 'it'} to the move queue for processing?"
-        confirm = messagebox.askyesno("Pre-existing Files Found", message)
+        confirm = ntk.askyesno("Pre-existing Files Found", message)
         if confirm:
             # Add files to the move queue
             for file_path in existing_files:

@@ -8,9 +8,10 @@ from datetime import datetime
 
 # Standard GUI
 import tkinter as tk
-from tkinter import messagebox, ttk, filedialog
+from tkinter import ttk, filedialog
 
 # Third-party
+import nenotk as ntk
 from nenotk import ToolTip as Tip
 
 # Local imports
@@ -314,16 +315,16 @@ class InteractiveDuplicateReviewDialog:
                 self.remove_file_from_group(file_path)
                 self.app.log(f"Deleted duplicate: {filename}")
             except Exception as e:
-                messagebox.showerror("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
+                ntk.showinfo("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
         else:
-            if messagebox.askyesno("Confirm Delete", f"Delete this file?\n\n{filename}", parent=self.dialog):
+            if ntk.askyesno("Confirm Delete", prompt= "Delete file:", detail=filename, parent=self.dialog):
                 try:
                     os.remove(file_path)
                     self.remove_file_from_group(file_path)
                     self.app.log(f"Deleted duplicate: {filename}")
-                    messagebox.showinfo("Success", f"Deleted: {filename}", parent=self.dialog)
+                    ntk.showinfo("Success", f"Deleted: {filename}", parent=self.dialog)
                 except Exception as e:
-                    messagebox.showerror("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
+                    ntk.showinfo("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
 
 
     def move_file(self, file_path):
@@ -340,9 +341,9 @@ class InteractiveDuplicateReviewDialog:
                 shutil.move(file_path, dest_path)
                 self.remove_file_from_group(file_path)
                 self.app.log(f"Moved duplicate: {filename}")
-                messagebox.showinfo("Success", f"Moved to:\n{os.path.basename(dest_path)}", parent=self.dialog)
+                ntk.showinfo("Success", f"Moved to:\n{os.path.basename(dest_path)}", parent=self.dialog)
             except Exception as e:
-                messagebox.showerror("Error", f"Could not move file:\n{str(e)}", parent=self.dialog)
+                ntk.showinfo("Error", f"Could not move file:\n{str(e)}", parent=self.dialog)
 
 
     def ignore_file(self, file_path):
@@ -384,10 +385,10 @@ class InteractiveDuplicateReviewDialog:
                 error_msg = f"Deleted {deleted_count} files.\n\nErrors:\n" + "\n".join(errors[:3])
                 if len(errors) > 3:
                     error_msg += f"\n... and {len(errors) - 3} more"
-                messagebox.showwarning("Partial Success", error_msg, parent=self.dialog)
+                ntk.showinfo("Partial Success", error_msg, parent=self.dialog)
             self.show_current_group()
         else:
-            if messagebox.askyesno("Confirm Bulk Delete", f"Delete {len(files_to_delete)} files?\n\nKeeping: {first_file}", parent=self.dialog):
+            if ntk.askyesno("Confirm Bulk Delete", f"Delete {len(files_to_delete)} files?", detail=f"Keeping: {first_file}", parent=self.dialog):
                 deleted_count = 0
                 errors = []
                 for file_path in files_to_delete[:]:
@@ -405,9 +406,9 @@ class InteractiveDuplicateReviewDialog:
                     error_msg = f"Deleted {deleted_count} files.\n\nErrors:\n" + "\n".join(errors[:3])
                     if len(errors) > 3:
                         error_msg += f"\n... and {len(errors) - 3} more"
-                    messagebox.showwarning("Partial Success", error_msg, parent=self.dialog)
+                    ntk.showinfo("Partial Success", error_msg, parent=self.dialog)
                 else:
-                    messagebox.showinfo("Success", f"Deleted {deleted_count} files.", parent=self.dialog)
+                    ntk.showinfo("Success", f"Deleted {deleted_count} files.", parent=self.dialog)
                 self.show_current_group()
 
 
@@ -419,14 +420,14 @@ class InteractiveDuplicateReviewDialog:
         try:
             os.startfile(os.path.dirname(file_path))
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open location:\n{str(e)}", parent=self.dialog)
+            ntk.showinfo("Error", f"Could not open location:\n{str(e)}", parent=self.dialog)
 
 
     def open_image_file(self, file_path):
         try:
             os.startfile(file_path)
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open image:\n{str(e)}", parent=self.dialog)
+            ntk.showinfo("Error", f"Could not open image:\n{str(e)}", parent=self.dialog)
 
 
     def previous_group(self):

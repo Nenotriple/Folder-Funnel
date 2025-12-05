@@ -17,10 +17,10 @@ from typing import Optional
 
 # Standard GUI
 import tkinter as tk
-from tkinter import ttk, messagebox, scrolledtext
+from tkinter import ttk, scrolledtext
 
 # Third-party
-import nenotk
+import nenotk as ntk
 
 # Custom
 from main.ui import interface
@@ -75,7 +75,7 @@ class Main:
         self.dir_entry_tooltip: Optional[tk.Widget] = None
         self.browse_button: Optional[ttk.Button] = None
         self.start_stop_button: Optional[ttk.Button] = None
-        self.text_search: Optional[nenotk.FindReplaceEntry] = None
+        self.text_search: Optional[ntk.FindReplaceEntry] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
         self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None
@@ -268,10 +268,10 @@ class Main:
         """Check if the source folder exists."""
         path = self.source_dir_var.get()
         if not path:
-            messagebox.showerror("Error", "No folder selected")
+            ntk.showinfo("Error", "No folder selected")
             return False
         elif not os.path.exists(path):
-            messagebox.showerror("Error", "Selected folder does not exist")
+            ntk.showinfo("Error", "Selected folder does not exist")
             return False
         return path
 
@@ -301,7 +301,7 @@ class Main:
 
 
     def reset_settings(self):
-        if not messagebox.askyesno("Reset Settings", "Are you sure you want to reset all settings to default values?"):
+        if not ntk.askyesno("Reset Settings", "Are you sure you want to reset all settings to default values?"):
             return
         settings_manager.reset_settings(self)
 
@@ -322,13 +322,8 @@ class Main:
         self.set_icon()
         self.root.title(WINDOW_TITLE)
         self.root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
-        window_width = WINDOW_WIDTH
-        window_height = WINDOW_HEIGHT
-        x = (screen_width - window_width) // 2
-        y = (screen_height - window_height) // 2
-        self.root.geometry(f'{window_width}x{window_height}+{x}+{y}')
+        self.root.geometry(f'{WINDOW_WIDTH}x{WINDOW_HEIGHT}')
+        ntk.center_window(self.root, to='screen')
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
         # Load settings
         self.root.after(100, lambda: self.load_and_apply_settings())

@@ -3,7 +3,9 @@
 
 # Standard
 import os
-from tkinter import messagebox
+
+# Third-Party
+import nenotk as ntk
 
 # Custom
 from . import interface
@@ -143,7 +145,7 @@ def open_selected_file(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.startfile(filepath)
     else:
-        messagebox.showerror("Error", "File not found")
+        ntk.showinfo("Error", "File not found")
 
 
 def open_selected_source_file(app: 'Main'):
@@ -151,7 +153,7 @@ def open_selected_source_file(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.startfile(filepath)
     else:
-        messagebox.showerror("Error", "Source file not found")
+        ntk.showinfo("Error", "Source file not found")
 
 
 def open_selected_duplicate_file(app: 'Main'):
@@ -159,7 +161,7 @@ def open_selected_duplicate_file(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.startfile(filepath)
     else:
-        messagebox.showerror("Error", "Duplicate file not found")
+        ntk.showinfo("Error", "Duplicate file not found")
 
 
 def show_selected_in_explorer(app: 'Main'):
@@ -167,7 +169,7 @@ def show_selected_in_explorer(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.system(f'explorer /select,"{filepath}"')
     else:
-        messagebox.showerror("Error", "File not found")
+        ntk.showinfo("Error", "File not found")
 
 
 def show_selected_source_in_explorer(app: 'Main'):
@@ -175,7 +177,7 @@ def show_selected_source_in_explorer(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.system(f'explorer /select,"{filepath}"')
     else:
-        messagebox.showerror("Error", "Source file not found")
+        ntk.showinfo("Error", "Source file not found")
 
 
 def show_selected_duplicate_in_explorer(app: 'Main'):
@@ -183,16 +185,16 @@ def show_selected_duplicate_in_explorer(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.system(f'explorer /select,"{filepath}"')
     else:
-        messagebox.showerror("Error", "Duplicate file not found")
+        ntk.showinfo("Error", "Duplicate file not found")
 
 
 def delete_selected_file(app: 'Main'):
     filepath = get_selected_filepath(app)
     if not filepath or not os.path.exists(filepath):
-        messagebox.showerror("Error", "File not found")
+        ntk.showinfo("Error", "File not found")
         return
     filename = os.path.basename(filepath)
-    if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete '{filename}'?"):
+    if ntk.askyesno("Confirm Delete", prompt= "Delete file:", detail=filename):
         try:
             os.remove(filepath)
             history_dict = get_history_list(app)
@@ -200,25 +202,25 @@ def delete_selected_file(app: 'Main'):
             app.history_listbox.delete(app.history_listbox.curselection())
             app.log(f"Deleted file: {filename}", mode="info")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not delete file: {str(e)}")
+            ntk.showinfo("Error", f"Could not delete file: {str(e)}")
 
 
 def delete_selected_duplicate_file(app: 'Main'):
     filepath = get_selected_filepath(app, file_type="duplicate")
     if not filepath or not os.path.exists(filepath):
-        messagebox.showerror("Error", "Duplicate file not found")
+        ntk.showinfo("Error", "Duplicate file not found")
         return
     filename = os.path.basename(filepath)
-    if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete duplicate file '{filename}'?"):
+    if ntk.askyesno("Confirm Delete", prompt= "Delete duplicate file:", detail=filename):
         try:
             os.remove(filepath)
             history_dict = get_history_list(app)
             del history_dict[filename]
             app.history_listbox.delete(app.history_listbox.curselection())
             app.log(f"Deleted duplicate file: {filename}", mode="info")
-            messagebox.showinfo("Success", f"Duplicate file deleted: {filename}")
+            ntk.showinfo("Success", f"Duplicate file deleted: {filename}")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not delete file: {str(e)}")
+            ntk.showinfo("Error", f"Could not delete file: {str(e)}")
 
 
 def get_history_list(app: 'Main'):
@@ -274,7 +276,7 @@ def open_selected_file_smart(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.startfile(filepath)
     else:
-        messagebox.showerror("Error", "File not found")
+        ntk.showinfo("Error", "File not found")
 
 
 def show_selected_in_explorer_smart(app: 'Main'):
@@ -283,7 +285,7 @@ def show_selected_in_explorer_smart(app: 'Main'):
     if filepath and os.path.exists(filepath):
         os.system(f'explorer /select,"{filepath}"')
     else:
-        messagebox.showerror("Error", "File not found")
+        ntk.showinfo("Error", "File not found")
 
 
 def delete_selected_file_smart(app: 'Main'):
@@ -291,11 +293,11 @@ def delete_selected_file_smart(app: 'Main'):
     item_type = get_selected_item_type(app)
     filepath = get_selected_filepath_smart(app)
     if not filepath or not os.path.exists(filepath):
-        messagebox.showerror("Error", "File not found")
+        ntk.showinfo("Error", "File not found")
         return
     filename = os.path.basename(filepath)
     file_type_label = "duplicate " if item_type == "duplicate" else ""
-    if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {file_type_label}file '{filename}'?"):
+    if ntk.askyesno("Confirm Delete", prompt= f"Delete {file_type_label}file:", detail=filename):
         try:
             os.remove(filepath)
             # Remove from appropriate history dict
@@ -314,7 +316,7 @@ def delete_selected_file_smart(app: 'Main'):
             app.history_listbox.delete(app.history_listbox.curselection())
             app.log(f"Deleted {file_type_label}file: {filename}", mode="info")
         except Exception as e:
-            messagebox.showerror("Error", f"Could not delete file: {str(e)}")
+            ntk.showinfo("Error", f"Could not delete file: {str(e)}")
 
 
 #endregion

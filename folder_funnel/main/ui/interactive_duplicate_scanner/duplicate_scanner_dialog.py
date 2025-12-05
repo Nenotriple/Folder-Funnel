@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Standard GUI
 import tkinter as tk
-from tkinter import messagebox, ttk, filedialog
+from tkinter import ttk, filedialog
 from tkinter import scrolledtext
 
 # Third-party
@@ -544,12 +544,12 @@ class DuplicateScannerDialog:
 
     def start_scan(self):
         if not self.selected_folder or not os.path.exists(self.selected_folder):
-            messagebox.showerror("Error", "Please select a valid folder to scan.")
+            ntk.showinfo("Error", "Please select a valid folder to scan.")
             return
         # Validate pipeline has at least one active stage
         active_stages = self._get_active_stages()
         if not active_stages:
-            messagebox.showerror("Error", "Please select at least one scan method in the pipeline.")
+            ntk.showinfo("Error", "Please select at least one scan method in the pipeline.")
             return
         self.is_scanning = True
         self._set_scan_buttons_state(scanning=True)
@@ -752,7 +752,7 @@ class DuplicateScannerDialog:
         self.status_var.set(message)
         self.overall_eta_var.set("Done!")
         if is_error:
-            messagebox.showerror("Scan Error", message)
+            ntk.showinfo("Scan Error", message)
             self.update_action_buttons(False)
             # Reset action info for error case
             self.action_info_var.set("Scan for duplicates first")
@@ -760,7 +760,7 @@ class DuplicateScannerDialog:
 
     def on_close(self):
         if self.is_scanning:
-            if messagebox.askyesno("Cancel Scan", "A scan is in progress. Cancel and close?"):
+            if ntk.askyesno("Cancel Scan", "A scan is in progress.\n\nCancel and close?"):
                 self.is_scanning = False
                 # Shutdown executor if running
                 if self._hash_executor:
@@ -1198,7 +1198,7 @@ class DuplicateScannerDialog:
     # --- File Actions ---
     def delete_duplicates(self):
         if not self.duplicate_groups:
-            messagebox.showwarning("No Duplicates", "No duplicate files to delete.")
+            ntk.showinfo("No Duplicates", "No duplicate files to delete.")
             return
         # Count files to be deleted
         files_to_delete = []
@@ -1206,10 +1206,10 @@ class DuplicateScannerDialog:
             if len(group) > 1:
                 files_to_delete.extend(group[1:])  # Skip first file in each group
         if not files_to_delete:
-            messagebox.showinfo("No Action Needed", "No duplicate files to delete.")
+            ntk.showinfo("No Action Needed", "No duplicate files to delete.")
             return
         # Confirm deletion
-        response = messagebox.askyesno("Confirm Delete", f"This will permanently delete {len(files_to_delete)} duplicate files.\n\nThe first file in each duplicate group will be kept.\n\nThis action cannot be undone. Continue?", icon="warning")
+        response = ntk.askyesno("Confirm Delete", f"This will permanently delete {len(files_to_delete)} duplicate files.\n\nContinue?", detail="The first file in each duplicate group will be kept.\nThis action cannot be undone.")
         if not response:
             return
         # Perform deletion
@@ -1218,7 +1218,7 @@ class DuplicateScannerDialog:
 
     def move_duplicates(self):
         if not self.duplicate_groups:
-            messagebox.showwarning("No Duplicates", "No duplicate files to move.")
+            ntk.showinfo("No Duplicates", "No duplicate files to move.")
             return
         # Count files to be moved
         files_to_move = []
@@ -1226,21 +1226,21 @@ class DuplicateScannerDialog:
             if len(group) > 1:
                 files_to_move.extend(group[1:])  # Skip first file in each group
         if not files_to_move:
-            messagebox.showinfo("No Action Needed", "No duplicate files to move.")
+            ntk.showinfo("No Action Needed", "No duplicate files to move.")
             return
         # Create storage folder name
         folder_name = os.path.basename(self.selected_folder)
         parent_dir = os.path.dirname(self.selected_folder)
         storage_folder = os.path.join(parent_dir, f"Duplicates_{folder_name}")
         # Confirm move
-        response = messagebox.askyesno("Confirm Move", f"This will move {len(files_to_move)} duplicate files to:\n{storage_folder}\n\nThe first file in each duplicate group will remain in place.\n\nContinue?", icon="question")
+        response = ntk.askyesno("Confirm Move", f"This will move {len(files_to_move)} duplicate files to:\n{storage_folder}\\n\nContinue?", detail="The first file in each duplicate group will remain in place.")
         if not response:
             return
         # Create storage folder
         try:
             os.makedirs(storage_folder, exist_ok=True)
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to create storage folder:\n{str(e)}")
+            ntk.showerror("Error", f"Failed to create storage folder:\n{str(e)}")
             return
         # Perform move
         self.perform_file_action("move", files_to_move, storage_folder)
@@ -1297,9 +1297,9 @@ class DuplicateScannerDialog:
             else:
                 message += f"First 5 errors:\n" + "\n".join(errors[:5])
                 message += f"\n... and {len(errors) - 5} more"
-            messagebox.showwarning("Action Completed with Errors", message)
+            ntk.showinfo("Action Completed with Errors", message)
         else:
-            messagebox.showinfo("Action Completed", message)
+            ntk.showinfo("Action Completed", message)
         self.status_var.set(f"Action completed - {success_count} files {action_past}")
         # Clear duplicate groups since files have been processed
         self.duplicate_groups = {}
@@ -1385,7 +1385,7 @@ class DuplicateScannerDialog:
 
     def open_interactive_review(self):
         if not self.duplicate_groups:
-            messagebox.showwarning("No Duplicates", "No duplicate files to review.")
+            ntk.showinfo("No Duplicates", "No duplicate files to review.")
             return
         # Create and show the interactive review dialog
         review_dialog = InteractiveDuplicateReviewDialog(self.dialog, self.duplicate_groups, self.selected_folder, self.app)

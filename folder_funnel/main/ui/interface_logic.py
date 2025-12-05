@@ -4,7 +4,7 @@
 import os
 
 # Standard GUI
-from tkinter import filedialog, messagebox
+from tkinter import filedialog
 
 # Third-Party
 import nenotk as ntk
@@ -34,7 +34,6 @@ def select_working_dir(app: 'Main', path=None):
         app.source_dir_var.set(path)
         app.dir_entry_tooltip.config(text=path)
         app.log(f"\nSelected folder: {path}\n", mode="info")
-        app.count_folders_and_files()
 
 
 def open_folder(app: 'Main', path=None):
@@ -42,7 +41,7 @@ def open_folder(app: 'Main', path=None):
     if os.path.exists(path):
         os.startfile(path)
     else:
-        messagebox.showerror("Error", "Folder not found")
+        ntk.showinfo("Error", "Folder not found")
         app.log(f"Folder not found: {path}", mode="error")
 
 
@@ -142,7 +141,7 @@ def open_stats_popup(app: 'Main'):
     total_move_time = int(app.grand_move_count * app.move_action_time)
     total_dupe_time = int(app.grand_duplicate_count * app.dupe_action_time)
     total_time = total_move_time + total_dupe_time
-    messagebox.showinfo(
+    ntk.showinfo(
         "Stats",
         f"Total moves: {int(app.grand_move_count)}\n"
         f"Total duplicates: {int(app.grand_duplicate_count)}\n\n"

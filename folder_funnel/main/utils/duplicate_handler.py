@@ -8,10 +8,9 @@ import shutil
 import hashlib
 from typing import List, Dict, Tuple, Optional
 from difflib import SequenceMatcher
-from functools import lru_cache
 
-# Standard GUI
-from tkinter import messagebox
+# Third-Party
+import nenotk as ntk
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -316,7 +315,7 @@ def confirm_duplicate_storage_removal(app: 'Main'):
     """Ask the user if they want to remove the duplicate storage folder.
     Returns True if closing should continue, False if cancelled."""
     if app.duplicate_storage_path and os.path.exists(app.duplicate_storage_path):
-        response = messagebox.askyesnocancel("Remove Duplicate Files?", f"Do you want to remove the duplicate files folder?\n{app.duplicate_storage_path}")
+        response = ntk.askyesnocancel("Remove Duplicate Files?", prompt="Remove duplicate files folder?", detail=app.duplicate_storage_path)
         if response is None:  # Cancel was selected
             return False  # Stop closing
         elif response:  # Yes was selected
@@ -324,7 +323,7 @@ def confirm_duplicate_storage_removal(app: 'Main'):
                 shutil.rmtree(app.duplicate_storage_path)
                 app.log(f"Removed duplicate storage folder: {app.duplicate_storage_path}", mode="info")
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to remove duplicate folder: {str(e)}")
+                ntk.showinfo("Error", f"Failed to remove duplicate folder: {str(e)}")
         # If No was selected, keep the folder
     return True  # Continue closing
 
@@ -340,7 +339,7 @@ def create_duplicate_storage_folder(app: 'Main'):
         os.makedirs(app.duplicate_storage_path, exist_ok=True)
         app.log(f"Created duplicate storage folder: {app.duplicate_storage_path}", mode="info")
     except Exception as e:
-        messagebox.showerror("Error", f"Failed to create duplicate storage folder: {str(e)}")
+        ntk.showinfo("Error", f"Failed to create duplicate storage folder: {str(e)}")
         app.duplicate_storage_path = ""
 
 

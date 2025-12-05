@@ -17,14 +17,16 @@
 
 - The app can now be minimized to the system tray if `Options > Minimize to Tray on Close` is enabled.
   - When minimized to tray, the app can be restored by double-clicking the tray icon or via the tray context menu.
-- Folder-Funnel now keeps track of the lifetime moves and duplicate actions and can give you an estimate of the time saved. You can adjust the time values in the `settings.cfg` file.
+- Lifetime moves and duplicate action counters are saved and can give you an estimate of the time saved.
+  - You can adjust the time values in the `settings.cfg` file.
 - You will now be asked at startup if you want to reload the last directory and start the funnel process.
 - Pre-existing files/folders in the funnel folder are now detected and moved to the source folder on startup *(or optionally ignored)*.
 - Added a dedicated and robust duplicate file scanner via `Edit > Find Duplicate Files...`.
-  - This tool works independently of the funnel process and can be used to scan a specific folder for duplicate files.
+  - This tool works independently of the funnel process and can be used to scan any specific folder for duplicate files.
   - The scanning process allows for lightweight or deep scanning.
   - Duplicates can be previewed and selectively dealt with or in bulk.
 - Added improved detail reporting during the funnel warm-up phase.
+- Text logs can now be searched using `Ctrl+F`.
 
 **Changes**:
 
@@ -33,7 +35,7 @@
 - The log now uses the Consolas font for better readability.
 - The running indicator animation is removed for simplicity.
 - Logs are now prefixed which can help spot specific types of messages more easily.
-- Improved shutdown flow.
+- Improved shutdown and startup flow.
 
 **Fixed:**
 

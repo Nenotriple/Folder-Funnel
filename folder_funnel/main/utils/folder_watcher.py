@@ -13,7 +13,7 @@ from tkinter import messagebox
 from watchdog.observers import Observer
 
 # Custom
-from .event_handler import WatchFolderHandler, SourceFolderHandler
+from .event_handler import FunnelFolderHandler, SourceFolderHandler
 
 # Type checking
 from typing import TYPE_CHECKING
@@ -52,7 +52,7 @@ def _start_folder_watcher(app: 'Main'):
     _stop_folder_watcher(app)
     # Set up funnel folder observer
     app.funnel_observer = Observer()
-    funnel_handler = WatchFolderHandler(app)
+    funnel_handler = FunnelFolderHandler(app)
     app.funnel_observer.schedule(funnel_handler, path=app.funnel_dir, recursive=True)
     app.funnel_observer.start()
     # Set up source folder observer

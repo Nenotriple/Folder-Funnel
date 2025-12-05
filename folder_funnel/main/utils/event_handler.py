@@ -56,7 +56,7 @@ def invalidate_dir_cache(dir_path: str = None):
 #region - cls WatchFolderHandler
 
 
-class WatchFolderHandler(FileSystemEventHandler):
+class FunnelFolderHandler(FileSystemEventHandler):
     def __init__(self, app: 'Main'):
         self.parent = app
 

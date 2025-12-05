@@ -47,6 +47,7 @@ def log(app: 'Main', message, mode="simple"):
     """Add a message to the log with an optional mode prefix."""
     prefixes = {
         "info": "[INFO] ",
+        "system": "[SYSTEM] ",
         "warning": "[WARNING] ",
         "error": "[ERROR] ",
         "simple": ""
@@ -127,21 +128,28 @@ def open_help_window(app: 'Main'):
 
 def open_stats_popup(app: 'Main'):
     """Open the stats popup window."""
-    total_move_time = app.grand_move_count * app.move_action_time
-    total_dupe_time = app.grand_duplicate_count * app.dupe_action_time
-    total_time = total_move_time + total_dupe_time
+    def format_hms(seconds):
+        seconds = int(seconds)
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        secs = seconds % 60
+        return f"{hours:02}:{minutes:02}:{secs:02}"
 
-    formatted_time = f"{total_time // 60} minutes, {total_time % 60} seconds"
-    messagebox.showinfo("Stats",
-                        f"Total moves: {app.grand_move_count}\n"
-                        f"Total duplicates: {app.grand_duplicate_count}\n\n"
-                        "Estimated time saved per action:\n"
-                        f"Move: {app.move_action_time} seconds\n"
-                        f"Duplicate: {app.dupe_action_time} seconds\n\n"
-                        f"Total time for moves: {total_move_time} seconds\n"
-                        f"Total time for duplicates: {total_dupe_time} seconds\n\n"
-                        f"Estimated time saved:\n{formatted_time}"
-                        )
+    total_move_time = int(app.grand_move_count * app.move_action_time)
+    total_dupe_time = int(app.grand_duplicate_count * app.dupe_action_time)
+    total_time = total_move_time + total_dupe_time
+    messagebox.showinfo(
+        "Stats",
+        f"Total moves: {int(app.grand_move_count)}\n"
+        f"Total duplicates: {int(app.grand_duplicate_count)}\n\n"
+        "Estimated time saved per action:\n"
+        f"Move: {int(app.move_action_time)} seconds\n"
+        f"Duplicate: {int(app.dupe_action_time)} seconds\n\n"
+        "Total estimated time saved:\n"
+        f"Moves: {format_hms(total_move_time)}\n"
+        f"Duplicates: {format_hms(total_dupe_time)}\n"
+        f"Total: {format_hms(total_time)}"
+    )
 
 
 

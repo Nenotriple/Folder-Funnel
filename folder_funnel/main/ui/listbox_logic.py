@@ -29,6 +29,8 @@ def toggle_history_mode(app: 'Main'):
         handle_widget_binds(app, app.duplicate_history_items)
     elif display_mode == "Moved":
         handle_widget_binds(app, app.move_history_items)
+    elif display_mode == "All":
+        handle_widget_binds_all(app)
     refresh_history_listbox(app)
 
 
@@ -39,13 +41,35 @@ def refresh_history_listbox(app: 'Main'):
     display_mode = app.history_mode_var.get()
     if display_mode == "Duplicate":
         items = app.duplicate_history_items
+        # Sort by order (ascending) so newest items are added last, then insert at 0 to reverse
+        sorted_items = sorted(items.items(), key=lambda x: x[1].get("order", 0))
+        for filename, _ in sorted_items:
+            app.history_listbox.insert(0, filename)
     elif display_mode == "Moved":
         items = app.move_history_items
-    else:
-        items = {}
-    # Populate the listbox
-    for filename in items:
-        app.history_listbox.insert(0, filename)
+        # Sort by order (ascending) so newest items are added last, then insert at 0 to reverse
+        sorted_items = sorted(items.items(), key=lambda x: x[1].get("order", 0) if isinstance(x[1], dict) else 0)
+        for filename, _ in sorted_items:
+            app.history_listbox.insert(0, filename)
+    elif display_mode == "All":
+        # Combine both lists with type tracking and sort by chronological order
+        # Moved items in black, duplicate items in gray
+        all_items = []
+        for filename, data in app.move_history_items.items():
+            order = data.get("order", 0) if isinstance(data, dict) else 0
+            all_items.append((filename, "moved", order))
+        for filename, data in app.duplicate_history_items.items():
+            order = data.get("order", 0) if isinstance(data, dict) else 0
+            all_items.append((filename, "duplicate", order))
+        # Sort by order (ascending) so oldest first, then insert at 0 to show newest at top
+        all_items.sort(key=lambda x: x[2])
+        for filename, item_type, _ in all_items:
+            app.history_listbox.insert(0, filename)
+            idx = 0
+            if item_type == "duplicate":
+                app.history_listbox.itemconfig(idx, fg="#888888")  # Light gray for duplicates
+            else:
+                app.history_listbox.itemconfig(idx, fg="#000000")  # Black for moved
 
 
 def handle_widget_binds(app: 'Main', history_items):
@@ -58,13 +82,21 @@ def handle_widget_binds(app: 'Main', history_items):
         app.history_listbox.bind("<Delete>", lambda e: delete_selected_duplicate_file(app))
 
 
+def handle_widget_binds_all(app: 'Main'):
+    """Set event bindings for All mode - smart detection of item type."""
+    app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_file_smart(app))
+    app.history_listbox.bind("<Delete>", lambda e: delete_selected_file_smart(app))
+
+
 def update_history_list(app: 'Main', filename, filepath):
     """Update the moved files history list with a new filename and its full path."""
-    # Always add to the move history items
-    app.move_history_items[filename] = filepath
-    # Remove oldest items if limit is reached
+    # Increment order counter and add to the move history items with order
+    app.history_order_counter += 1
+    app.move_history_items[filename] = {"path": filepath, "order": app.history_order_counter}
+    # Remove oldest items if limit is reached (those with lowest order)
     while len(app.move_history_items) > app.max_history_entries:
-        oldest_key = next(iter(app.move_history_items))
+        # Find the item with the lowest order
+        oldest_key = min(app.move_history_items.keys(), key=lambda k: app.move_history_items[k].get("order", 0))
         del app.move_history_items[oldest_key]
     refresh_history_listbox(app)
 
@@ -100,7 +132,10 @@ def get_selected_filepath(app: 'Main', file_type="source"):
             return app.duplicate_history_items.get(filename, {}).get("duplicate")
     else:
         # For moved files, return the path from move_history_items
-        return app.move_history_items.get(filename)
+        move_data = app.move_history_items.get(filename)
+        if isinstance(move_data, dict):
+            return move_data.get("path")
+        return move_data  # Fallback for old format
 
 
 def open_selected_file(app: 'Main'):
@@ -194,6 +229,92 @@ def get_history_list(app: 'Main'):
     elif display_mode == "Duplicate":
         return app.duplicate_history_items
     return {}
+
+
+#endregion
+#region - Smart Functions for All Mode
+
+
+def get_selected_item_type(app: 'Main'):
+    """Determine if the selected item is a moved file or duplicate file.
+    Returns 'moved', 'duplicate', or None if no selection."""
+    selection = app.history_listbox.curselection()
+    if not selection:
+        return None
+    filename = app.history_listbox.get(selection[0])
+    # Check duplicates first (they have priority in display)
+    if filename in app.duplicate_history_items:
+        return "duplicate"
+    elif filename in app.move_history_items:
+        return "moved"
+    return None
+
+
+def get_selected_filepath_smart(app: 'Main'):
+    """Get the filepath of the selected item, automatically detecting if it's moved or duplicate."""
+    selection = app.history_listbox.curselection()
+    if not selection:
+        return None
+    filename = app.history_listbox.get(selection[0])
+    item_type = get_selected_item_type(app)
+    if item_type == "duplicate":
+        # For duplicates, return the duplicate path (the one that was moved/deleted)
+        return app.duplicate_history_items.get(filename, {}).get("duplicate")
+    elif item_type == "moved":
+        move_data = app.move_history_items.get(filename)
+        if isinstance(move_data, dict):
+            return move_data.get("path")
+        return move_data  # Fallback for old format
+    return None
+
+
+def open_selected_file_smart(app: 'Main'):
+    """Open the selected file, automatically detecting if it's moved or duplicate."""
+    filepath = get_selected_filepath_smart(app)
+    if filepath and os.path.exists(filepath):
+        os.startfile(filepath)
+    else:
+        messagebox.showerror("Error", "File not found")
+
+
+def show_selected_in_explorer_smart(app: 'Main'):
+    """Show the selected file in explorer, automatically detecting if it's moved or duplicate."""
+    filepath = get_selected_filepath_smart(app)
+    if filepath and os.path.exists(filepath):
+        os.system(f'explorer /select,"{filepath}"')
+    else:
+        messagebox.showerror("Error", "File not found")
+
+
+def delete_selected_file_smart(app: 'Main'):
+    """Delete the selected file, automatically detecting if it's moved or duplicate."""
+    item_type = get_selected_item_type(app)
+    filepath = get_selected_filepath_smart(app)
+    if not filepath or not os.path.exists(filepath):
+        messagebox.showerror("Error", "File not found")
+        return
+    filename = os.path.basename(filepath)
+    file_type_label = "duplicate " if item_type == "duplicate" else ""
+    if messagebox.askyesno("Confirm Delete", f"Are you sure you want to delete {file_type_label}file '{filename}'?"):
+        try:
+            os.remove(filepath)
+            # Remove from appropriate history dict
+            if item_type == "duplicate":
+                selection = app.history_listbox.curselection()
+                if selection:
+                    listbox_filename = app.history_listbox.get(selection[0])
+                    if listbox_filename in app.duplicate_history_items:
+                        del app.duplicate_history_items[listbox_filename]
+            elif item_type == "moved":
+                selection = app.history_listbox.curselection()
+                if selection:
+                    listbox_filename = app.history_listbox.get(selection[0])
+                    if listbox_filename in app.move_history_items:
+                        del app.move_history_items[listbox_filename]
+            app.history_listbox.delete(app.history_listbox.curselection())
+            app.log(f"Deleted {file_type_label}file: {filename}", mode="info")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not delete file: {str(e)}")
 
 
 #endregion

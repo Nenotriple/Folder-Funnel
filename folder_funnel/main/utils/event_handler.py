@@ -7,6 +7,9 @@ import os
 # Third-party
 from watchdog.events import FileSystemEventHandler
 
+# Local imports
+from . import duplicate_handler
+
 # Type checking
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -44,6 +47,11 @@ def count_folders_and_files(app: 'Main'):
     app.root.after(DELAY, lambda: app.count_folders_and_files())
 
 
+def invalidate_dir_cache(dir_path: str = None):
+    """Invalidate the directory cache when file system changes occur."""
+    duplicate_handler.invalidate_dir_cache(dir_path)
+
+
 #endregion
 #region - cls WatchFolderHandler
 
@@ -54,6 +62,7 @@ class WatchFolderHandler(FileSystemEventHandler):
 
 
     def on_created(self, event):
+        invalidate_dir_cache(os.path.dirname(event.src_path))
         # If a new folder is created, sync the watch folders
         if event.is_directory:
             sync_watch_folders(self.parent, silent="semi")
@@ -65,6 +74,7 @@ class WatchFolderHandler(FileSystemEventHandler):
 
 
     def on_deleted(self, event):
+        invalidate_dir_cache(os.path.dirname(event.src_path))
         sync_watch_folders(self.parent, silent="silent")
 
 
@@ -74,6 +84,8 @@ class WatchFolderHandler(FileSystemEventHandler):
 
 
     def on_moved(self, event):
+        invalidate_dir_cache(os.path.dirname(event.src_path))
+        invalidate_dir_cache(os.path.dirname(event.dest_path))
         handle_rename_event(self.parent, event.src_path, event.dest_path)
 
 
@@ -87,18 +99,22 @@ class SourceFolderHandler(FileSystemEventHandler):
 
 
     def on_created(self, event):
+        invalidate_dir_cache(os.path.dirname(event.src_path))
         if event.is_directory:
             sync_watch_folders(self.parent, silent="semi")
         count_folders_and_files(self.parent)
 
 
     def on_deleted(self, event):
+        invalidate_dir_cache(os.path.dirname(event.src_path))
         if event.is_directory:
             sync_watch_folders(self.parent, silent="silent")
         count_folders_and_files(self.parent)
 
 
     def on_moved(self, event):
+        invalidate_dir_cache(os.path.dirname(event.src_path))
+        invalidate_dir_cache(os.path.dirname(event.dest_path))
         if event.is_directory:
             sync_watch_folders(self.parent, silent="semi")
         count_folders_and_files(self.parent)

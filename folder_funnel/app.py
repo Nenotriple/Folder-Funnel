@@ -56,10 +56,12 @@ class Main:
         self.dupe_handle_mode_var = tk.StringVar(value="Move")  # Method for handling duplicates ("Delete", "Move")
         self.dupe_filter_mode_var = tk.StringVar(value="Flexible")  # Method for finding similar files to check ("Flexible", "Strict")
         self.dupe_check_mode_var = tk.StringVar(value="Similar")  # Additional MD5 check criteria ("Similar", "Single")
-        self.dupe_max_files_var = tk.IntVar(value=50)  # Max files to check for duplicates
+        self.dupe_max_files_var = tk.IntVar(value=75)  # Max files to check for duplicates
+        self.dupe_use_partial_hash_var = tk.BooleanVar(value=True)  # Use partial hash for faster initial comparison
+        self.dupe_partial_hash_size_var = tk.IntVar(value=4096)  # Size in bytes for partial hash (default 4KB)
         self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
-        self.history_mode_var = tk.StringVar(value="Moved")  # History display mode ("Moved", "Duplicate")
+        self.history_mode_var = tk.StringVar(value="All")  # History display mode ("All", "Moved", "Duplicate")
         self.ignore_firefox_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files created by Firefox
         self.ignore_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files in the funnel folder
         self.auto_extract_zip_var = tk.BooleanVar(value=False)  # Automatically extract zip files in the funnel folder
@@ -95,10 +97,11 @@ class Main:
         self.max_history_entries = 100  # Maximum number of history items to store
 
         # History items and count
-        self.move_history_items = {}  # Store history of moved files and their final path as {filename: source_path}
+        self.move_history_items = {}  # Store history of moved files and their final path as {filename: {"path": source_path, "order": int}}
         self.move_count = 0  # Files moved
-        self.duplicate_history_items = {}  # Store history of matched duplicate files as {filename: {"source": source_path, "duplicate": duplicate_path}}
+        self.duplicate_history_items = {}  # Store history of matched duplicate files as {filename: {"source": source_path, "duplicate": duplicate_path, "order": int}}
         self.duplicate_count = 0  # Duplicate files detected
+        self.history_order_counter = 0  # Counter to track chronological order of history items
 
         # Queue related variables
         self.move_queue = []  # List of files waiting to be moved
@@ -206,6 +209,15 @@ class Main:
 
     def delete_selected_duplicate_file(self):
         listbox_logic.delete_selected_duplicate_file(self)
+
+    def open_selected_file_smart(self):
+        listbox_logic.open_selected_file_smart(self)
+
+    def show_selected_in_explorer_smart(self):
+        listbox_logic.show_selected_in_explorer_smart(self)
+
+    def delete_selected_file_smart(self):
+        listbox_logic.delete_selected_file_smart(self)
 
 
 #endregion

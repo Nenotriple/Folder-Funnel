@@ -76,6 +76,7 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
 def _create_view_menu(app: 'Main', menubar: tk.Menu):
     view_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="View", menu=view_menu)
+    view_menu.add_radiobutton(label="History View: All", variable=app.history_mode_var, value="All", command=app.toggle_history_mode)
     view_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     view_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     view_menu.add_separator()
@@ -101,6 +102,7 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     options_menu.add_cascade(label="Queue Timer", menu=queue_menu)
     queue_menu.add_command(label="Queue Timer Length", state="disabled")
     queue_menu.add_radiobutton(label="1 second", variable=app.move_queue_length_var, value=1000)
+    queue_menu.add_radiobutton(label="3 seconds", variable=app.move_queue_length_var, value=3000)
     queue_menu.add_radiobutton(label="5 seconds", variable=app.move_queue_length_var, value=5000)
     queue_menu.add_radiobutton(label="15 seconds", variable=app.move_queue_length_var, value=15000)
     queue_menu.add_radiobutton(label="30 seconds", variable=app.move_queue_length_var, value=30000)
@@ -131,7 +133,10 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     dupe_menu.add_radiobutton(label="10", variable=app.dupe_max_files_var, value=10)
     dupe_menu.add_radiobutton(label="25", variable=app.dupe_max_files_var, value=25)
     dupe_menu.add_radiobutton(label="50", variable=app.dupe_max_files_var, value=50)
+    dupe_menu.add_radiobutton(label="75", variable=app.dupe_max_files_var, value=75)
     dupe_menu.add_radiobutton(label="100", variable=app.dupe_max_files_var, value=100)
+    dupe_menu.add_radiobutton(label="250", variable=app.dupe_max_files_var, value=250)
+    dupe_menu.add_radiobutton(label="500", variable=app.dupe_max_files_var, value=500)
     dupe_menu.add_radiobutton(label="1000", variable=app.dupe_max_files_var, value=1000)
     dupe_menu.add_radiobutton(label="10000", variable=app.dupe_max_files_var, value=10000)
 
@@ -231,6 +236,7 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     app.history_menubutton.config(menu=history_menu)
     history_menu.add_command(label="Clear History", command=app.clear_history)
     history_menu.add_separator()
+    history_menu.add_radiobutton(label="History View: All", variable=app.history_mode_var, value="All", command=app.toggle_history_mode)
     history_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     history_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     Tip(widget=app.history_menubutton, text="List of files moved to the source folder", widget_anchor="sw", pady=2)
@@ -257,6 +263,11 @@ def create_history_context_menu(app: 'Main'):
         app.history_menu.add_command(label="Show Source in Explorer", command=app.show_selected_source_in_explorer)
         app.history_menu.add_separator()
         app.history_menu.add_command(label="Delete: Duplicate", command=app.delete_selected_duplicate_file)
+    elif app.history_mode_var.get() == "All":
+        app.history_menu.add_command(label="Open", command=app.open_selected_file_smart)
+        app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer_smart)
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Delete", command=app.delete_selected_file_smart)
 
 
 #endregion

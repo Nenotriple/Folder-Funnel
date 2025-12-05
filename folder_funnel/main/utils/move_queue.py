@@ -183,12 +183,16 @@ def _handle_new_folder(app: 'Main', source_path):
 
 def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_path):
     """Handle a file that might be a duplicate."""
+    # Get partial hash size (0 = disabled, otherwise bytes to read)
+    partial_hash_size = app.dupe_partial_hash_size_var.get() if app.dupe_use_partial_hash_var.get() else 0
     is_duplicate, matching_file_path = duplicate_handler.are_files_identical(
         file1=source_path,
         file2=dest_path,
         check_mode=app.dupe_check_mode_var.get(),
         method=app.dupe_filter_mode_var.get(),
-        max_files=app.dupe_max_files_var.get()
+        max_files=app.dupe_max_files_var.get(),
+        partial_hash_size=partial_hash_size,
+        app=app
     )
     if is_duplicate:
         # Files are identical, handle based on dupe_handle_mode
@@ -213,9 +217,10 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
             shutil.move(source_path, dup_file_path)
             app.log(f"Moved duplicate file: {rel_path} -> {os.path.relpath(dup_file_path, app.duplicate_storage_path)}", mode="info")
             duplicate_path = dup_file_path
-        # Record the duplicate file - using the matching file path as source
+        # Record the duplicate file, using the matching file path as source
         original_path = matching_file_path if matching_file_path else dest_path
-        app.duplicate_history_items[filename] = {"source": original_path, "duplicate": duplicate_path}
+        app.history_order_counter += 1
+        app.duplicate_history_items[filename] = {"source": original_path, "duplicate": duplicate_path, "order": app.history_order_counter}
         app.duplicate_count += 1
         app.grand_duplicate_count += 1
         app.update_duplicate_count()

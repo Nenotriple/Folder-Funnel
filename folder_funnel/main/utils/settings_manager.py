@@ -33,6 +33,8 @@ def save_settings(app: 'Main'):
         'filter_mode': app.dupe_filter_mode_var.get(),
         'check_mode': app.dupe_check_mode_var.get(),
         'max_files': str(app.dupe_max_files_var.get()),
+        'use_partial_hash': str(app.dupe_use_partial_hash_var.get()),
+        'partial_hash_size': str(app.dupe_partial_hash_size_var.get()),
     }
     # Queue settings
     cfg['Queue'] = {
@@ -97,6 +99,10 @@ def load_settings(app: 'Main'):
                 app.dupe_check_mode_var.set(cfg['Duplicates']['check_mode'])
             if 'max_files' in cfg['Duplicates']:
                 app.dupe_max_files_var.set(int(cfg['Duplicates']['max_files']))
+            if 'use_partial_hash' in cfg['Duplicates']:
+                app.dupe_use_partial_hash_var.set(cfg.getboolean('Duplicates', 'use_partial_hash'))
+            if 'partial_hash_size' in cfg['Duplicates']:
+                app.dupe_partial_hash_size_var.set(int(cfg['Duplicates']['partial_hash_size']))
         # Queue
         if 'Queue' in cfg and 'queue_length' in cfg['Queue']:
             app.move_queue_length_var.set(int(cfg['Queue']['queue_length']))
@@ -160,7 +166,9 @@ def reset_settings(app: 'Main'):
         app.dupe_handle_mode_var.set("Move")
         app.dupe_filter_mode_var.set("Flexible")
         app.dupe_check_mode_var.set("Similar")
-        app.dupe_max_files_var.set(50)
+        app.dupe_max_files_var.set(75)
+        app.dupe_use_partial_hash_var.set(True)
+        app.dupe_partial_hash_size_var.set(4096)
         # Queue
         app.move_queue_length_var.set(15000)
         # File handling

@@ -5,7 +5,10 @@
 import os
 import time
 import shutil
-import zipfile  # Added import for ZIP handling
+import zipfile
+
+# Third-party
+import nenotk as ntk
 
 # Custom
 from . import duplicate_handler
@@ -279,7 +282,7 @@ def _move_file(app: 'Main', source_path):
         # Update counts
         app.move_count += 1
         app.grand_move_count += 1
-        app.movecount_var.set(f"Moved: {app.move_count}")
+        app.movecount_var.set(f"Moved: {ntk.number_commas(app.move_count)}")
         # Note: count_folders_and_files is called once after batch processing completes
         return True
     except Exception as e:
@@ -327,7 +330,7 @@ def process_move_queue(app: 'Main'):
     stop_queue(app)  # Stop the queue timer and reset progress indicators
     if not app.move_queue:
         return
-    app.log(f"Processing {len(app.move_queue)} queued file{'s' if len(app.move_queue) != 1 else ''}...", mode="info", verbose=2)
+    app.log(f"Processing {ntk.number_commas(len(app.move_queue))} queued file{'s' if len(app.move_queue) != 1 else ''}...", mode="info", verbose=2)
     success_count = 0
     for source_path in app.move_queue:
         if os.path.exists(source_path):  # Check if the file exists before moving
@@ -336,9 +339,9 @@ def process_move_queue(app: 'Main'):
         else:
             app.log(f"File not found, skipping: {source_path}", mode="warning", verbose=2)
     if len(app.move_queue) == 1:
-        app.log(f"Move complete: {success_count}/1 file\n", mode="info", verbose=1)
+        app.log(f"Move complete: {ntk.number_commas(success_count)}/1 file\n", mode="info", verbose=1)
     else:
-        app.log(f"Batch complete: {success_count}/{len(app.move_queue)} files moved\n", mode="info", verbose=1)
+        app.log(f"Batch complete: {ntk.number_commas(success_count)}/{ntk.number_commas(len(app.move_queue))} files moved\n", mode="info", verbose=1)
     app.move_queue.clear()
     app.update_queue_count()
 

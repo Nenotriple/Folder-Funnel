@@ -321,13 +321,13 @@ class Main:
                 file_count += len(files)
                 i += 1
                 if i % 20 == 0:
-                    self.foldercount_var.set(f"Folders: {folder_count}")
-                    self.filecount_var.set(f"Files: {file_count}")
+                    self.foldercount_var.set(f"Folders: {ntk.number_commas(folder_count)}")
+                    self.filecount_var.set(f"Files: {ntk.number_commas(file_count)}")
                     self.root.update_idletasks()
             self.folder_count = folder_count
             self.file_count = file_count
-            self.foldercount_var.set(f"Folders: {folder_count}")
-            self.filecount_var.set(f"Files: {file_count}")
+            self.foldercount_var.set(f"Folders: {ntk.number_commas(folder_count)}")
+            self.filecount_var.set(f"Files: {ntk.number_commas(file_count)}")
         finally:
             self._counting_in_progress = False
 
@@ -342,8 +342,8 @@ class Main:
             self.folder_count = max(0, self.folder_count + folder_delta)
         if file_delta:
             self.file_count = max(0, self.file_count + file_delta)
-        self.foldercount_var.set(f"Folders: {self.folder_count}")
-        self.filecount_var.set(f"Files: {self.file_count}")
+        self.foldercount_var.set(f"Folders: {ntk.number_commas(self.folder_count)}")
+        self.filecount_var.set(f"Files: {ntk.number_commas(self.file_count)}")
 
 
 #endregion

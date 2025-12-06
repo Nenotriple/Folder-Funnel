@@ -163,11 +163,11 @@ def sync_funnel_folders(app: 'Main', silent=False):
             if item_counter % 20 == 0:
                 _tick_progress(app, progress_state)
         if silent in [False, "semi"]:
-            app.log(f"Sync complete: Created {counter_created}, removed {counter_removed} directories", mode="system", verbose=2)
+            app.log(f"Sync complete: Created {ntk.number_commas(counter_created)}, removed {ntk.number_commas(counter_removed)} directories", mode="system", verbose=2)
         elif silent == "initial":
             folder_count = re.split(" ", app.foldercount_var.get())
             file_count = re.split(" ", app.filecount_var.get())
-            app.log(f"Watching: {folder_count[1]} folders and {file_count[1]} files", mode="system", verbose=1)
+            app.log(f"Watching: {ntk.number_commas(folder_count[1])} folders and {ntk.number_commas(file_count[1])} files", mode="system", verbose=1)
     except Exception as e:
         ntk.showinfo("Error: sync_funnel_folders()", f"{str(e)}")
         app.log(f"Error syncing funnel folders: {str(e)}", mode="error", verbose=1)
@@ -197,7 +197,7 @@ def _scan_for_existing_files(app: 'Main'):
             existing_files.append(file_path)
     # If files exist, ask user what to do
     if existing_files:
-        file_count = len(existing_files)
+        file_count = ntk.number_commas(len(existing_files))
         message = f"Found {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder.\n\nWould you like to add {'them' if file_count != 1 else 'it'} to the move queue for processing?"
         confirm = ntk.askyesno("Pre-existing Files Found", message)
         if confirm:

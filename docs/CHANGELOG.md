@@ -32,9 +32,12 @@
 
 - Stop/Start buttons are consolidated into a single button.
 - The Browse button and directory input are now disabled while the funnel is active.
-- The log now uses the Consolas font for better readability.
 - The running indicator animation is removed for simplicity.
+  - The status label now displays in gray, orange, and green for idle, busy, and running states respectively.
+- The log now uses the Consolas font for better readability.
 - Logs are now prefixed which can help spot specific types of messages more easily.
+  - This can be toggled via `View > Show Log Prefix` or the log menu.
+- Log messages can now be filtered by verbosity level via `View > Log Verbosity` or the log menu.
 - Improved shutdown and startup flow.
 
 **Fixed:**

@@ -38,6 +38,7 @@
 - Logs are now prefixed which can help spot specific types of messages more easily.
   - This can be toggled via `View > Show Log Prefix` or the log menu.
 - Log messages can now be filtered by verbosity level via `View > Log Verbosity` or the log menu.
+- The log now displays a horizontal scrollbar when text wrapping is disabled.
 - Improved shutdown and startup flow.
 
 **Fixed:**

@@ -42,6 +42,7 @@
   - This can be toggled via `View > Show Log Prefix` or the log menu.
 - Log messages can now be filtered by verbosity level via `View > Log Verbosity` or the log menu.
 - The log now displays a horizontal scrollbar when text wrapping is disabled.
+- Numbers within the UI now use comma separators for better readability.
 - Improved shutdown and startup flow.
 
 **Fixed:**

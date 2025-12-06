@@ -28,6 +28,7 @@ def save_settings(app: 'Main'):
         'log_verbosity': str(app.log_verbosity_var.get()),
         'history_mode': app.history_mode_var.get(),
         'minimize_to_tray': str(app.minimize_to_tray_var.get()),
+        'log_prefix_filter': str(app.log_prefix_filter_var.get()),
     }
     # Duplicate handling settings
     cfg['Duplicates'] = {
@@ -96,6 +97,8 @@ def load_settings(app: 'Main'):
                 app.history_mode_var.set(cfg['General']['history_mode'])
             if 'minimize_to_tray' in cfg['General']:
                 app.minimize_to_tray_var.set(cfg.getboolean('General', 'minimize_to_tray'))
+            if 'log_prefix_filter' in cfg['General']:
+                app.log_prefix_filter_var.set(cfg.getboolean('General', 'log_prefix_filter'))
         # Duplicates
         if 'Duplicates' in cfg:
             if 'handle_mode' in cfg['Duplicates']:
@@ -171,6 +174,7 @@ def reset_settings(app: 'Main'):
         app.log_verbosity_var.set(1)
         app.history_mode_var.set("Moved")
         app.minimize_to_tray_var.set(False)
+        app.log_prefix_filter_var.set(True)
         # Duplicate handling
         app.dupe_handle_mode_var.set("Move")
         app.dupe_filter_mode_var.set("Flexible")

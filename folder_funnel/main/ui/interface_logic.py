@@ -80,7 +80,7 @@ def log(app: 'Main', message, mode="simple", verbose=1):
         "error": "[ERROR] ",
         "simple": ""
     }
-    prefix = prefixes.get(mode, f"[{mode.upper()}] ")
+    prefix = prefixes.get(mode, f"[{mode.upper()}] ") if app.log_prefix_filter_var.get() else ""
     # Move leading newlines to the very start of the printout
     leading_newlines = ""
     rest = message

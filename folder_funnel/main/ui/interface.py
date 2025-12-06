@@ -77,19 +77,20 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
 def _create_view_menu(app: 'Main', menubar: tk.Menu):
     view_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="View", menu=view_menu)
+    # History Options
     view_menu.add_radiobutton(label="History View: All", variable=app.history_mode_var, value="All", command=app.toggle_history_mode)
     view_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     view_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     view_menu.add_separator()
-    view_menu.add_command(label="Toggle: Text Wrap", command=app.toggle_text_wrap)
-    view_menu.add_separator()
-    # Log verbosity submenu
+    # Log options
+    view_menu.add_checkbutton(label="Show Log Prefix", variable=app.log_prefix_filter_var)
+    view_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
     log_verbosity_menu = tk.Menu(view_menu, tearoff=0)
     view_menu.add_cascade(label="Log Verbosity", menu=log_verbosity_menu)
-    log_verbosity_menu.add_radiobutton(label="Essential (1)", variable=app.log_verbosity_var, value=1)
-    log_verbosity_menu.add_radiobutton(label="Extended (2)", variable=app.log_verbosity_var, value=2)
-    log_verbosity_menu.add_radiobutton(label="Detailed (3)", variable=app.log_verbosity_var, value=3)
-    log_verbosity_menu.add_radiobutton(label="Debug (4)", variable=app.log_verbosity_var, value=4)
+    log_verbosity_menu.add_radiobutton(label="(1) Essential", variable=app.log_verbosity_var, value=1)
+    log_verbosity_menu.add_radiobutton(label="(2) Extended", variable=app.log_verbosity_var, value=2)
+    log_verbosity_menu.add_radiobutton(label="(3) Detailed", variable=app.log_verbosity_var, value=3)
+    log_verbosity_menu.add_radiobutton(label="(4) Debug", variable=app.log_verbosity_var, value=4)
 
 
 def _create_options_menu(app: 'Main', menubar: tk.Menu):
@@ -231,7 +232,15 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     textlog_menubutton.config(menu=textlog_menu)
     textlog_menu.add_command(label="Clear Log", command=app.clear_log)
     textlog_menu.add_separator()
+    textlog_menu.add_checkbutton(label="Show Log Prefix", variable=app.log_prefix_filter_var)
     textlog_menu.add_checkbutton(label="Wrap Text", variable=app.text_log_wrap_var, command=app.toggle_text_wrap)
+    # Log verbosity submenu mirrors View menu
+    log_verbosity_menu = tk.Menu(textlog_menu, tearoff=0)
+    textlog_menu.add_cascade(label="Log Verbosity", menu=log_verbosity_menu)
+    log_verbosity_menu.add_radiobutton(label="(1) Essential", variable=app.log_verbosity_var, value=1)
+    log_verbosity_menu.add_radiobutton(label="(2) Extended", variable=app.log_verbosity_var, value=2)
+    log_verbosity_menu.add_radiobutton(label="(3) Detailed", variable=app.log_verbosity_var, value=3)
+    log_verbosity_menu.add_radiobutton(label="(4) Debug", variable=app.log_verbosity_var, value=4)
     Tip(widget=textlog_menubutton, text="Log of events and actions", widget_anchor="sw", pady=2)
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disabled", width=1, height=1, font=("Consolas", 10))

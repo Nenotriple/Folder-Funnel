@@ -90,6 +90,7 @@ class Main:
         self.status_label_default_fg: Optional[str] = None
         self.text_search: Optional[ntk.FindReplaceEntry] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
+        self.text_log_hscroll: Optional[ttk.Scrollbar] = None
         self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None
         self.history_menu: Optional[tk.Menu] = None
@@ -368,7 +369,7 @@ class Main:
         WINDOW_WIDTH = 1000
         WINDOW_HEIGHT = 480
         WINDOW_MIN_WIDTH = 400
-        WINDOW_MIN_HEIGHT = 300
+        WINDOW_MIN_HEIGHT = 150
         # Setup window
         self.set_appid()
         self.set_icon()

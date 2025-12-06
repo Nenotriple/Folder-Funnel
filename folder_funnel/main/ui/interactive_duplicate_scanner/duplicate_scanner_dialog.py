@@ -492,7 +492,7 @@ class DuplicateScannerDialog:
         results_frame.grid_rowconfigure(1, weight=1)
         results_frame.grid_columnconfigure(0, weight=1)
         # Results text
-        self.results_text = scrolledtext.ScrolledText(results_frame, wrap=tk.WORD, height=12)
+        self.results_text = scrolledtext.ScrolledText(results_frame, wrap=tk.WORD, height=12, padx=4, pady=4, state="normal")
         self.results_text.grid(row=1, column=0, sticky="nsew")
         Tip(widget=self.results_text, text="Results of the duplicate scan", tooltip_anchor="sw", pady=-2)
         # Search

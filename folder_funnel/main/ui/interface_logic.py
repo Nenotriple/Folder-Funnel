@@ -112,9 +112,17 @@ def clear_history(app: 'Main'):
 
 
 def toggle_text_wrap(app: 'Main'):
-    """Toggle text wrapping in the log text area."""
+    """Toggle text wrapping in the log text area and show/hide horizontal scrollbar."""
     wrap = app.text_log_wrap_var.get()
     app.text_log.configure(wrap="word" if wrap else "none")
+    # Show/hide horizontal scrollbar
+    if wrap:
+        app.text_log_hscroll.grid_remove()
+        app.text_log.configure(xscrollcommand=None)
+    else:
+        app.text_log_hscroll.config(command=app.text_log.xview)
+        app.text_log.configure(xscrollcommand=app.text_log_hscroll.set)
+        app.text_log_hscroll.grid(row=3, column=0, sticky="ew")
 
 
 def toggle_widgets_state(app: 'Main', state="idle"):

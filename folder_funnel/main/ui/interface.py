@@ -242,9 +242,16 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     log_verbosity_menu.add_radiobutton(label="(3) Detailed", variable=app.log_verbosity_var, value=3)
     log_verbosity_menu.add_radiobutton(label="(4) Debug", variable=app.log_verbosity_var, value=4)
     Tip(widget=textlog_menubutton, text="Log of events and actions", widget_anchor="sw", pady=2)
-    # Text
-    app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disabled", width=1, height=1, font=("Consolas", 10))
+    # Text log with dynamic horizontal scrollbar
+    app.text_log_hscroll = tk.Scrollbar(text_frame, orient="horizontal")
+    app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word" if app.text_log_wrap_var.get() else "none", state="disabled", width=1, height=1, padx=4, pady=4, font=("Consolas", 10), xscrollcommand=app.text_log_hscroll.set if not app.text_log_wrap_var.get() else None)
     app.text_log.grid(row=2, column=0, sticky="nsew")
+    # Create horizontal scrollbar only if wrap is disabled
+    if not app.text_log_wrap_var.get():
+        app.text_log_hscroll.config(command=app.text_log.xview)
+        app.text_log_hscroll.grid(row=3, column=0, sticky="ew")
+    else:
+        app.text_log_hscroll.grid_remove()
     app.log("Welcome to Folder-Funnel - Please see the Help menu for more information.", verbose=1)
     # Search
     app.text_search = ntk.FindReplaceEntry(text_frame, app.text_log, show_replace=False)

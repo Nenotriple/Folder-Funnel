@@ -6,6 +6,7 @@ import os
 import re
 import shutil
 import hashlib
+import threading
 from typing import List, Dict, Tuple, Optional
 from difflib import SequenceMatcher
 
@@ -25,6 +26,7 @@ if TYPE_CHECKING:
 # Global hash cache: {(file_path, mtime, size): hash_value}
 _hash_cache: Dict[Tuple[str, float, int], str] = {}
 _HASH_CACHE_MAX_SIZE = 10000  # Maximum number of cached hashes
+_hash_cache_lock = threading.Lock()
 
 
 def get_file_key(filepath: str) -> Optional[Tuple[str, float, int]]:
@@ -48,7 +50,8 @@ def get_cached_hash(filepath: str, partial_size: int = 0, chunk_size: int = 8192
         cache_key = (key[0], key[1], key[2], partial_size)
     else:
         cache_key = key
-    return _hash_cache.get(cache_key)
+    with _hash_cache_lock:
+        return _hash_cache.get(cache_key)
 
 
 def set_cached_hash(filepath: str, hash_value: str, partial_size: int = 0) -> None:
@@ -57,32 +60,35 @@ def set_cached_hash(filepath: str, hash_value: str, partial_size: int = 0) -> No
     key = get_file_key(filepath)
     if key is None:
         return
-    # Evict oldest entries if cache is too large
-    if len(_hash_cache) >= _HASH_CACHE_MAX_SIZE:
-        # Remove 20% of oldest entries (simple eviction strategy)
-        to_remove = list(_hash_cache.keys())[:_HASH_CACHE_MAX_SIZE // 5]
-        for k in to_remove:
-            del _hash_cache[k]
-    # For partial hashes, include the partial_size in the key
-    if partial_size > 0:
-        cache_key = (key[0], key[1], key[2], partial_size)
-    else:
-        cache_key = key
-    _hash_cache[cache_key] = hash_value
+    with _hash_cache_lock:
+        # Evict oldest entries if cache is too large
+        if len(_hash_cache) >= _HASH_CACHE_MAX_SIZE:
+            # Remove 20% of oldest entries (simple eviction strategy)
+            to_remove = list(_hash_cache.keys())[:_HASH_CACHE_MAX_SIZE // 5]
+            for k in to_remove:
+                del _hash_cache[k]
+        # For partial hashes, include the partial_size in the key
+        if partial_size > 0:
+            cache_key = (key[0], key[1], key[2], partial_size)
+        else:
+            cache_key = key
+        _hash_cache[cache_key] = hash_value
 
 
 def clear_hash_cache() -> None:
     """Clear the entire hash cache."""
     global _hash_cache
-    _hash_cache.clear()
+    with _hash_cache_lock:
+        _hash_cache.clear()
 
 
 def get_cache_stats() -> Dict[str, int]:
     """Get statistics about the hash cache."""
-    return {
-        "size": len(_hash_cache),
-        "max_size": _HASH_CACHE_MAX_SIZE
-    }
+    with _hash_cache_lock:
+        return {
+            "size": len(_hash_cache),
+            "max_size": _HASH_CACHE_MAX_SIZE
+        }
 
 
 #endregion
@@ -91,6 +97,7 @@ def get_cache_stats() -> Dict[str, int]:
 
 # Global directory cache: {dir_path: (mtime, [file_list])}
 _dir_cache: Dict[str, Tuple[float, List[str]]] = {}
+_dir_cache_lock = threading.Lock()
 
 
 def get_cached_dir_listing(dir_path: str) -> List[str]:
@@ -99,12 +106,14 @@ def get_cached_dir_listing(dir_path: str) -> List[str]:
     dir_path = os.path.normpath(dir_path)
     try:
         current_mtime = os.stat(dir_path).st_mtime
-        cached = _dir_cache.get(dir_path)
-        if cached and cached[0] == current_mtime:
-            return cached[1]
-        # Refresh cache
+        with _dir_cache_lock:
+            cached = _dir_cache.get(dir_path)
+            if cached and cached[0] == current_mtime:
+                return cached[1]
+        # Refresh cache outside lock when hitting filesystem
         files = os.listdir(dir_path)
-        _dir_cache[dir_path] = (current_mtime, files)
+        with _dir_cache_lock:
+            _dir_cache[dir_path] = (current_mtime, files)
         return files
     except (OSError, IOError):
         return []
@@ -113,11 +122,12 @@ def get_cached_dir_listing(dir_path: str) -> List[str]:
 def invalidate_dir_cache(dir_path: str = None) -> None:
     """Invalidate directory cache for a specific path or all paths."""
     global _dir_cache
-    if dir_path:
-        dir_path = os.path.normpath(dir_path)
-        _dir_cache.pop(dir_path, None)
-    else:
-        _dir_cache.clear()
+    with _dir_cache_lock:
+        if dir_path:
+            dir_path = os.path.normpath(dir_path)
+            _dir_cache.pop(dir_path, None)
+        else:
+            _dir_cache.clear()
 
 
 #endregion

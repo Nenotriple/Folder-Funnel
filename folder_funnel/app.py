@@ -319,6 +319,10 @@ class Main:
 
     def adjust_counts(self, folder_delta=0, file_delta=0):
         """Incrementally adjust cached counts and update UI labels."""
+        if threading.current_thread() is not threading.main_thread():
+            # Marshal to main thread to avoid Tk updates from watcher threads
+            self.root.after(0, lambda: self.adjust_counts(folder_delta, file_delta))
+            return
         if folder_delta:
             self.folder_count = max(0, self.folder_count + folder_delta)
         if file_delta:

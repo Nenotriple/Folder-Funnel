@@ -140,7 +140,7 @@ class SourceFolderHandler(FileSystemEventHandler):
     def on_created(self, event):
         invalidate_dir_cache(os.path.dirname(event.src_path))
         if event.is_directory:
-            from . import folder_watcher  # Lazy import to avoid circular at module import
+            from . import folder_watcher  # Lazy import
             folder_watcher.mirror_created_dir(self.parent, event.src_path)
             self.parent.adjust_counts(folder_delta=1)
         else:
@@ -150,7 +150,7 @@ class SourceFolderHandler(FileSystemEventHandler):
     def on_deleted(self, event):
         invalidate_dir_cache(os.path.dirname(event.src_path))
         if event.is_directory:
-            from . import folder_watcher  # Lazy import to avoid circular at module import
+            from . import folder_watcher  # Lazy import
             folder_watcher.mirror_deleted_dir(self.parent, event.src_path)
             self.parent.adjust_counts(folder_delta=-1)
         else:
@@ -161,5 +161,5 @@ class SourceFolderHandler(FileSystemEventHandler):
         invalidate_dir_cache(os.path.dirname(event.src_path))
         invalidate_dir_cache(os.path.dirname(event.dest_path))
         if event.is_directory:
-            from . import folder_watcher  # Lazy import to avoid circular at module import
+            from . import folder_watcher  # Lazy import
             folder_watcher.mirror_moved_dir(self.parent, event.src_path, event.dest_path)

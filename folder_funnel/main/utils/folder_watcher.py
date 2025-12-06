@@ -76,7 +76,10 @@ def stop_folder_watcher(app: 'Main'):
     _stop_folder_watcher(app)
     app.log("Stopping Folder-Funnel process...", mode="system")
     if app.funnel_dir and os.path.exists(app.funnel_dir):
-        shutil.rmtree(app.funnel_dir)
+        try:
+            shutil.rmtree(app.funnel_dir)
+        except Exception as exc:
+            app.log(f"Failed to remove watch folder {app.funnel_dir}: {exc}", mode="warning")
     app.log(f"Removed watch folder: {app.funnel_dir}", mode="system")
     app.reset_status_row()
     app.clear_history()
@@ -88,11 +91,15 @@ def _stop_folder_watcher(app: 'Main'):
     """Stop all file system observers"""
     if app.funnel_observer:
         app.funnel_observer.stop()
-        app.funnel_observer.join()
+        app.funnel_observer.join(timeout=2)
+        if hasattr(app.funnel_observer, "is_alive") and app.funnel_observer.is_alive():
+            app.log("Funnel observer did not stop cleanly", mode="warning")
         app.funnel_observer = None
     if app.source_observer:
         app.source_observer.stop()
-        app.source_observer.join()
+        app.source_observer.join(timeout=2)
+        if hasattr(app.source_observer, "is_alive") and app.source_observer.is_alive():
+            app.log("Source observer did not stop cleanly", mode="warning")
         app.source_observer = None
 
 

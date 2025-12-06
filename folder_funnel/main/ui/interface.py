@@ -289,12 +289,43 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
 
 def create_history_context_menu(app: 'Main'):
     app.history_menu = tk.Menu(app.history_listbox, tearoff=0)
-    if app.history_mode_var.get() == "Moved":
+    mode = app.history_mode_var.get()
+    # For 'All' mode, determine the type of the selected item
+    if mode == "All":
+        # Determine selected item type
+        selection = app.history_listbox.curselection()
+        filename = app.history_listbox.get(selection[0]) if selection else None
+        item_type = None
+        if filename:
+            if filename in app.duplicate_history_items:
+                item_type = "duplicate"
+            elif filename in app.move_history_items:
+                item_type = "moved"
+        if item_type == "duplicate":
+            app.history_menu.add_command(label="Open: Duplicate", command=app.open_selected_duplicate_file)
+            app.history_menu.add_command(label="Show Duplicate in Explorer", command=app.show_selected_duplicate_in_explorer)
+            app.history_menu.add_separator()
+            app.history_menu.add_command(label="Open: Source", command=app.open_selected_source_file)
+            app.history_menu.add_command(label="Show Source in Explorer", command=app.show_selected_source_in_explorer)
+            app.history_menu.add_separator()
+            app.history_menu.add_command(label="Delete: Duplicate", command=app.delete_selected_duplicate_file)
+        elif item_type == "moved":
+            app.history_menu.add_command(label="Open", command=app.open_selected_file)
+            app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
+            app.history_menu.add_separator()
+            app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
+        else:
+            # Fallback: show smart actions if nothing is selected
+            app.history_menu.add_command(label="Open", command=app.open_selected_file_smart)
+            app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer_smart)
+            app.history_menu.add_separator()
+            app.history_menu.add_command(label="Delete", command=app.delete_selected_file_smart)
+    elif mode == "Moved":
         app.history_menu.add_command(label="Open", command=app.open_selected_file)
         app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
         app.history_menu.add_separator()
         app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
-    elif app.history_mode_var.get() == "Duplicate":
+    elif mode == "Duplicate":
         app.history_menu.add_command(label="Open: Duplicate", command=app.open_selected_duplicate_file)
         app.history_menu.add_command(label="Show Duplicate in Explorer", command=app.show_selected_duplicate_in_explorer)
         app.history_menu.add_separator()
@@ -302,11 +333,6 @@ def create_history_context_menu(app: 'Main'):
         app.history_menu.add_command(label="Show Source in Explorer", command=app.show_selected_source_in_explorer)
         app.history_menu.add_separator()
         app.history_menu.add_command(label="Delete: Duplicate", command=app.delete_selected_duplicate_file)
-    elif app.history_mode_var.get() == "All":
-        app.history_menu.add_command(label="Open", command=app.open_selected_file_smart)
-        app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer_smart)
-        app.history_menu.add_separator()
-        app.history_menu.add_command(label="Delete", command=app.delete_selected_file_smart)
 
 
 #endregion

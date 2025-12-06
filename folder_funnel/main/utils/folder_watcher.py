@@ -209,3 +209,68 @@ def _scan_for_existing_files(app: 'Main'):
 
 
 #endregion
+#region - Delta sync helpers
+
+
+def _rel_to_funnel(app: 'Main', abs_path: str) -> str:
+    """Return the path inside the funnel that mirrors a source abs path."""
+    rel_path = os.path.relpath(abs_path, app.source_dir_var.get())
+    return os.path.normpath(os.path.join(app.funnel_dir, rel_path))
+
+
+def _prune_empty_parents(path: str, stop_at: str):
+    """Walk upward removing empty directories until stop_at (exclusive)."""
+    path = os.path.normpath(path)
+    stop_at = os.path.normpath(stop_at)
+    while path and path.startswith(stop_at) and path != stop_at:
+        try:
+            os.rmdir(path)
+        except OSError:
+            return
+        path = os.path.dirname(path)
+
+
+def mirror_created_dir(app: 'Main', abs_dir_path: str):
+    """Create matching directory in funnel for a new source directory."""
+    if not app.funnel_dir:
+        return
+    funnel_target = _rel_to_funnel(app, abs_dir_path)
+    try:
+        os.makedirs(funnel_target, exist_ok=True)
+    except Exception as exc:
+        app.log(f"Delta sync create failed for {funnel_target}: {exc}", mode="warning")
+
+
+def mirror_deleted_dir(app: 'Main', abs_dir_path: str):
+    """Remove matching directory in funnel when a source directory is deleted."""
+    if not app.funnel_dir:
+        return
+    funnel_target = _rel_to_funnel(app, abs_dir_path)
+    if not os.path.exists(funnel_target):
+        return
+    try:
+        if not os.listdir(funnel_target):
+            os.rmdir(funnel_target)
+        _prune_empty_parents(os.path.dirname(funnel_target), app.funnel_dir)
+    except Exception as exc:
+        app.log(f"Delta sync delete failed for {funnel_target}: {exc}", mode="warning")
+
+
+def mirror_moved_dir(app: 'Main', abs_src: str, abs_dest: str):
+    """Rename/move the mirrored directory inside the funnel."""
+    if not app.funnel_dir:
+        return
+    src_funnel = _rel_to_funnel(app, abs_src)
+    dest_funnel = _rel_to_funnel(app, abs_dest)
+    try:
+        os.makedirs(os.path.dirname(dest_funnel), exist_ok=True)
+        if os.path.exists(src_funnel):
+            os.replace(src_funnel, dest_funnel)
+        else:
+            os.makedirs(dest_funnel, exist_ok=True)
+        _prune_empty_parents(os.path.dirname(src_funnel), app.funnel_dir)
+    except Exception as exc:
+        app.log(f"Delta sync move failed {src_funnel} -> {dest_funnel}: {exc}", mode="warning")
+
+
+#endregion

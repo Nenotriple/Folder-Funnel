@@ -24,11 +24,20 @@ DELAY = 2000  # Delay in milliseconds for after() calls
 
 
 #endregion
+#region - Timer ID Tracking
+
+
+# Module-level timer IDs for debounce cancellation
+_count_timer_id = None
+_sync_timer_id = None
+
+
+#endregion
 #region - Helper Functions
 
 
 def queue_move_file(app: 'Main', path):
-    """Queue a file for moving to the watch folder."""
+    """Queue a file or folder for moving to the watch folder."""
     app.root.after(DELAY, lambda: app.queue_move_file(path))
 
 
@@ -38,13 +47,43 @@ def handle_rename_event(app: 'Main', src, dest):
 
 
 def sync_funnel_folders(app: 'Main', silent="semi"):
-    """Sync the funnel folders with the source folder."""
-    app.root.after(DELAY, lambda: app.sync_funnel_folders(silent))
+    """Sync the funnel folders with the source folder. Debounced with timer cancellation."""
+    global _sync_timer_id
+    # Cancel any pending sync operation
+    if _sync_timer_id is not None:
+        try:
+            app.root.after_cancel(_sync_timer_id)
+        except Exception:
+            pass
+    # Schedule new sync with delay
+    _sync_timer_id = app.root.after(DELAY, lambda: _do_sync(app, silent))
+
+
+def _do_sync(app: 'Main', silent):
+    """Execute the sync operation and clear the timer ID."""
+    global _sync_timer_id
+    _sync_timer_id = None
+    app.sync_funnel_folders(silent)
 
 
 def count_folders_and_files(app: 'Main'):
-    """Count the number of folders and files in the source folder."""
-    app.root.after(DELAY, lambda: app.count_folders_and_files())
+    """Count the number of folders and files in the source folder. Debounced with timer cancellation."""
+    global _count_timer_id
+    # Cancel any pending count operation
+    if _count_timer_id is not None:
+        try:
+            app.root.after_cancel(_count_timer_id)
+        except Exception:
+            pass
+    # Schedule new count with delay
+    _count_timer_id = app.root.after(DELAY, lambda: _do_count(app))
+
+
+def _do_count(app: 'Main'):
+    """Execute the count operation and clear the timer ID."""
+    global _count_timer_id
+    _count_timer_id = None
+    app.count_folders_and_files()
 
 
 def invalidate_dir_cache(dir_path: str = None):
@@ -63,19 +102,19 @@ class FunnelFolderHandler(FileSystemEventHandler):
 
     def on_created(self, event):
         invalidate_dir_cache(os.path.dirname(event.src_path))
-        # If a new folder is created, sync the watch folders
+        # If a new folder is created, queue it so its contents are processed once ready
         if event.is_directory:
-            sync_funnel_folders(self.parent, silent="semi")
+            if os.path.exists(event.src_path):
+                queue_move_file(self.parent, event.src_path)
         # Else, queue the file for moving
         else:
-            # Check if the file exists and queue it
             if os.path.exists(event.src_path):
                 queue_move_file(self.parent, event.src_path)
 
 
     def on_deleted(self, event):
         invalidate_dir_cache(os.path.dirname(event.src_path))
-        sync_funnel_folders(self.parent, silent="silent")
+        # Funnel deletions do not require a full sync; moves will catch up
 
 
     def on_modified(self, event):
@@ -101,20 +140,26 @@ class SourceFolderHandler(FileSystemEventHandler):
     def on_created(self, event):
         invalidate_dir_cache(os.path.dirname(event.src_path))
         if event.is_directory:
-            sync_funnel_folders(self.parent, silent="semi")
-        count_folders_and_files(self.parent)
+            from . import folder_watcher  # Lazy import to avoid circular at module import
+            folder_watcher.mirror_created_dir(self.parent, event.src_path)
+            self.parent.adjust_counts(folder_delta=1)
+        else:
+            self.parent.adjust_counts(file_delta=1)
 
 
     def on_deleted(self, event):
         invalidate_dir_cache(os.path.dirname(event.src_path))
         if event.is_directory:
-            sync_funnel_folders(self.parent, silent="silent")
-        count_folders_and_files(self.parent)
+            from . import folder_watcher  # Lazy import to avoid circular at module import
+            folder_watcher.mirror_deleted_dir(self.parent, event.src_path)
+            self.parent.adjust_counts(folder_delta=-1)
+        else:
+            self.parent.adjust_counts(file_delta=-1)
 
 
     def on_moved(self, event):
         invalidate_dir_cache(os.path.dirname(event.src_path))
         invalidate_dir_cache(os.path.dirname(event.dest_path))
         if event.is_directory:
-            sync_funnel_folders(self.parent, silent="semi")
-        count_folders_and_files(self.parent)
+            from . import folder_watcher  # Lazy import to avoid circular at module import
+            folder_watcher.mirror_moved_dir(self.parent, event.src_path, event.dest_path)

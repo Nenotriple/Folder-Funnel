@@ -269,7 +269,7 @@ def _move_file(app: 'Main', source_path):
         app.move_count += 1
         app.grand_move_count += 1
         app.movecount_var.set(f"Moved: {app.move_count}")
-        app.count_folders_and_files()
+        # Note: count_folders_and_files is called once after batch processing completes
         return True
     except Exception as e:
         app.log(f"Error moving file {source_path}: {str(e)}", mode="error")

@@ -115,6 +115,10 @@ class Main:
         self.duplicate_count = 0  # Duplicate files detected
         self.history_order_counter = 0  # Counter to track chronological order of history items
 
+        # Live folder/file counts (kept in sync incrementally)
+        self.folder_count = 0
+        self.file_count = 0
+
         # Queue related variables
         self.move_queue = []  # List of files waiting to be moved
         self.queue_count = 0  # Number of files in the move queue
@@ -289,20 +293,38 @@ class Main:
 
     def count_folders_and_files(self):
         """Count the number of folders and files in the source folder, updating the progress bar."""
-        # Set progress bar to indeterminate mode to show activity
-        folder_count = 0
-        file_count = 0
-        i = 0
-        for root_dir, dirs, files in os.walk(self.source_dir_var.get()):
-            folder_count += len(dirs)
-            file_count += len(files)
-            i += 1
-            if i % 20 == 0:
-                self.foldercount_var.set(f"Folders: {folder_count}")
-                self.filecount_var.set(f"Files: {file_count}")
-                self.root.update_idletasks()
-        self.foldercount_var.set(f"Folders: {folder_count}")
-        self.filecount_var.set(f"Files: {file_count}")
+        # Prevent re-entry if already counting
+        if getattr(self, '_counting_in_progress', False):
+            return
+        self._counting_in_progress = True
+        try:
+            folder_count = 0
+            file_count = 0
+            i = 0
+            for root_dir, dirs, files in os.walk(self.source_dir_var.get()):
+                folder_count += len(dirs)
+                file_count += len(files)
+                i += 1
+                if i % 20 == 0:
+                    self.foldercount_var.set(f"Folders: {folder_count}")
+                    self.filecount_var.set(f"Files: {file_count}")
+                    self.root.update_idletasks()
+            self.folder_count = folder_count
+            self.file_count = file_count
+            self.foldercount_var.set(f"Folders: {folder_count}")
+            self.filecount_var.set(f"Files: {file_count}")
+        finally:
+            self._counting_in_progress = False
+
+
+    def adjust_counts(self, folder_delta=0, file_delta=0):
+        """Incrementally adjust cached counts and update UI labels."""
+        if folder_delta:
+            self.folder_count = max(0, self.folder_count + folder_delta)
+        if file_delta:
+            self.file_count = max(0, self.file_count + file_delta)
+        self.foldercount_var.set(f"Folders: {self.folder_count}")
+        self.filecount_var.set(f"Files: {self.file_count}")
 
 
 #endregion

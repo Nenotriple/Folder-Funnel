@@ -14,9 +14,6 @@ from tkinter import ttk, filedialog
 import nenotk as ntk
 from nenotk import ToolTip as Tip
 
-# Local imports
-from main.ui.scalable_image_label import ScalableImageLabel
-
 
 #endregion
 #region InteractiveDuplicateReviewDialog
@@ -181,7 +178,7 @@ class InteractiveDuplicateReviewDialog:
             image_frame = ttk.Frame(side_frame)
             image_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
             try:
-                image_label = ScalableImageLabel(image_frame, width=max_image_width, height=max_image_height, keep_aspect=True)
+                image_label = ntk.ImageScale(image_frame, width=max_image_width, height=max_image_height, keep_aspect=True)
                 image_label.pack(expand=True, fill="both")
                 image_label.set_image(file_path)
                 image_label.configure(cursor="hand2")
@@ -251,7 +248,7 @@ class InteractiveDuplicateReviewDialog:
     def create_image_preview_compact(self, parent, file_path):
         try:
             width, height = self.preview_sizes[self.current_preview_size.get()]
-            image_label = ScalableImageLabel(parent, width=width, height=height, keep_aspect=True)
+            image_label = ntk.ImageScale(parent, width=width, height=height, keep_aspect=True)
             image_label.pack()
             image_label.set_image(file_path)
             image_label.configure(cursor="hand2")

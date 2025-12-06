@@ -82,6 +82,14 @@ def _create_view_menu(app: 'Main', menubar: tk.Menu):
     view_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     view_menu.add_separator()
     view_menu.add_command(label="Toggle: Text Wrap", command=app.toggle_text_wrap)
+    view_menu.add_separator()
+    # Log verbosity submenu
+    log_verbosity_menu = tk.Menu(view_menu, tearoff=0)
+    view_menu.add_cascade(label="Log Verbosity", menu=log_verbosity_menu)
+    log_verbosity_menu.add_radiobutton(label="Essential (1)", variable=app.log_verbosity_var, value=1)
+    log_verbosity_menu.add_radiobutton(label="Extended (2)", variable=app.log_verbosity_var, value=2)
+    log_verbosity_menu.add_radiobutton(label="Detailed (3)", variable=app.log_verbosity_var, value=3)
+    log_verbosity_menu.add_radiobutton(label="Debug (4)", variable=app.log_verbosity_var, value=4)
 
 
 def _create_options_menu(app: 'Main', menubar: tk.Menu):
@@ -228,7 +236,7 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     # Text
     app.text_log = scrolledtext.ScrolledText(text_frame, wrap="word", state="disabled", width=1, height=1, font=("Consolas", 10))
     app.text_log.grid(row=2, column=0, sticky="nsew")
-    app.log("Welcome to Folder-Funnel - Please see the help menu for more information.")
+    app.log("Welcome to Folder-Funnel - Please see the Help menu for more information.", verbose=1)
     # Search
     app.text_search = ntk.FindReplaceEntry(text_frame, app.text_log, show_replace=False)
     app.text_search.grid(row=1, column=0, sticky="ew")

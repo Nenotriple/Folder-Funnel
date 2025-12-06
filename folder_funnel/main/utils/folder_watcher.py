@@ -72,7 +72,7 @@ def _start_folder_watcher(app: 'Main'):
     source_handler = SourceFolderHandler(app)
     app.source_observer.schedule(source_handler, path=app.source_dir_var.get(), recursive=True)
     app.source_observer.start()
-    app.log("Ready!\n", mode="system")
+    app.log("Ready!\n", mode="system", verbose=1)
 
 
 def stop_folder_watcher(app: 'Main'):
@@ -83,13 +83,13 @@ def stop_folder_watcher(app: 'Main'):
     if not confirm:
         return False
     _stop_folder_watcher(app)
-    app.log("Stopping Folder-Funnel process...", mode="system")
+    app.log("Stopping Folder-Funnel process...", mode="system", verbose=1)
     if app.funnel_dir and os.path.exists(app.funnel_dir):
         try:
             shutil.rmtree(app.funnel_dir)
         except Exception as exc:
-            app.log(f"Failed to remove watch folder {app.funnel_dir}: {exc}", mode="warning")
-    app.log(f"Removed watch folder: {app.funnel_dir}", mode="system")
+            app.log(f"Failed to remove funnel folder {app.funnel_dir}: {exc}", mode="warning", verbose=2)
+    app.log(f"Removed funnel folder: {app.funnel_dir}", mode="system", verbose=1)
     app.reset_status_row()
     app.clear_history()
     app.toggle_widgets_state(state="idle")
@@ -102,13 +102,13 @@ def _stop_folder_watcher(app: 'Main'):
         app.funnel_observer.stop()
         app.funnel_observer.join(timeout=2)
         if hasattr(app.funnel_observer, "is_alive") and app.funnel_observer.is_alive():
-            app.log("Funnel observer did not stop cleanly", mode="warning")
+            app.log("Funnel observer did not stop cleanly", mode="warning", verbose=4)
         app.funnel_observer = None
     if app.source_observer:
         app.source_observer.stop()
         app.source_observer.join(timeout=2)
         if hasattr(app.source_observer, "is_alive") and app.source_observer.is_alive():
-            app.log("Source observer did not stop cleanly", mode="warning")
+            app.log("Source observer did not stop cleanly", mode="warning", verbose=4)
         app.source_observer = None
 
 
@@ -132,7 +132,7 @@ def sync_funnel_folders(app: 'Main', silent=False):
         # Create watch folder
         os.makedirs(app.funnel_dir, exist_ok=True)
         if not silent:
-            app.log("Initializing synced folder...", mode="system")
+            app.log("Initializing synced folder...", mode="system", verbose=2)
         # Walk through the source directory and create corresponding directories in the watch folder
         item_counter = 0
         for dirpath, dirnames, filenames in os.walk(source_path):
@@ -163,14 +163,14 @@ def sync_funnel_folders(app: 'Main', silent=False):
             if item_counter % 20 == 0:
                 _tick_progress(app, progress_state)
         if silent in [False, "semi"]:
-            app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.funnel_dir}", mode="system")
+            app.log(f"Sync complete: Created {counter_created}, removed {counter_removed} directories", mode="system", verbose=2)
         elif silent == "initial":
             folder_count = re.split(" ", app.foldercount_var.get())
             file_count = re.split(" ", app.filecount_var.get())
-            app.log(f"Watching: {folder_count[1]} directories and {file_count[1]} files in the selected folder.", mode="system")
+            app.log(f"Watching: {folder_count[1]} folders and {file_count[1]} files", mode="system", verbose=1)
     except Exception as e:
         ntk.showinfo("Error: sync_funnel_folders()", f"{str(e)}")
-        app.log(f"Error syncing funnel folders: {str(e)}", mode="error")
+        app.log(f"Error syncing funnel folders: {str(e)}", mode="error", verbose=1)
     finally:
         # Reset progress bar to determinate mode
         app.queue_progressbar['value'] = 0
@@ -206,12 +206,12 @@ def _scan_for_existing_files(app: 'Main'):
                 if file_path not in app.move_queue:
                     app.move_queue.append(file_path)
             app.update_queue_count()
-            app.log(f"Added {file_count} pre-existing file{'s' if file_count != 1 else ''} to the move queue", mode="info")
+            app.log(f"Added {file_count} pre-existing file{'s' if file_count != 1 else ''} to the move queue", mode="info", verbose=2)
             # Start the queue timer to process these files
             from .move_queue import start_queue
             start_queue(app)
         else:
-            app.log(f"Ignored {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder", mode="info")
+            app.log(f"Ignored {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder", mode="info", verbose=2)
 
 
 #endregion
@@ -244,7 +244,7 @@ def mirror_created_dir(app: 'Main', abs_dir_path: str):
     try:
         os.makedirs(funnel_target, exist_ok=True)
     except Exception as exc:
-        app.log(f"Delta sync create failed for {funnel_target}: {exc}", mode="warning")
+        app.log(f"Delta sync create failed for {funnel_target}: {exc}", mode="warning", verbose=3)
 
 
 def mirror_deleted_dir(app: 'Main', abs_dir_path: str):
@@ -259,7 +259,7 @@ def mirror_deleted_dir(app: 'Main', abs_dir_path: str):
             os.rmdir(funnel_target)
         _prune_empty_parents(os.path.dirname(funnel_target), app.funnel_dir)
     except Exception as exc:
-        app.log(f"Delta sync delete failed for {funnel_target}: {exc}", mode="warning")
+        app.log(f"Delta sync delete failed for {funnel_target}: {exc}", mode="warning", verbose=3)
 
 
 def mirror_moved_dir(app: 'Main', abs_src: str, abs_dest: str):
@@ -276,7 +276,7 @@ def mirror_moved_dir(app: 'Main', abs_src: str, abs_dest: str):
             os.makedirs(dest_funnel, exist_ok=True)
         _prune_empty_parents(os.path.dirname(src_funnel), app.funnel_dir)
     except Exception as exc:
-        app.log(f"Delta sync move failed {src_funnel} -> {dest_funnel}: {exc}", mode="warning")
+        app.log(f"Delta sync move failed {src_funnel} -> {dest_funnel}: {exc}", mode="warning", verbose=3)
 
 
 #endregion

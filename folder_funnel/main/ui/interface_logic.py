@@ -44,7 +44,7 @@ def select_working_dir(app: 'Main', path=None):
     if os.path.exists(path):
         app.source_dir_var.set(path)
         app.dir_entry_tooltip.config(text=path)
-        app.log(f"\nSelected folder: {path}\n", mode="system")
+        app.log(f"\nSelected source folder: {path}\n", mode="system", verbose=1)
 
 
 def open_folder(app: 'Main', path=None):
@@ -53,11 +53,26 @@ def open_folder(app: 'Main', path=None):
         os.startfile(path)
     else:
         ntk.showinfo("Error", "Folder not found")
-        app.log(f"Folder not found: {path}", mode="error")
+        app.log(f"Folder not found: {path}", mode="error", verbose=1)
 
 
-def log(app: 'Main', message, mode="simple"):
-    """Add a message to the log with an optional mode prefix."""
+def log(app: 'Main', message, mode="simple", verbose=1):
+    """Add a message to the log with an optional mode prefix.
+
+    Args:
+        app: The Main application instance.
+        message: The message to log.
+        mode: The log mode/type - "info", "system", "warning", "error", or "simple".
+        verbose: Verbosity level (1-4):
+            1 = Essential info - always displayed (user-facing events)
+            2 = Extended info - useful but not required (additional context)
+            3 = Detailed info - low-level operations (technical details)
+            4 = Debug info - debugging/diagnostic messages
+    """
+    # Check verbosity level - skip if message level exceeds user's setting
+    user_verbosity = app.log_verbosity_var.get() if hasattr(app, 'log_verbosity_var') else 1
+    if verbose > user_verbosity:
+        return
     prefixes = {
         "info": "[INFO] ",
         "system": "[SYSTEM] ",

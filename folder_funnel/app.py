@@ -67,6 +67,7 @@ class Main:
         self.dupe_partial_hash_size_var = tk.IntVar(value=4096)  # Size in bytes for partial hash (default 4KB)
         self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
+        self.log_verbosity_var = tk.IntVar(value=1)  # Log verbosity level (1-4): 1=Essential, 2=Extended, 3=Detailed, 4=Debug
         self.history_mode_var = tk.StringVar(value="All")  # History display mode ("All", "Moved", "Duplicate")
         self.ignore_firefox_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files created by Firefox
         self.ignore_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files in the funnel folder
@@ -152,8 +153,8 @@ class Main:
     def open_folder(self, path=None):
         interface_logic.open_folder(self, path)
 
-    def log(self, message, mode="simple"):
-        interface_logic.log(self, message, mode)
+    def log(self, message, mode="simple", verbose=1):
+        interface_logic.log(self, message, mode, verbose)
 
     def clear_log(self):
         interface_logic.clear_log(self)
@@ -432,6 +433,7 @@ class Main:
 
     def minimize_to_tray(self):
         """Minimize the application to the system tray."""
+        self.log("Minimized to system tray", mode="system", verbose=2)
         self.root.withdraw()
         self.start_tray_icon()
 
@@ -442,6 +444,7 @@ class Main:
         self.root.deiconify()
         self.root.lift()
         self.root.focus_force()
+        self.log("Restored from system tray", mode="system", verbose=2)
 
 
     def start_tray_icon(self):

@@ -86,7 +86,7 @@ def _enqueue_file_if_allowed(app: 'Main', file_path: str, rel_path: str = None) 
             rel_path = os.path.relpath(file_path, app.funnel_dir)
         except Exception:
             rel_path = file_path
-    app.log(f"Queued file: {rel_path}", mode="info")
+    app.log(f"Queued: {rel_path}", mode="info", verbose=2)
     return True
 
 
@@ -147,14 +147,14 @@ def _extract_zip(app: 'Main', zip_path, extract_dir):
         # Log the extraction
         rel_path = os.path.relpath(zip_path, app.source_dir_var.get())
         rel_extract = os.path.relpath(extract_dir, app.source_dir_var.get())
-        app.log(f"Extracted ZIP: {rel_path} → {rel_extract}", mode="info")
+        app.log(f"Extracted ZIP: {rel_path} → {rel_extract}", mode="info", verbose=1)
         # Remove the original ZIP file if enabled
         if app.auto_delete_zip_var.get():
             os.remove(zip_path)
-            app.log(f"Deleted ZIP: {rel_path}", mode="info")
+            app.log(f"Deleted ZIP after extraction: {rel_path}", mode="info", verbose=2)
         return True
     except Exception as e:
-        app.log(f"Error extracting ZIP {zip_path}: {str(e)}", mode="error")
+        app.log(f"Error extracting ZIP {zip_path}: {str(e)}", mode="error", verbose=1)
         return False
 
 
@@ -170,7 +170,7 @@ def _handle_new_folder(app: 'Main', source_path):
         dest_path = os.path.join(app.source_dir_var.get(), rel_path)
         # Create folder structure in both locations
         os.makedirs(dest_path, exist_ok=True)
-        app.log(f"Created folder: {rel_path}", mode="info")
+        app.log(f"Created folder: {rel_path}", mode="info", verbose=2)
         # Walk through the source directory and handle all contents
         for dirpath, dirnames, filenames in os.walk(source_path):
             # Calculate relative paths
@@ -182,14 +182,14 @@ def _handle_new_folder(app: 'Main', source_path):
                 dest_dir = os.path.join(app.source_dir_var.get(), rel_dir)
                 os.makedirs(funnel_dir, exist_ok=True)
                 os.makedirs(dest_dir, exist_ok=True)
-                app.log(f"Created subfolder: {rel_dir}", mode="info")
+                app.log(f"Created subfolder: {rel_dir}", mode="info", verbose=3)
             # Queue all files for moving
             for filename in filenames:
                 file_path = os.path.join(dirpath, filename)
                 relative_for_log = os.path.join(rel_path, rel_dirpath, filename)
                 _enqueue_file_if_allowed(app, file_path, relative_for_log)
     except Exception as e:
-        app.log(f"Error handling new folder {source_path}: {str(e)}", mode="error")
+        app.log(f"Error handling new folder {source_path}: {str(e)}", mode="error", verbose=1)
 
 
 def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_path):
@@ -212,7 +212,7 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
         if app.dupe_handle_mode_var.get() == "Delete":
             # Delete the duplicate file
             os.remove(source_path)
-            app.log(f"Deleted duplicate file: {rel_path}", mode="info")
+            app.log(f"Duplicate deleted: {rel_path}", mode="info", verbose=1)
         else:  # "Move" mode
             if not app.duplicate_storage_path:
                 duplicate_handler.create_duplicate_storage_folder(app)
@@ -226,7 +226,7 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
             dup_file_path = _get_unique_filename(dup_file_path)
             # Move the duplicate file
             shutil.move(source_path, dup_file_path)
-            app.log(f"Moved duplicate file: {rel_path} -> {os.path.relpath(dup_file_path, app.duplicate_storage_path)}", mode="info")
+            app.log(f"Duplicate moved: {rel_path} -> {os.path.relpath(dup_file_path, app.duplicate_storage_path)}", mode="info", verbose=1)
             duplicate_path = dup_file_path
         # Record the duplicate file, using the matching file path as source
         original_path = matching_file_path if matching_file_path else dest_path
@@ -257,7 +257,7 @@ def _move_file(app: 'Main', source_path):
         if os.path.exists(dest_path):
             # If overwrite is enabled, skip duplicate checking
             if app.overwrite_on_conflict_var.get():
-                app.log(f"Overwriting existing file: {rel_path}", mode="warning")
+                app.log(f"Overwriting existing file: {rel_path}", mode="warning", verbose=2)
             else:
                 # Check for duplicates and get unique name if needed
                 is_duplicate, new_dest_path = _handle_possible_duplicate_file(app, source_path, dest_path, rel_path)
@@ -267,7 +267,7 @@ def _move_file(app: 'Main', source_path):
                     dest_path = new_dest_path
         # Move the file
         shutil.move(source_path, dest_path)
-        app.log(f"Moved file: {rel_path} -> {os.path.basename(dest_path)}", mode="info")
+        app.log(f"Moved: {rel_path}", mode="info", verbose=1)
         # Handle ZIP extraction if enabled
         if app.auto_extract_zip_var.get() and _is_zip_file(dest_path):
             # Create extraction directory named after the zip file (without extension)
@@ -283,7 +283,7 @@ def _move_file(app: 'Main', source_path):
         # Note: count_folders_and_files is called once after batch processing completes
         return True
     except Exception as e:
-        app.log(f"Error moving file {source_path}: {str(e)}", mode="error")
+        app.log(f"Error moving file {source_path}: {str(e)}", mode="error", verbose=1)
         return False
 
 
@@ -327,18 +327,18 @@ def process_move_queue(app: 'Main'):
     stop_queue(app)  # Stop the queue timer and reset progress indicators
     if not app.move_queue:
         return
-    app.log(f"Processing {len(app.move_queue)} queued files...", mode="info")
+    app.log(f"Processing {len(app.move_queue)} queued file{'s' if len(app.move_queue) != 1 else ''}...", mode="info", verbose=2)
     success_count = 0
     for source_path in app.move_queue:
         if os.path.exists(source_path):  # Check if the file exists before moving
             if _move_file(app, source_path):
                 success_count += 1
         else:
-            app.log(f"File not found, skipping: {source_path}", mode="warning")
+            app.log(f"File not found, skipping: {source_path}", mode="warning", verbose=2)
     if len(app.move_queue) == 1:
-        app.log(f"Move complete: {success_count}/1 file moved successfully\n", mode="info")
+        app.log(f"Move complete: {success_count}/1 file\n", mode="info", verbose=1)
     else:
-        app.log(f"Batch move complete: {success_count}/{len(app.move_queue)} files moved successfully\n", mode="info")
+        app.log(f"Batch complete: {success_count}/{len(app.move_queue)} files moved\n", mode="info", verbose=1)
     app.move_queue.clear()
     app.update_queue_count()
 
@@ -360,12 +360,12 @@ def handle_rename_event(app: 'Main', old_path, new_path):
     try:
         if old_path in app.move_queue:
             app.move_queue.remove(old_path)
-            app.log(f"Removed old path from queue: {old_path}", mode="info")
+            app.log(f"Removed renamed file from queue: {os.path.basename(old_path)}", mode="info", verbose=3)
         if not os.path.isdir(new_path) and new_path not in app.move_queue:
             queue_move_file(app, new_path)
         app.update_queue_count()
     except Exception as e:
-        app.log(f"Error handling rename event: {str(e)}", mode="error")
+        app.log(f"Error handling rename event: {str(e)}", mode="error", verbose=1)
 
 
 #endregion

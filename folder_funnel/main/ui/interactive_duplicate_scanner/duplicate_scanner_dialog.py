@@ -274,6 +274,7 @@ class DuplicateScannerDialog:
         self.dialog.protocol("WM_DELETE_WINDOW", self.on_close)
         self.create_all_widgets()
         ntk.center_window(self.dialog, to="parent")
+        self.app.log("Opened Interactive Duplicate Scanner", mode="info", verbose=2)
 
 
     # --- All Widgets ---
@@ -543,6 +544,7 @@ class DuplicateScannerDialog:
         if not active_stages:
             ntk.showinfo("Error", "Please select at least one scan method in the pipeline.")
             return
+        self.app.log(f"Starting duplicate scan: {self.selected_folder}", mode="info", verbose=1)
         self.is_scanning = True
         self._set_scan_buttons_state(scanning=True)
         self._set_action_buttons_state(enabled=False)
@@ -644,7 +646,7 @@ class DuplicateScannerDialog:
     def _validate_file_exists(self, filepath: str) -> bool:
         """Check if file exists and log warning if not. Returns True if file exists."""
         if not os.path.exists(filepath):
-            self.app.log(f"File no longer exists: {filepath}", mode="warning")
+            self.app.log(f"File no longer exists: {filepath}", mode="warning", verbose=3)
             return False
         return True
 
@@ -725,7 +727,7 @@ class DuplicateScannerDialog:
                     hash_results[filepath] = (context_data, hash_value)
                     unique_hashes.add(hash_value)
             except Exception as e:
-                self.app.log(f"Error hashing {filepath}: {e}", mode="warning")
+                self.app.log(f"Error hashing {filepath}: {e}", mode="warning", verbose=3)
             processed += 1
             # Time-based progress throttling (every 200ms)
             current_time = time.time()
@@ -744,10 +746,13 @@ class DuplicateScannerDialog:
         self.status_var.set(message)
         self.overall_eta_var.set("Done!")
         if is_error:
+            self.app.log(f"Scan failed: {message}", mode="error", verbose=1)
             ntk.showinfo("Scan Error", message)
             self.update_action_buttons(False)
             # Reset action info for error case
             self.action_info_var.set("Scan for duplicates first")
+        else:
+            self.app.log(f"Scan complete: {message}", mode="info", verbose=1)
 
 
     def on_close(self):
@@ -823,12 +828,12 @@ class DuplicateScannerDialog:
                                         last_update_time = current_time
                             except (OSError, IOError) as e:
                                 error_count += 1
-                                self.app.log(f"Error accessing file {entry.path}: {e}", mode="warning")
+                                self.app.log(f"Error accessing file {entry.path}: {e}", mode="warning", verbose=4)
                                 continue
             except (OSError, IOError) as e:
-                self.app.log(f"Error reading directory {self.selected_folder}: {e}", mode="error")
+                self.app.log(f"Error reading directory {self.selected_folder}: {e}", mode="error", verbose=2)
         if error_count > 0:
-            self.app.log(f"Scan encountered {error_count} file access errors", mode="warning")
+            self.app.log(f"Scan encountered {error_count} file access errors", mode="warning", verbose=2)
         # Final status update with total counts
         elapsed = time.time() - self.scan_start_time
         folder_count = getattr(self, '_folder_count', 1)
@@ -865,7 +870,7 @@ class DuplicateScannerDialog:
                                 files.append((entry.path, size))
                     except (OSError, IOError) as e:
                         error_count += 1
-                        self.app.log(f"Error accessing {entry.path}: {e}", mode="warning")
+                        self.app.log(f"Error accessing {entry.path}: {e}", mode="warning", verbose=4)
                         continue
                 folder_count += 1
                 self._folder_count = folder_count
@@ -889,7 +894,7 @@ class DuplicateScannerDialog:
                         filter_enabled, allowed_exts, last_update_time
                     )
         except (OSError, IOError) as e:
-            self.app.log(f"Error reading directory {directory}: {e}", mode="warning")
+            self.app.log(f"Error reading directory {directory}: {e}", mode="warning", verbose=3)
         return last_update_time
 
 
@@ -1050,7 +1055,7 @@ class DuplicateScannerDialog:
                 return ""
             return cached_get_md5(filepath, partial_size=partial_size)
         except (OSError, IOError) as e:
-            self.app.log(f"Error hashing {filepath}: {e}", mode="warning")
+            self.app.log(f"Error hashing {filepath}: {e}", mode="warning", verbose=3)
             return ""
 
 
@@ -1252,7 +1257,7 @@ class DuplicateScannerDialog:
                 try:
                     if action == "delete":
                         os.remove(filepath)
-                        self.app.log(f"Deleted duplicate: {os.path.basename(filepath)}", mode="info")
+                        self.app.log(f"Deleted duplicate: {os.path.basename(filepath)}", mode="info", verbose=1)
                     elif action == "move" and destination:
                         # Preserve directory structure
                         rel_path = os.path.relpath(filepath, self.selected_folder)
@@ -1260,7 +1265,7 @@ class DuplicateScannerDialog:
                         dest_dir = os.path.dirname(dest_path)
                         os.makedirs(dest_dir, exist_ok=True)
                         shutil.move(filepath, dest_path)
-                        self.app.log(f"Moved duplicate: {os.path.basename(filepath)} -> {rel_path}", mode="info")
+                        self.app.log(f"Moved duplicate: {os.path.basename(filepath)} -> {rel_path}", mode="info", verbose=1)
                     success_count += 1
                 except Exception as e:
                     error_count += 1
@@ -1293,6 +1298,7 @@ class DuplicateScannerDialog:
         else:
             ntk.showinfo("Action Completed", message)
         self.status_var.set(f"Action completed - {success_count} files {action_past}")
+        self.app.log(f"Bulk action complete: {success_count} files {action_past}, {error_count} errors", mode="info", verbose=1)
         # Clear duplicate groups since files have been processed
         self.duplicate_groups = {}
         self.update_action_buttons(False)

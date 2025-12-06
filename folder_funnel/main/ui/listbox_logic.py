@@ -296,7 +296,7 @@ def _perform_history_action(app: 'Main', target: str, action: str):
             if filename:
                 _remove_history_entry(app, filename)
                 app.history_listbox.delete(app.history_listbox.curselection())
-            app.log(f"Deleted file: {os.path.basename(filepath)}", mode="info")
+            app.log(f"Deleted file: {os.path.basename(filepath)}", mode="info", verbose=1)
             if item_type == "duplicate":
                 ntk.showinfo("Success", f"Duplicate file deleted: {os.path.basename(filepath)}")
         except Exception as e:

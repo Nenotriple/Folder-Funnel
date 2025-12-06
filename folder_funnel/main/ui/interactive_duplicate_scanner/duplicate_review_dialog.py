@@ -104,6 +104,7 @@ class InteractiveDuplicateReviewDialog:
         close_btn.pack(side="left")
         Tip(widget=close_btn, text="Close the duplicate review dialog", tooltip_anchor="sw", pady=-2)
         ntk.center_window(self.dialog, to="parent")
+        self.app.log(f"Opened Interactive Review: {len(self.duplicate_groups)} groups", mode="info", verbose=2)
         self.show_current_group()
 
 
@@ -302,17 +303,19 @@ class InteractiveDuplicateReviewDialog:
             try:
                 os.remove(file_path)
                 self.remove_file_from_group(file_path)
-                self.app.log(f"Deleted duplicate: {filename}")
+                self.app.log(f"Deleted duplicate: {filename}", verbose=1)
             except Exception as e:
+                self.app.log(f"Failed to delete: {filename} - {str(e)}", mode="error", verbose=1)
                 ntk.showinfo("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
         else:
             if ntk.askyesno("Confirm Delete", prompt= "Delete file:", detail=filename, parent=self.dialog):
                 try:
                     os.remove(file_path)
                     self.remove_file_from_group(file_path)
-                    self.app.log(f"Deleted duplicate: {filename}")
+                    self.app.log(f"Deleted duplicate: {filename}", verbose=1)
                     ntk.showinfo("Success", f"Deleted: {filename}", parent=self.dialog)
                 except Exception as e:
+                    self.app.log(f"Failed to delete: {filename} - {str(e)}", mode="error", verbose=1)
                     ntk.showinfo("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
 
 
@@ -329,9 +332,10 @@ class InteractiveDuplicateReviewDialog:
                     counter += 1
                 shutil.move(file_path, dest_path)
                 self.remove_file_from_group(file_path)
-                self.app.log(f"Moved duplicate: {filename}")
+                self.app.log(f"Moved duplicate: {filename}", verbose=1)
                 ntk.showinfo("Success", f"Moved to:\n{os.path.basename(dest_path)}", parent=self.dialog)
             except Exception as e:
+                self.app.log(f"Failed to move: {filename} - {str(e)}", mode="error", verbose=1)
                 ntk.showinfo("Error", f"Could not move file:\n{str(e)}", parent=self.dialog)
 
 
@@ -364,7 +368,7 @@ class InteractiveDuplicateReviewDialog:
                     os.remove(file_path)
                     current_group.remove(file_path)
                     deleted_count += 1
-                    self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}")
+                    self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}", verbose=1)
                 except Exception as e:
                     errors.append(f"{os.path.basename(file_path)}: {str(e)}")
             self.duplicate_groups.pop(self.current_group_index)
@@ -385,7 +389,7 @@ class InteractiveDuplicateReviewDialog:
                         os.remove(file_path)
                         current_group.remove(file_path)
                         deleted_count += 1
-                        self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}")
+                        self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}", verbose=1)
                     except Exception as e:
                         errors.append(f"{os.path.basename(file_path)}: {str(e)}")
                 self.duplicate_groups.pop(self.current_group_index)

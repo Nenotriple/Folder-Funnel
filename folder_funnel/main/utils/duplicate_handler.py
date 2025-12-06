@@ -213,7 +213,7 @@ def are_files_identical(file1: str, file2: str, check_mode: str = "Similar",
         similar_files, was_truncated = find_similar_files(file1, target_dir, method, max_files, return_truncation_info=True, source_size=file1_size )
         # Log warning if max_files limit was exceeded
         if was_truncated and app:
-            app.log(f"Warning: max_files limit ({max_files}) exceeded in {os.path.basename(target_dir)}. Some potential duplicates may be missed.", mode="warning")
+            app.log(f"Warning: max_files limit ({max_files}) reached in {os.path.basename(target_dir)}, some duplicates may be missed", mode="warning", verbose=2)
         # Calculate source file hash (use partial hash first if enabled)
         if partial_hash_size > 0:
             file1_partial_hash = get_md5(file1, chunk_size, partial_size=partial_hash_size)
@@ -331,8 +331,9 @@ def confirm_duplicate_storage_removal(app: 'Main'):
         elif response:  # Yes was selected
             try:
                 shutil.rmtree(app.duplicate_storage_path)
-                app.log(f"Removed duplicate storage folder: {app.duplicate_storage_path}", mode="info")
+                app.log(f"Removed duplicate storage folder: {app.duplicate_storage_path}", mode="info", verbose=1)
             except Exception as e:
+                app.log(f"Failed to remove duplicate folder: {str(e)}", mode="error", verbose=1)
                 ntk.showinfo("Error", f"Failed to remove duplicate folder: {str(e)}")
         # If No was selected, keep the folder
     return True  # Continue closing
@@ -347,8 +348,9 @@ def create_duplicate_storage_folder(app: 'Main'):
     app.duplicate_storage_path = os.path.normpath(os.path.join(parent_dir, duplicate_folder_name))
     try:
         os.makedirs(app.duplicate_storage_path, exist_ok=True)
-        app.log(f"Created duplicate storage folder: {app.duplicate_storage_path}", mode="info")
+        app.log(f"Created duplicate storage folder: {app.duplicate_storage_path}", mode="info", verbose=2)
     except Exception as e:
+        app.log(f"Failed to create duplicate storage folder: {str(e)}", mode="error", verbose=1)
         ntk.showinfo("Error", f"Failed to create duplicate storage folder: {str(e)}")
         app.duplicate_storage_path = ""
 

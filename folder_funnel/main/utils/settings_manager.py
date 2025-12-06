@@ -25,6 +25,7 @@ def save_settings(app: 'Main'):
     cfg['General'] = {
         'working_directory': app.source_dir_var.get(),
         'text_log_wrap': str(app.text_log_wrap_var.get()),
+        'log_verbosity': str(app.log_verbosity_var.get()),
         'history_mode': app.history_mode_var.get(),
         'minimize_to_tray': str(app.minimize_to_tray_var.get()),
     }
@@ -61,9 +62,10 @@ def save_settings(app: 'Main'):
     try:
         with open(settings_path, 'w') as configfile:
             cfg.write(configfile)
+        app.log("Settings saved", mode="system", verbose=3)
         return True
     except Exception as e:
-        app.log(f"Error saving settings: {str(e)}", mode="error")
+        app.log(f"Error saving settings: {str(e)}", mode="error", verbose=1)
         return False
 
 
@@ -88,6 +90,8 @@ def load_settings(app: 'Main'):
                     app.root.after(500, lambda: app.start_folder_watcher(auto_start=True))
             if 'text_log_wrap' in cfg['General']:
                 app.text_log_wrap_var.set(cfg.getboolean('General', 'text_log_wrap'))
+            if 'log_verbosity' in cfg['General']:
+                app.log_verbosity_var.set(int(cfg['General']['log_verbosity']))
             if 'history_mode' in cfg['General']:
                 app.history_mode_var.set(cfg['General']['history_mode'])
             if 'minimize_to_tray' in cfg['General']:
@@ -135,9 +139,10 @@ def load_settings(app: 'Main'):
                 app.move_action_time = float(cfg['Stats']['move_action_time'])
             if 'dupe_action_time' in cfg['Stats']:
                 app.dupe_action_time = float(cfg['Stats']['dupe_action_time'])
+        app.log("Settings loaded successfully", mode="system", verbose=2)
         return True
     except Exception as e:
-        app.log(f"Error loading settings: {str(e)}", mode="error")
+        app.log(f"Error loading settings: {str(e)}", mode="error", verbose=1)
         return False
 
 
@@ -163,6 +168,7 @@ def reset_settings(app: 'Main'):
     try:
         # General
         app.text_log_wrap_var.set(True)
+        app.log_verbosity_var.set(1)
         app.history_mode_var.set("Moved")
         app.minimize_to_tray_var.set(False)
         # Duplicate handling
@@ -184,8 +190,8 @@ def reset_settings(app: 'Main'):
         apply_settings_to_ui(app)
         # Save the new settings
         save_settings(app)
-        app.log("Settings reset to default values.", mode="info")
+        app.log("Settings reset to default values.", mode="info", verbose=1)
         return True
     except Exception as e:
-        app.log(f"Error resetting settings: {str(e)}", mode="error")
+        app.log(f"Error resetting settings: {str(e)}", mode="error", verbose=1)
         return False

@@ -32,21 +32,30 @@ def start_folder_watcher(app: 'Main', auto_start=False):
         if not confirm:
             return
     # Show activity on progress bar during initialization
-    app.status_label_var.set("Status: Counting files...")
+    app.set_status("busy", "Counting files...")
     app.root.update_idletasks()
     app.toggle_widgets_state(state="running")
     app.count_folders_and_files()
-    app.status_label_var.set("Status: Syncing folders...")
+    app.set_status("busy", "Syncing folders...")
     app.root.update_idletasks()
     sync_funnel_folders(app, silent="initial")
     # Check for pre-existing files in the funnel folder
     _scan_for_existing_files(app)
     _start_folder_watcher(app)
-    app.status_label_var.set("Status: Running")
+    app.set_status("running")
     app.move_count = 0
     app.movecount_var.set("Moved: 0")
     app.duplicate_count = 0
     app.update_duplicate_count()
+
+
+def _tick_progress(app: 'Main', state: dict):
+    """Advance and render the manual progress indicator."""
+    state["value"] += state.get("step", 0)
+    if state["value"] > state.get("max", 100):
+        state["value"] = 0
+    app.queue_progressbar['value'] = state["value"]
+    app.root.update_idletasks()
 
 
 def _start_folder_watcher(app: 'Main'):
@@ -118,9 +127,7 @@ def sync_funnel_folders(app: 'Main', silent=False):
     app.queue_progressbar.configure(mode="determinate")
     app.queue_progressbar['value'] = 0
     app.root.update_idletasks()
-    progress_value = 0
-    progress_step = 10
-    progress_max = 100
+    progress_state = {"value": 0, "step": 10, "max": 100}
     try:
         # Create watch folder
         os.makedirs(app.funnel_dir, exist_ok=True)
@@ -138,11 +145,7 @@ def sync_funnel_folders(app: 'Main', silent=False):
                 counter_created += 1
             item_counter += 1
             if item_counter % 20 == 0:
-                progress_value += progress_step
-                if progress_value > progress_max:
-                    progress_value = 0
-                app.queue_progressbar['value'] = progress_value
-                app.root.update_idletasks()
+                _tick_progress(app, progress_state)
         # Walk through the watch folder and remove directories that no longer exist in the source path
         item_counter = 0
         for dirpath, dirnames, filenames in os.walk(app.funnel_dir, topdown=False):
@@ -158,11 +161,7 @@ def sync_funnel_folders(app: 'Main', silent=False):
                     pass
             item_counter += 1
             if item_counter % 20 == 0:
-                progress_value += progress_step
-                if progress_value > progress_max:
-                    progress_value = 0
-                app.queue_progressbar['value'] = progress_value
-                app.root.update_idletasks()
+                _tick_progress(app, progress_state)
         if silent in [False, "semi"]:
             app.log(f"Created: {counter_created}, Removed: {counter_removed} directories in {app.funnel_dir}", mode="system")
         elif silent == "initial":

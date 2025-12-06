@@ -297,6 +297,9 @@ def _create_message_row(app: 'Main'):
     # Status label
     status_label = tk.Label(message_frame, textvariable=app.status_label_var, relief="groove", anchor="w")
     status_label.pack(side="left", fill="x", expand=True)
+    app.status_label = status_label
+    app.status_label_default_fg = status_label.cget("fg")
+    app.set_status(getattr(app, "status_state", "idle"), app.status_label_var.get())
     Tip(widget=status_label, text="Current status of the Folder-Funnel process", tooltip_anchor="sw", pady=-2)
     # Foldercount label
     foldercount_label = tk.Label(message_frame, textvariable=app.foldercount_var, relief="groove", anchor="w")

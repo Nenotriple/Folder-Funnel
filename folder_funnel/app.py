@@ -52,7 +52,8 @@ class Main:
     def initialize_app_variables(self):
         # tk Variables
         self.source_dir_var = tk.StringVar(value="")  # The source folder
-        self.status_label_var = tk.StringVar(value="Status: Idle")  # App status
+        self.status_label_var = tk.StringVar(value="Idle")  # App status
+        self.status_state = "idle"  # Current status state
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
         self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
         self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
@@ -83,6 +84,8 @@ class Main:
         self.dir_entry_tooltip: Optional[tk.Widget] = None
         self.browse_button: Optional[ttk.Button] = None
         self.start_stop_button: Optional[ttk.Button] = None
+        self.status_label: Optional[tk.Label] = None
+        self.status_label_default_fg: Optional[str] = None
         self.text_search: Optional[ntk.FindReplaceEntry] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
         self.history_menubutton: Optional[ttk.Menubutton] = None
@@ -154,6 +157,9 @@ class Main:
 
     def clear_log(self):
         interface_logic.clear_log(self)
+
+    def set_status(self, state: str, message: str | None = None):
+        interface_logic.set_status(self, state, message)
 
     def toggle_text_wrap(self):
         interface_logic.toggle_text_wrap(self)

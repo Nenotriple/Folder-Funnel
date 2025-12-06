@@ -71,6 +71,25 @@ def _should_process_firefox_temp_files(app: 'Main', file_path):
     return True
 
 
+def _enqueue_file_if_allowed(app: 'Main', file_path: str, rel_path: str = None) -> bool:
+    """Apply temp-file filters and queue the file if eligible."""
+    if not _should_process_firefox_temp_files(app, file_path):
+        return False
+    if app.ignore_temp_files_var.get() and _is_temp_file(app, file_path):
+        return False
+    if file_path in app.move_queue:
+        return False
+    app.move_queue.append(file_path)
+    app.update_queue_count()
+    if rel_path is None:
+        try:
+            rel_path = os.path.relpath(file_path, app.funnel_dir)
+        except Exception:
+            rel_path = file_path
+    app.log(f"Queued file: {rel_path}", mode="info")
+    return True
+
+
 def _update_queue_progress(app: 'Main'):
     """Update the queue progress bar."""
     if not app.queue_start_time or not app.move_queue:
@@ -167,16 +186,8 @@ def _handle_new_folder(app: 'Main', source_path):
             # Queue all files for moving
             for filename in filenames:
                 file_path = os.path.join(dirpath, filename)
-                # Check if file should be processed
-                if not _should_process_firefox_temp_files(app, file_path):
-                    continue
-                # Check if the file is a temporary file that should be ignored
-                if app.ignore_temp_files_var.get() and _is_temp_file(app, file_path):
-                    continue
-                if file_path not in app.move_queue:
-                    app.move_queue.append(file_path)
-                    app.update_queue_count()
-                    app.log(f"Queued file: {os.path.join(rel_path, rel_dirpath, filename)}", mode="info")
+                relative_for_log = os.path.join(rel_path, rel_dirpath, filename)
+                _enqueue_file_if_allowed(app, file_path, relative_for_log)
     except Exception as e:
         app.log(f"Error handling new folder {source_path}: {str(e)}", mode="error")
 
@@ -306,15 +317,7 @@ def queue_move_file(app: 'Main', source_path):
     if os.path.isdir(source_path):
         _handle_new_folder(app, source_path)
     elif source_path not in app.move_queue:
-        # Check if file should be processed
-        if not _should_process_firefox_temp_files(app, source_path):
-            return
-        # Check if the file is a temporary file that should be processed
-        if app.ignore_temp_files_var.get() and _is_temp_file(app, source_path):
-            return
-        app.move_queue.append(source_path)
-        app.update_queue_count()
-        app.log(f"Queued file: {os.path.relpath(source_path, app.funnel_dir)}", mode="info")
+        _enqueue_file_if_allowed(app, source_path)
     # Start or restart the queue timer
     start_queue(app)
 

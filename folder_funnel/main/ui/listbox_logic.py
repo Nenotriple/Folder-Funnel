@@ -141,86 +141,35 @@ def get_selected_filepath(app: 'Main', file_type="source"):
 
 
 def open_selected_file(app: 'Main'):
-    filepath = get_selected_filepath(app)
-    if filepath and os.path.exists(filepath):
-        os.startfile(filepath)
-    else:
-        ntk.showinfo("Error", "File not found")
+    _perform_history_action(app, target="default", action="open")
 
 
 def open_selected_source_file(app: 'Main'):
-    filepath = get_selected_filepath(app, file_type="source")
-    if filepath and os.path.exists(filepath):
-        os.startfile(filepath)
-    else:
-        ntk.showinfo("Error", "Source file not found")
+    _perform_history_action(app, target="source", action="open")
 
 
 def open_selected_duplicate_file(app: 'Main'):
-    filepath = get_selected_filepath(app, file_type="duplicate")
-    if filepath and os.path.exists(filepath):
-        os.startfile(filepath)
-    else:
-        ntk.showinfo("Error", "Duplicate file not found")
+    _perform_history_action(app, target="duplicate", action="open")
 
 
 def show_selected_in_explorer(app: 'Main'):
-    filepath = get_selected_filepath(app)
-    if filepath and os.path.exists(filepath):
-        os.system(f'explorer /select,"{filepath}"')
-    else:
-        ntk.showinfo("Error", "File not found")
+    _perform_history_action(app, target="default", action="explore")
 
 
 def show_selected_source_in_explorer(app: 'Main'):
-    filepath = get_selected_filepath(app, file_type="source")
-    if filepath and os.path.exists(filepath):
-        os.system(f'explorer /select,"{filepath}"')
-    else:
-        ntk.showinfo("Error", "Source file not found")
+    _perform_history_action(app, target="source", action="explore")
 
 
 def show_selected_duplicate_in_explorer(app: 'Main'):
-    filepath = get_selected_filepath(app, file_type="duplicate")
-    if filepath and os.path.exists(filepath):
-        os.system(f'explorer /select,"{filepath}"')
-    else:
-        ntk.showinfo("Error", "Duplicate file not found")
+    _perform_history_action(app, target="duplicate", action="explore")
 
 
 def delete_selected_file(app: 'Main'):
-    filepath = get_selected_filepath(app)
-    if not filepath or not os.path.exists(filepath):
-        ntk.showinfo("Error", "File not found")
-        return
-    filename = os.path.basename(filepath)
-    if ntk.askyesno("Confirm Delete", prompt= "Delete file:", detail=filename):
-        try:
-            os.remove(filepath)
-            history_dict = get_history_list(app)
-            del history_dict[filename]
-            app.history_listbox.delete(app.history_listbox.curselection())
-            app.log(f"Deleted file: {filename}", mode="info")
-        except Exception as e:
-            ntk.showinfo("Error", f"Could not delete file: {str(e)}")
+    _perform_history_action(app, target="default", action="delete")
 
 
 def delete_selected_duplicate_file(app: 'Main'):
-    filepath = get_selected_filepath(app, file_type="duplicate")
-    if not filepath or not os.path.exists(filepath):
-        ntk.showinfo("Error", "Duplicate file not found")
-        return
-    filename = os.path.basename(filepath)
-    if ntk.askyesno("Confirm Delete", prompt= "Delete duplicate file:", detail=filename):
-        try:
-            os.remove(filepath)
-            history_dict = get_history_list(app)
-            del history_dict[filename]
-            app.history_listbox.delete(app.history_listbox.curselection())
-            app.log(f"Deleted duplicate file: {filename}", mode="info")
-            ntk.showinfo("Success", f"Duplicate file deleted: {filename}")
-        except Exception as e:
-            ntk.showinfo("Error", f"Could not delete file: {str(e)}")
+    _perform_history_action(app, target="duplicate", action="delete")
 
 
 def get_history_list(app: 'Main'):
@@ -272,51 +221,87 @@ def get_selected_filepath_smart(app: 'Main'):
 
 def open_selected_file_smart(app: 'Main'):
     """Open the selected file, automatically detecting if it's moved or duplicate."""
-    filepath = get_selected_filepath_smart(app)
-    if filepath and os.path.exists(filepath):
-        os.startfile(filepath)
-    else:
-        ntk.showinfo("Error", "File not found")
+    _perform_history_action(app, target="smart", action="open")
 
 
 def show_selected_in_explorer_smart(app: 'Main'):
     """Show the selected file in explorer, automatically detecting if it's moved or duplicate."""
-    filepath = get_selected_filepath_smart(app)
-    if filepath and os.path.exists(filepath):
-        os.system(f'explorer /select,"{filepath}"')
-    else:
-        ntk.showinfo("Error", "File not found")
+    _perform_history_action(app, target="smart", action="explore")
 
 
 def delete_selected_file_smart(app: 'Main'):
     """Delete the selected file, automatically detecting if it's moved or duplicate."""
-    item_type = get_selected_item_type(app)
-    filepath = get_selected_filepath_smart(app)
+    _perform_history_action(app, target="smart", action="delete")
+
+
+def _resolve_history_path(app: 'Main', target: str):
+    """Resolve the selected path based on target type."""
+    if target == "duplicate":
+        return get_selected_filepath(app, file_type="duplicate")
+    if target == "source":
+        return get_selected_filepath(app, file_type="source")
+    if target == "smart":
+        return get_selected_filepath_smart(app)
+    return get_selected_filepath(app)
+
+
+def _selected_filename(app: 'Main'):
+    selection = app.history_listbox.curselection()
+    if not selection:
+        return None
+    return app.history_listbox.get(selection[0])
+
+
+def _missing_message(target: str) -> str:
+    if target == "duplicate":
+        return "Duplicate file not found"
+    if target == "source":
+        return "Source file not found"
+    return "File not found"
+
+
+def _remove_history_entry(app: 'Main', filename: str):
+    if filename in app.duplicate_history_items:
+        del app.duplicate_history_items[filename]
+    if filename in app.move_history_items:
+        del app.move_history_items[filename]
+
+
+def _delete_prompt(target: str, item_type: str) -> str:
+    if target == "duplicate" or item_type == "duplicate":
+        return "Delete duplicate file:"
+    return "Delete file:"
+
+
+def _perform_history_action(app: 'Main', target: str, action: str):
+    """Central dispatcher for history actions (open/explore/delete)."""
+    filepath = _resolve_history_path(app, target)
     if not filepath or not os.path.exists(filepath):
-        ntk.showinfo("Error", "File not found")
+        ntk.showinfo("Error", _missing_message(target))
         return
-    filename = os.path.basename(filepath)
-    file_type_label = "duplicate " if item_type == "duplicate" else ""
-    if ntk.askyesno("Confirm Delete", prompt= f"Delete {file_type_label}file:", detail=filename):
+    filename = _selected_filename(app)
+    item_type = get_selected_item_type(app)
+    if action == "open":
+        os.startfile(filepath)
+        return
+    if action == "explore":
+        os.system(f'explorer /select,"{filepath}"')
+        return
+    if action == "delete":
+        prompt = _delete_prompt(target, item_type)
+        if not ntk.askyesno("Confirm Delete", prompt=prompt, detail=os.path.basename(filepath)):
+            return
         try:
             os.remove(filepath)
-            # Remove from appropriate history dict
+            if filename:
+                _remove_history_entry(app, filename)
+                app.history_listbox.delete(app.history_listbox.curselection())
+            app.log(f"Deleted file: {os.path.basename(filepath)}", mode="info")
             if item_type == "duplicate":
-                selection = app.history_listbox.curselection()
-                if selection:
-                    listbox_filename = app.history_listbox.get(selection[0])
-                    if listbox_filename in app.duplicate_history_items:
-                        del app.duplicate_history_items[listbox_filename]
-            elif item_type == "moved":
-                selection = app.history_listbox.curselection()
-                if selection:
-                    listbox_filename = app.history_listbox.get(selection[0])
-                    if listbox_filename in app.move_history_items:
-                        del app.move_history_items[listbox_filename]
-            app.history_listbox.delete(app.history_listbox.curselection())
-            app.log(f"Deleted {file_type_label}file: {filename}", mode="info")
+                ntk.showinfo("Success", f"Duplicate file deleted: {os.path.basename(filepath)}")
         except Exception as e:
             ntk.showinfo("Error", f"Could not delete file: {str(e)}")
+        return
 
 
 #endregion

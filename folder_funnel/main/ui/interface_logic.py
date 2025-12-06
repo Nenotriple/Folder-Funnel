@@ -20,6 +20,17 @@ if TYPE_CHECKING:
 
 
 #endregion
+#region - Status styles
+
+
+STATUS_STYLES = {
+    "idle": {"text": "Idle", "color": "#9e9e9e"},
+    "busy": {"text": "Busy", "color": "#d8801f"},
+    "running": {"text": "Running", "color": "#2f9e44"},
+}
+
+
+#endregion
 #region - Interface Logic
 
 
@@ -123,9 +134,23 @@ def toggle_widgets_state(app: 'Main', state="idle"):
             file_menu.entryconfig("Select Source Path...", state=state)
 
 
+def set_status(app: 'Main', state: str, message: str | None = None):
+    """Update status label text and color for a given state."""
+    normalized = (state or "idle").lower()
+    style = STATUS_STYLES.get(normalized, {})
+    text = message or style.get("text") or normalized.title()
+    app.status_state = normalized
+    app.status_label_var.set(text)
+    label = getattr(app, "status_label", None)
+    if label:
+        color = style.get("color") or getattr(app, "status_label_default_fg", None)
+        if color:
+            label.configure(fg=color)
+
+
 def reset_status_row(app: 'Main'):
     """Reset the status row."""
-    app.status_label_var.set("Status: Idle")
+    set_status(app, "idle")
     app.foldercount_var.set("Folders: 0")
     app.filecount_var.set("Files: 0")
     app.movecount_var.set("Moved: 0")

@@ -46,17 +46,45 @@ def handle_rename_event(app: 'Main', src, dest):
     app.root.after(DELAY, lambda: app.handle_rename_event(src, dest))
 
 
-def sync_funnel_folders(app: 'Main', silent="semi"):
-    """Sync the funnel folders with the source folder. Debounced with timer cancellation."""
-    global _sync_timer_id
-    # Cancel any pending sync operation
-    if _sync_timer_id is not None:
+def _set_timer(timer_name: str, timer_id):
+    """Internal: store timer ids by name."""
+    global _count_timer_id, _sync_timer_id
+    if timer_name == "count":
+        _count_timer_id = timer_id
+    elif timer_name == "sync":
+        _sync_timer_id = timer_id
+
+
+def _get_timer(timer_name: str):
+    """Internal: fetch timer ids by name."""
+    if timer_name == "count":
+        return _count_timer_id
+    if timer_name == "sync":
+        return _sync_timer_id
+    return None
+
+
+def _run_and_clear(timer_name: str, callback, *args, **kwargs):
+    """Invoke callback then clear stored timer id."""
+    _set_timer(timer_name, None)
+    callback(*args, **kwargs)
+
+
+def _debounce(app: 'Main', timer_name: str, callback, delay: int = DELAY, *args, **kwargs):
+    """Cancel any pending timer of this name and schedule a new one."""
+    current_id = _get_timer(timer_name)
+    if current_id is not None:
         try:
-            app.root.after_cancel(_sync_timer_id)
+            app.root.after_cancel(current_id)
         except Exception:
             pass
-    # Schedule new sync with delay
-    _sync_timer_id = app.root.after(DELAY, lambda: _do_sync(app, silent))
+    new_id = app.root.after(delay, lambda: _run_and_clear(timer_name, callback, *args, **kwargs))
+    _set_timer(timer_name, new_id)
+
+
+def sync_funnel_folders(app: 'Main', silent="semi"):
+    """Sync the funnel folders with the source folder. Debounced with timer cancellation."""
+    _debounce(app, "sync", _do_sync, DELAY, app, silent)
 
 
 def _do_sync(app: 'Main', silent):
@@ -68,15 +96,7 @@ def _do_sync(app: 'Main', silent):
 
 def count_folders_and_files(app: 'Main'):
     """Count the number of folders and files in the source folder. Debounced with timer cancellation."""
-    global _count_timer_id
-    # Cancel any pending count operation
-    if _count_timer_id is not None:
-        try:
-            app.root.after_cancel(_count_timer_id)
-        except Exception:
-            pass
-    # Schedule new count with delay
-    _count_timer_id = app.root.after(DELAY, lambda: _do_count(app))
+    _debounce(app, "count", _do_count, DELAY, app)
 
 
 def _do_count(app: 'Main'):

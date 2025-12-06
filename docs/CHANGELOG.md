@@ -15,6 +15,9 @@
 
 **New**:
 
+- Images now display a popup when hovering over entries in the history listbox.
+  - This can be toggled via `View > History: Image Preview on Hover` or the history menu.
+  - Using `Shift + Mouse-Wheel` while hovering will shrink or expand the popup size.
 - The app can now be minimized to the system tray if `Options > Minimize to Tray on Close` is enabled.
   - When minimized to tray, the app can be restored by double-clicking the tray icon or via the tray context menu.
 - Lifetime moves and duplicate action counters are saved and can give you an estimate of the time saved.

@@ -29,6 +29,7 @@ def save_settings(app: 'Main'):
         'history_mode': app.history_mode_var.get(),
         'minimize_to_tray': str(app.minimize_to_tray_var.get()),
         'log_prefix_filter': str(app.log_prefix_filter_var.get()),
+        'history_image_preview': str(app.history_image_preview_var.get()),
     }
     # Duplicate handling settings
     cfg['Duplicates'] = {
@@ -99,6 +100,8 @@ def load_settings(app: 'Main'):
                 app.minimize_to_tray_var.set(cfg.getboolean('General', 'minimize_to_tray'))
             if 'log_prefix_filter' in cfg['General']:
                 app.log_prefix_filter_var.set(cfg.getboolean('General', 'log_prefix_filter'))
+            if 'history_image_preview' in cfg['General']:
+                app.history_image_preview_var.set(cfg.getboolean('General', 'history_image_preview'))
         # Duplicates
         if 'Duplicates' in cfg:
             if 'handle_mode' in cfg['Duplicates']:
@@ -155,6 +158,9 @@ def apply_settings_to_ui(app: 'Main'):
     if app.text_log:
         wrap_mode = 'word' if app.text_log_wrap_var.get() else 'none'
         app.text_log.configure(wrap=wrap_mode)
+    # Sync hover preview toggle
+    if hasattr(app, "toggle_history_preview"):
+        app.toggle_history_preview()
     # Apply working directory if it exists
     if app.source_dir_var.get() and os.path.exists(app.source_dir_var.get()):
         app.select_working_dir(app.source_dir_var.get())
@@ -175,6 +181,7 @@ def reset_settings(app: 'Main'):
         app.history_mode_var.set("Moved")
         app.minimize_to_tray_var.set(False)
         app.log_prefix_filter_var.set(True)
+        app.history_image_preview_var.set(True)
         # Duplicate handling
         app.dupe_handle_mode_var.set("Move")
         app.dupe_filter_mode_var.set("Flexible")

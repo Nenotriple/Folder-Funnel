@@ -6,6 +6,7 @@ import os
 
 # Third-Party
 import nenotk as ntk
+from PIL import Image, UnidentifiedImageError
 
 # Custom
 from . import interface
@@ -14,10 +15,26 @@ from . import interface
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from app import Main
+    from nenotk.widgets.popup_zoom import PopUpZoom
 
 
 #endregion
 #region - Listbox Logic
+
+
+IMAGE_EXTENSIONS = {
+    ".png",
+    ".jpg",
+    ".jpeg",
+    ".gif",
+    ".bmp",
+    ".tif",
+    ".tiff",
+    ".webp",
+    ".avif",
+    ".heic",
+    ".ico",
+}
 
 
 def toggle_history_mode(app: 'Main'):
@@ -302,6 +319,107 @@ def _perform_history_action(app: 'Main', target: str, action: str):
         except Exception as e:
             ntk.showinfo("Error", f"Could not delete file: {str(e)}")
         return
+
+
+def _history_path_for_name(app: 'Main', filename: str):
+    """Resolve a full path for a history entry name."""
+    if filename in app.duplicate_history_items:
+        data = app.duplicate_history_items.get(filename, {})
+        return data.get("duplicate") or data.get("source")
+    move_data = app.move_history_items.get(filename)
+    if isinstance(move_data, dict):
+        return move_data.get("path")
+    return move_data
+
+
+def _is_image_file(path: str) -> bool:
+    ext = os.path.splitext(path)[1].lower()
+    return ext in IMAGE_EXTENSIONS and os.path.isfile(path)
+
+
+def _load_preview_image(path: str):
+    """Return a safely loaded copy of the image for preview or None on failure."""
+    try:
+        with Image.open(path) as img:
+            return img.copy()
+    except (FileNotFoundError, PermissionError, UnidentifiedImageError):
+        return None
+    except Exception:
+        return None
+
+
+def _is_over_listbox_item(listbox, event) -> bool:
+    """Check if the mouse event is actually over a listbox item, not empty space."""
+    if listbox.size() == 0:
+        return False
+    idx = listbox.nearest(event.y)
+    if idx < 0:
+        return False
+    try:
+        bbox = listbox.bbox(idx)
+        if bbox is None:
+            return False
+        # bbox returns (x, y, width, height) of the item
+        item_top = bbox[1]
+        item_bottom = bbox[1] + bbox[3]
+        return item_top <= event.y <= item_bottom
+    except Exception:
+        return False
+
+
+def handle_history_hover(app: 'Main', event) -> None:
+    """Show zoom popup when hovering image entries in the history listbox."""
+    history_zoom: 'PopUpZoom' = app.history_zoom
+    if not app.history_image_preview_var.get() or not history_zoom:
+        if history_zoom:
+            history_zoom.zoom_enabled.set(False)
+            history_zoom.hide_popup(event)
+        return
+    # Check if hovering over an actual item, not empty space
+    if not _is_over_listbox_item(app.history_listbox, event):
+        history_zoom.zoom_enabled.set(False)
+        history_zoom.hide_popup(event)
+        app.history_zoom_current_path = ""
+        return
+    idx = app.history_listbox.nearest(event.y)
+    filename = app.history_listbox.get(idx)
+    path = _history_path_for_name(app, filename)
+    if not path or not _is_image_file(path):
+        history_zoom.zoom_enabled.set(False)
+        history_zoom.hide_popup(event)
+        app.history_zoom_current_path = ""
+        return
+    # Only reload image if path changed
+    if app.history_zoom_current_path != path:
+        image_copy = _load_preview_image(path)
+        if not image_copy:
+            history_zoom.zoom_enabled.set(False)
+            history_zoom.hide_popup(event)
+            app.history_zoom_current_path = ""
+            app.log(f"Preview unavailable for {os.path.basename(path)}", mode="warning", verbose=3)
+            return
+        history_zoom.set_image(image_copy)
+        app.history_zoom_current_path = path
+    # Enable zoom and show popup for valid image items
+    history_zoom.zoom_enabled.set(True)
+    history_zoom.show_popup(event)
+
+
+def handle_history_leave(app: 'Main', event) -> None:
+    history_zoom: 'PopUpZoom' = app.history_zoom
+    if history_zoom:
+        history_zoom.hide_popup(event)
+    app.history_zoom_current_path = ""
+
+
+def toggle_history_preview(app: 'Main') -> None:
+    """Enable or disable hover previews and hide the popup when disabled."""
+    enabled = app.history_image_preview_var.get()
+    history_zoom: 'PopUpZoom' = app.history_zoom
+    if history_zoom:
+        history_zoom.zoom_enabled.set(enabled)
+        if not enabled:
+            history_zoom.hide_popup(None)
 
 
 #endregion

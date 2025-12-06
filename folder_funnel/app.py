@@ -69,6 +69,7 @@ class Main:
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
         self.log_verbosity_var = tk.IntVar(value=1)  # Log verbosity level (1-4): 1=Essential, 2=Extended, 3=Detailed, 4=Debug
         self.history_mode_var = tk.StringVar(value="All")  # History display mode ("All", "Moved", "Duplicate")
+        self.history_image_preview_var = tk.BooleanVar(value=True)  # Enable hover preview for image history items
         self.log_prefix_filter_var = tk.BooleanVar(value=True)  # Show log prefix (True=show, False=hide)
         self.ignore_firefox_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files created by Firefox
         self.ignore_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files in the funnel folder
@@ -94,6 +95,8 @@ class Main:
         self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None
         self.history_menu: Optional[tk.Menu] = None
+        self.history_zoom = None  # PopUpZoom instance for history preview
+        self.history_zoom_current_path: str = ""
         self.file_menu: Optional[tk.Menu] = None
         self.queue_progressbar: Optional[ttk.Progressbar] = None
 
@@ -243,6 +246,9 @@ class Main:
 
     def reset_status_row(self):
         interface_logic.reset_status_row(self)
+
+    def toggle_history_preview(self):
+        listbox_logic.toggle_history_preview(self)
 
 
 #endregion

@@ -1,13 +1,15 @@
 #region - Imports
 
-
 # Standard GUI
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 
 # Third-party
 import nenotk as ntk
-from nenotk import ToolTip as Tip
+from nenotk import ToolTip as Tip, PopUpZoom
+
+# Custom
+from . import listbox_logic
 
 # Set Tooltip defaults
 Tip.SHOW_DELAY = 250
@@ -78,6 +80,8 @@ def _create_view_menu(app: 'Main', menubar: tk.Menu):
     view_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="View", menu=view_menu)
     # History Options
+    view_menu.add_checkbutton(label="History: Image Preview on Hover", variable=app.history_image_preview_var, command=app.toggle_history_preview)
+    view_menu.add_separator()
     view_menu.add_radiobutton(label="History View: All", variable=app.history_mode_var, value="All", command=app.toggle_history_mode)
     view_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     view_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
@@ -275,16 +279,21 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     app.history_menubutton.config(menu=history_menu)
     history_menu.add_command(label="Clear History", command=app.clear_history)
     history_menu.add_separator()
+    history_menu.add_checkbutton(label="History: Image Preview on Hover", variable=app.history_image_preview_var, command=app.toggle_history_preview)
     history_menu.add_radiobutton(label="History View: All", variable=app.history_mode_var, value="All", command=app.toggle_history_mode)
     history_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     history_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
-    Tip(widget=app.history_menubutton, text="List of files moved to the source folder", widget_anchor="sw", pady=2)
+    Tip(widget=app.history_menubutton, text="List of processed files", widget_anchor="sw", pady=2)
     # Listbox
     app.history_listbox = tk.Listbox(list_frame, width=1, height=1, font=("Consolas", 10))
     app.history_listbox.pack(fill="both", expand=True)
     app.history_listbox.bind("<Button-3>", app.show_history_context_menu)
+    app.history_listbox.bind("<Motion>", lambda e: listbox_logic.handle_history_hover(app, e))
+    app.history_listbox.bind("<Leave>", lambda e: listbox_logic.handle_history_leave(app, e))
     # Context menu
     create_history_context_menu(app)
+    # Hover preview
+    app.history_zoom = PopUpZoom(app.history_listbox, zoom_enabled=app.history_image_preview_var.get(), full_image_mode=True, popup_size=200)
 
 
 def create_history_context_menu(app: 'Main'):

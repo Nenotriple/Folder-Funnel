@@ -368,47 +368,51 @@ def _is_over_listbox_item(listbox, event) -> bool:
 
 
 def handle_history_hover(app: 'Main', event) -> None:
-    """Show zoom popup when hovering image entries in the history listbox."""
+    """Update the PopUpZoom image when hovering image entries in the history listbox.
+
+    PopUpZoom handles show/hide via its internal Motion/Leave bindings.
+    We only need to update the image and enable/disable zoom when the hovered item changes.
+    """
     history_zoom: 'PopUpZoom' = app.history_zoom
-    if not app.history_image_preview_var.get() or not history_zoom:
-        if history_zoom:
+    if not history_zoom:
+        return
+    # If preview is disabled, ensure zoom stays disabled (only set once)
+    if not app.history_image_preview_var.get():
+        if history_zoom.zoom_enabled.get():
             history_zoom.zoom_enabled.set(False)
-            history_zoom.hide_popup(event)
         return
     # Check if hovering over an actual item, not empty space
     if not _is_over_listbox_item(app.history_listbox, event):
-        history_zoom.zoom_enabled.set(False)
-        history_zoom.hide_popup(event)
+        if history_zoom.zoom_enabled.get():
+            history_zoom.zoom_enabled.set(False)
         app.history_zoom_current_path = ""
         return
     idx = app.history_listbox.nearest(event.y)
     filename = app.history_listbox.get(idx)
     path = _history_path_for_name(app, filename)
     if not path or not _is_image_file(path):
-        history_zoom.zoom_enabled.set(False)
-        history_zoom.hide_popup(event)
+        if history_zoom.zoom_enabled.get():
+            history_zoom.zoom_enabled.set(False)
         app.history_zoom_current_path = ""
         return
     # Only reload image if path changed
     if app.history_zoom_current_path != path:
         image_copy = _load_preview_image(path)
         if not image_copy:
-            history_zoom.zoom_enabled.set(False)
-            history_zoom.hide_popup(event)
+            if history_zoom.zoom_enabled.get():
+                history_zoom.zoom_enabled.set(False)
             app.history_zoom_current_path = ""
             app.log(f"Preview unavailable for {os.path.basename(path)}", mode="warning", verbose=3)
             return
         history_zoom.set_image(image_copy)
         app.history_zoom_current_path = path
-    # Enable zoom and show popup for valid image items
-    history_zoom.zoom_enabled.set(True)
-    history_zoom.show_popup(event)
+    # Enable zoom only if not already enabled (avoid redundant sets)
+    if not history_zoom.zoom_enabled.get():
+        history_zoom.zoom_enabled.set(True)
 
 
 def handle_history_leave(app: 'Main', event) -> None:
-    history_zoom: 'PopUpZoom' = app.history_zoom
-    if history_zoom:
-        history_zoom.hide_popup(event)
+    """Reset hover state when leaving the listbox. PopUpZoom handles hiding internally."""
     app.history_zoom_current_path = ""
 
 

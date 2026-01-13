@@ -2,7 +2,10 @@
 
 
 # Standard
+import io
 import os
+import re
+import threading
 
 # Third-Party
 import nenotk as ntk
@@ -37,97 +40,170 @@ IMAGE_EXTENSIONS = {
 }
 
 
+VIDEO_EXTENSIONS = {
+    ".mp4",
+    ".m4v",
+    ".mov",
+    ".mkv",
+    ".avi",
+    ".wmv",
+    ".webm",
+    ".flv",
+    ".mpeg",
+    ".mpg",
+}
+
+
 def toggle_history_mode(app: 'Main'):
     """Switch between history display modes and update UI elements."""
     # Get display mode
     display_mode = app.history_mode_var.get()
     # Update the history menubutton text
     app.history_menubutton.config(text=f"History - {display_mode}")
-    # Determine which list to use for bindings
+    # Bind actions based on the active mode (matches previous UX expectations)
     if display_mode == "Duplicate":
-        handle_widget_binds(app, app.duplicate_history_items)
+        handle_widget_binds(app, "duplicate")
     elif display_mode == "Moved":
-        handle_widget_binds(app, app.move_history_items)
-    elif display_mode == "All":
+        handle_widget_binds(app, "moved")
+    else:
         handle_widget_binds_all(app)
     refresh_history_listbox(app)
 
 
 def refresh_history_listbox(app: 'Main'):
-    """Clear and repopulate the history listbox based on current display mode."""
-    app.history_listbox.delete(0, "end")
-    # Get display mode and determine which list to use
-    display_mode = app.history_mode_var.get()
-    if display_mode == "Duplicate":
-        items = app.duplicate_history_items
-        # Sort by order (ascending) so newest items are added last, then insert at 0 to reverse
-        sorted_items = sorted(items.items(), key=lambda x: x[1].get("order", 0))
-        for filename, _ in sorted_items:
-            app.history_listbox.insert(0, filename)
-    elif display_mode == "Moved":
-        items = app.move_history_items
-        # Sort by order (ascending) so newest items are added last, then insert at 0 to reverse
-        sorted_items = sorted(items.items(), key=lambda x: x[1].get("order", 0) if isinstance(x[1], dict) else 0)
-        for filename, _ in sorted_items:
-            app.history_listbox.insert(0, filename)
-    elif display_mode == "All":
-        # Combine both lists with type tracking and sort by chronological order
-        # Moved items in black, duplicate items in gray
-        all_items = []
-        for filename, data in app.move_history_items.items():
-            order = data.get("order", 0) if isinstance(data, dict) else 0
-            all_items.append((filename, "moved", order))
-        for filename, data in app.duplicate_history_items.items():
-            order = data.get("order", 0) if isinstance(data, dict) else 0
-            all_items.append((filename, "duplicate", order))
-        # Sort by order (ascending) so oldest first, then insert at 0 to show newest at top
-        all_items.sort(key=lambda x: x[2])
-        for filename, item_type, _ in all_items:
-            app.history_listbox.insert(0, filename)
-            idx = 0
-            if item_type == "duplicate":
-                app.history_listbox.itemconfig(idx, fg="#888888")  # Light gray for duplicates
-            else:
-                app.history_listbox.itemconfig(idx, fg="#000000")  # Black for moved
+    """Clear and repopulate the history Treeview based on current display mode."""
+    tree = app.history_listbox
+    if not tree:
+        return
+    # Clear
+    for child in tree.get_children(""):
+        tree.delete(child)
+
+    from main.utils import history_manager
+
+    mode = app.history_mode_var.get()
+    entries = getattr(app, "history_entries", {})
+
+    entry_ids = history_manager.filtered_ids(app, mode)
+    sort_column = getattr(app, "history_sort_column", None)
+    if sort_column:
+        entry_ids = _sorted_history_ids(app, entry_ids, sort_column, getattr(app, "history_sort_desc", False))
+
+    for entry_id in entry_ids:
+        entry = entries.get(entry_id)
+        if not entry:
+            continue
+        kind = entry.get("kind")
+        ts = entry.get("ts", 0.0) or 0.0
+        values = (
+            history_manager._format_time(ts),
+            "Duplicate" if kind == "duplicate" else "Moved",
+            entry.get("name", ""),
+            entry.get("rel", ""),
+            entry.get("action", ""),
+        )
+        tree.insert("", "end", iid=str(entry_id), values=values)
 
 
-def handle_widget_binds(app: 'Main', history_items):
-    """Set appropriate event bindings based on the history item type."""
-    if history_items == app.move_history_items:
-        app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_file(app))
+def handle_widget_binds(app: 'Main', mode: str):
+    """Set event bindings based on active History mode."""
+    if mode == "moved":
+        app.history_listbox.bind("<Double-Button-1>", lambda e: _on_history_row_double_click(app, e, action="open_moved"))
+        app.history_listbox.bind("<Return>", lambda e: open_selected_file(app))
         app.history_listbox.bind("<Delete>", lambda e: delete_selected_file(app))
-    elif history_items == app.duplicate_history_items:
-        app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_source_file(app))
+        return
+    if mode == "duplicate":
+        app.history_listbox.bind("<Double-Button-1>", lambda e: _on_history_row_double_click(app, e, action="open_duplicate_source"))
+        app.history_listbox.bind("<Return>", lambda e: open_selected_source_file(app))
         app.history_listbox.bind("<Delete>", lambda e: delete_selected_duplicate_file(app))
+        return
+    handle_widget_binds_all(app)
 
 
 def handle_widget_binds_all(app: 'Main'):
     """Set event bindings for All mode - smart detection of item type."""
-    app.history_listbox.bind("<Double-Button-1>", lambda e: open_selected_file_smart(app))
+    app.history_listbox.bind("<Double-Button-1>", lambda e: _on_history_row_double_click(app, e, action="open_smart"))
+    app.history_listbox.bind("<Return>", lambda e: open_selected_file_smart(app))
     app.history_listbox.bind("<Delete>", lambda e: delete_selected_file_smart(app))
 
 
+def _on_history_row_double_click(app: 'Main', event, action: str) -> None:
+    """Handle double-clicks on the history Treeview.
+
+    Prevents header double-clicks from triggering file actions.
+    """
+    tree = getattr(app, "history_listbox", None)
+    if tree is not None:
+        try:
+            region = tree.identify_region(event.x, event.y)
+        except Exception:
+            region = ""
+        if region == "heading":
+            return
+
+    if action == "open_moved":
+        open_selected_file(app)
+        return
+    if action == "open_duplicate_source":
+        open_selected_source_file(app)
+        return
+    # Default: "open_smart"
+    open_selected_file_smart(app)
+
+
 def update_history_list(app: 'Main', filename, filepath):
-    """Update the moved files history list with a new filename and its full path."""
-    # Increment order counter and add to the move history items with order
-    app.history_order_counter += 1
-    app.move_history_items[filename] = {"path": filepath, "order": app.history_order_counter}
-    # Remove oldest items if limit is reached (those with lowest order)
-    while len(app.move_history_items) > app.max_history_entries:
-        # Find the item with the lowest order
-        oldest_key = min(app.move_history_items.keys(), key=lambda k: app.move_history_items[k].get("order", 0))
-        del app.move_history_items[oldest_key]
-    refresh_history_listbox(app)
+    """Legacy wrapper used by move_queue; now records a rich moved entry."""
+    try:
+        rel = os.path.relpath(filepath, app.source_dir_var.get())
+    except Exception:
+        rel = filename
+    if hasattr(app, "add_history_moved"):
+        app.add_history_moved(dest_path=filepath, rel_path=rel, action="Moved")
+    else:
+        refresh_history_listbox(app)
 
 
 def show_history_context_menu(app: 'Main', event):
-    clicked_index = app.history_listbox.nearest(event.y)
-    if clicked_index >= 0:
-        app.history_listbox.selection_clear(0, "end")
-        app.history_listbox.selection_set(clicked_index)
-        app.history_listbox.activate(clicked_index)
-        interface.create_history_context_menu(app)
-        app.history_menu.post(event.x_root, event.y_root)
+    tree = app.history_listbox
+    if not tree:
+        return
+    # If right-clicking a header, show header menu (column toggles)
+    try:
+        region = tree.identify_region(event.x, event.y)
+    except Exception:
+        region = ""
+    if region == "heading":
+        try:
+            interface.create_history_header_context_menu(app)
+        except Exception:
+            pass
+        if getattr(app, "history_header_menu", None):
+            app.history_header_menu.post(event.x_root, event.y_root)
+        return
+
+    row_id = tree.identify_row(event.y)
+    if not row_id:
+        return
+    tree.selection_set(row_id)
+    tree.focus(row_id)
+    entry = None
+    try:
+        from main.utils import history_manager
+        entry = history_manager.safe_get(app, str(row_id))
+    except Exception:
+        entry = None
+    interface.create_history_context_menu(app, entry=entry)
+    app.history_menu.post(event.x_root, event.y_root)
+
+
+def _selected_entry_id(app: 'Main') -> str | None:
+    tree = app.history_listbox
+    if not tree:
+        return None
+    selection = tree.selection()
+    if not selection:
+        return None
+    return str(selection[0])
 
 
 def get_selected_filepath(app: 'Main', file_type="source"):
@@ -138,23 +214,18 @@ def get_selected_filepath(app: 'Main', file_type="source"):
         app: The FolderFunnelApp instance
         file_type: Either "source" or "duplicate" to indicate which file to return for duplicate entries
     """
-    selection = app.history_listbox.curselection()
-    if not selection:
+    from main.utils import history_manager
+
+    entry_id = _selected_entry_id(app)
+    if not entry_id:
         return None
-    filename = app.history_listbox.get(selection[0])
-    # Check if this filename exists in the duplicates dictionary
-    if filename in app.duplicate_history_items:
-        # For duplicates, return either the source or duplicate path based on file_type
+    entry = history_manager.safe_get(app, entry_id) or {}
+    kind = entry.get("kind")
+    if kind == "duplicate":
         if file_type == "source":
-            return app.duplicate_history_items.get(filename, {}).get("source")
-        else:  # duplicate
-            return app.duplicate_history_items.get(filename, {}).get("duplicate")
-    else:
-        # For moved files, return the path from move_history_items
-        move_data = app.move_history_items.get(filename)
-        if isinstance(move_data, dict):
-            return move_data.get("path")
-        return move_data  # Fallback for old format
+            return entry.get("source_path")
+        return entry.get("duplicate_path")
+    return entry.get("primary_path")
 
 
 def open_selected_file(app: 'Main'):
@@ -190,50 +261,32 @@ def delete_selected_duplicate_file(app: 'Main'):
 
 
 def get_history_list(app: 'Main'):
-    """Return the appropriate history dict based on selected display mode."""
-    display_mode = app.history_mode_var.get()
-    if display_mode == "Moved":
-        return app.move_history_items
-    elif display_mode == "Duplicate":
-        return app.duplicate_history_items
-    return {}
+    """(Legacy) History storage is now in app.history_entries."""
+    return getattr(app, "history_entries", {})
 
 
 #endregion
-#region - Smart Functions for All Mode
+#region - Smart Functions
 
 
 def get_selected_item_type(app: 'Main'):
     """Determine if the selected item is a moved file or duplicate file.
     Returns 'moved', 'duplicate', or None if no selection."""
-    selection = app.history_listbox.curselection()
-    if not selection:
+    from main.utils import history_manager
+
+    entry_id = _selected_entry_id(app)
+    if not entry_id:
         return None
-    filename = app.history_listbox.get(selection[0])
-    # Check duplicates first (they have priority in display)
-    if filename in app.duplicate_history_items:
-        return "duplicate"
-    elif filename in app.move_history_items:
-        return "moved"
-    return None
+    entry = history_manager.safe_get(app, entry_id) or {}
+    return entry.get("kind")
 
 
 def get_selected_filepath_smart(app: 'Main'):
-    """Get the filepath of the selected item, automatically detecting if it's moved or duplicate."""
-    selection = app.history_listbox.curselection()
-    if not selection:
-        return None
-    filename = app.history_listbox.get(selection[0])
     item_type = get_selected_item_type(app)
     if item_type == "duplicate":
-        # For duplicates, return the duplicate path (the one that was moved/deleted)
-        return app.duplicate_history_items.get(filename, {}).get("duplicate")
-    elif item_type == "moved":
-        move_data = app.move_history_items.get(filename)
-        if isinstance(move_data, dict):
-            return move_data.get("path")
-        return move_data  # Fallback for old format
-    return None
+        # In All-mode, treat the duplicate file as the primary file-management target.
+        return get_selected_filepath(app, file_type="duplicate")
+    return get_selected_filepath(app)
 
 
 def open_selected_file_smart(app: 'Main'):
@@ -263,10 +316,13 @@ def _resolve_history_path(app: 'Main', target: str):
 
 
 def _selected_filename(app: 'Main'):
-    selection = app.history_listbox.curselection()
-    if not selection:
+    from main.utils import history_manager
+
+    entry_id = _selected_entry_id(app)
+    if not entry_id:
         return None
-    return app.history_listbox.get(selection[0])
+    entry = history_manager.safe_get(app, entry_id) or {}
+    return entry.get("name")
 
 
 def _missing_message(target: str) -> str:
@@ -278,10 +334,9 @@ def _missing_message(target: str) -> str:
 
 
 def _remove_history_entry(app: 'Main', filename: str):
-    if filename in app.duplicate_history_items:
-        del app.duplicate_history_items[filename]
-    if filename in app.move_history_items:
-        del app.move_history_items[filename]
+    entry_id = _selected_entry_id(app)
+    if entry_id and hasattr(app, "remove_history_entry"):
+        app.remove_history_entry(entry_id)
 
 
 def _delete_prompt(target: str, item_type: str) -> str:
@@ -312,7 +367,12 @@ def _perform_history_action(app: 'Main', target: str, action: str):
             os.remove(filepath)
             if filename:
                 _remove_history_entry(app, filename)
-                app.history_listbox.delete(app.history_listbox.curselection())
+                try:
+                    sel = _selected_entry_id(app)
+                    if sel:
+                        app.history_listbox.delete(sel)
+                except Exception:
+                    pass
             app.log(f"Deleted file: {os.path.basename(filepath)}", mode="info", verbose=1)
             if item_type == "duplicate":
                 ntk.showinfo("Success", f"Duplicate file deleted: {os.path.basename(filepath)}")
@@ -321,20 +381,183 @@ def _perform_history_action(app: 'Main', target: str, action: str):
         return
 
 
-def _history_path_for_name(app: 'Main', filename: str):
-    """Resolve a full path for a history entry name."""
-    if filename in app.duplicate_history_items:
-        data = app.duplicate_history_items.get(filename, {})
-        return data.get("duplicate") or data.get("source")
-    move_data = app.move_history_items.get(filename)
-    if isinstance(move_data, dict):
-        return move_data.get("path")
-    return move_data
+def remove_selected_history_entry(app: 'Main') -> None:
+    entry_id = _selected_entry_id(app)
+    if not entry_id:
+        return
+    if hasattr(app, "remove_history_entry"):
+        app.remove_history_entry(entry_id)
+
+
+def copy_selected_path(app: 'Main', target: str = "smart") -> None:
+    from main.utils import history_manager
+
+    path = None
+    if target == "duplicate":
+        path = get_selected_filepath(app, file_type="duplicate")
+    elif target == "source":
+        path = get_selected_filepath(app, file_type="source")
+    elif target == "default":
+        path = get_selected_filepath(app)
+    else:
+        path = get_selected_filepath_smart(app)
+
+    if not path:
+        return
+    history_manager.copy_to_clipboard(app, path)
+
+
+#region - Treeview Columns + Sorting
+
+
+def apply_history_column_visibility(app: 'Main') -> None:
+    tree = getattr(app, "history_listbox", None)
+    if not tree:
+        return
+    # Enforce Name column always visible
+    try:
+        app.history_column_visible_vars["name"].set(True)
+    except Exception:
+        pass
+    columns = list(getattr(app, "history_columns", ("time", "type", "name", "rel", "action")))
+    visible_vars = getattr(app, "history_column_visible_vars", {})
+    displaycolumns = [c for c in columns if bool(getattr(visible_vars.get(c), "get", lambda: True)())]
+    if "name" not in displaycolumns:
+        displaycolumns.append("name")
+    tree["displaycolumns"] = displaycolumns
+
+    # If the sorted column is now hidden, clear sorting
+    sort_col = getattr(app, "history_sort_column", None)
+    if sort_col and sort_col not in displaycolumns:
+        app.history_sort_column = None
+        app.history_sort_desc = False
+    _update_history_heading_arrows(app)
+
+
+def toggle_history_column(app: 'Main', column: str) -> None:
+    if column == "name":
+        # Cannot disable
+        try:
+            app.history_column_visible_vars["name"].set(True)
+        except Exception:
+            pass
+        apply_history_column_visibility(app)
+        return
+    # Important: tk.Menu checkbuttons toggle their variable automatically.
+    # We only need to apply visibility after the variable changes.
+    try:
+        if getattr(app, "history_column_visible_vars", {}).get(column) is None:
+            return
+    except Exception:
+        return
+    apply_history_column_visibility(app)
+
+
+def sort_history_by_column(app: 'Main', column: str) -> None:
+    current = getattr(app, "history_sort_column", None)
+    if current == column:
+        app.history_sort_desc = not bool(getattr(app, "history_sort_desc", False))
+    else:
+        app.history_sort_column = column
+        app.history_sort_desc = False  # ascending first
+    _update_history_heading_arrows(app)
+    refresh_history_listbox(app)
+
+
+def _update_history_heading_arrows(app: 'Main') -> None:
+    tree = getattr(app, "history_listbox", None)
+    if not tree:
+        return
+    labels = getattr(app, "history_column_labels", {})
+    sort_col = getattr(app, "history_sort_column", None)
+    desc = bool(getattr(app, "history_sort_desc", False))
+    arrow = " ▼" if desc else " ▲"
+    for col in getattr(app, "history_columns", ("time", "type", "name", "rel", "action")):
+        text = labels.get(col, col.title())
+        if sort_col == col:
+            text = text + arrow
+        tree.heading(col, text=text, command=lambda c=col: app.sort_history_by_column(c))
+
+
+def _natural_key(value) -> list:
+    """Natural (numeric-aware) sort key: 1,2,10 instead of 1,10,2."""
+    if value is None:
+        value = ""
+    s = str(value)
+    parts = re.split(r"(\d+)", s)
+    key = []
+    for p in parts:
+        if not p:
+            continue
+        if p.isdigit():
+            try:
+                key.append(int(p))
+            except Exception:
+                key.append(p)
+        else:
+            key.append(p.casefold())
+    return key
+
+
+def _sort_key_for_entry(entry: dict, column: str):
+    kind = entry.get("kind")
+    if column == "time":
+        # Prefer numeric timestamp for correct ordering
+        return float(entry.get("ts", 0.0) or 0.0)
+    if column == "type":
+        # Keep stable, predictable ordering
+        return 0 if kind == "moved" else 1
+    if column == "name":
+        return _natural_key(entry.get("name", ""))
+    if column == "rel":
+        return _natural_key(entry.get("rel", ""))
+    if column == "action":
+        return _natural_key(entry.get("action", ""))
+    return _natural_key(entry.get(column, ""))
+
+
+def _sorted_history_ids(app: 'Main', entry_ids: list, column: str, desc: bool) -> list:
+    entries = getattr(app, "history_entries", {})
+
+    def keyfunc(entry_id):
+        entry = entries.get(entry_id) or {}
+        return (
+            _sort_key_for_entry(entry, column),
+            # Tie-breaker: timestamp
+            float(entry.get("ts", 0.0) or 0.0),
+        )
+
+    try:
+        return sorted(entry_ids, key=keyfunc, reverse=bool(desc))
+    except Exception:
+        return entry_ids
+
+
+#endregion
+
+
+#endregion
+#region - Hover Preview
+
+
+def _history_path_for_hover(app: 'Main', entry_id: str):
+    """Resolve a full path for a history entry for hover previews."""
+    from main.utils import history_manager
+
+    entry = history_manager.safe_get(app, entry_id) or {}
+    if entry.get("kind") == "duplicate":
+        return entry.get("duplicate_path") or entry.get("source_path")
+    return entry.get("primary_path")
 
 
 def _is_image_file(path: str) -> bool:
     ext = os.path.splitext(path)[1].lower()
     return ext in IMAGE_EXTENSIONS and os.path.isfile(path)
+
+
+def _is_video_file(path: str) -> bool:
+    ext = os.path.splitext(path)[1].lower()
+    return ext in VIDEO_EXTENSIONS and os.path.isfile(path)
 
 
 def _load_preview_image(path: str):
@@ -348,23 +571,74 @@ def _load_preview_image(path: str):
         return None
 
 
-def _is_over_listbox_item(listbox, event) -> bool:
-    """Check if the mouse event is actually over a listbox item, not empty space."""
-    if listbox.size() == 0:
-        return False
-    idx = listbox.nearest(event.y)
-    if idx < 0:
-        return False
+def _ensure_video_thumb_async(app: 'Main', video_path: str) -> None:
+    """Generate a video thumbnail in a background thread, then update PopUpZoom if still hovered."""
+    # Deduplicate work per-path
+    jobs = getattr(app, "_video_thumb_jobs", None)
+    if jobs is None:
+        jobs = {}
+        app._video_thumb_jobs = jobs
+    if jobs.get(video_path):
+        return
+    jobs[video_path] = True
+
+    def _worker() -> None:
+        jpeg_bytes = None
+        try:
+            from main.utils import video_thumbnail
+
+            jpeg_bytes = video_thumbnail.get_video_thumbnail_jpeg_bytes(app, video_path)
+        except Exception:
+            jpeg_bytes = None
+
+        def _on_main() -> None:
+            try:
+                jobs.pop(video_path, None)
+            except Exception:
+                pass
+
+            history_zoom: 'PopUpZoom' = getattr(app, "history_zoom", None)
+            if not history_zoom or not getattr(app, "history_image_preview_var", None) or not app.history_image_preview_var.get():
+                return
+
+            # Only update if the user is still hovering this path
+            if getattr(app, "history_zoom_current_path", "") != video_path:
+                return
+
+            if not jpeg_bytes:
+                if history_zoom.zoom_enabled.get():
+                    history_zoom.zoom_enabled.set(False)
+                return
+
+            image_copy = None
+            try:
+                with Image.open(io.BytesIO(jpeg_bytes)) as img:
+                    image_copy = img.copy()
+            except Exception:
+                image_copy = None
+            if not image_copy:
+                if history_zoom.zoom_enabled.get():
+                    history_zoom.zoom_enabled.set(False)
+                return
+            history_zoom.set_image(image_copy)
+            if not history_zoom.zoom_enabled.get():
+                history_zoom.zoom_enabled.set(True)
+
+        try:
+            app.root.after(0, _on_main)
+        except Exception:
+            pass
+
+    t = threading.Thread(target=_worker, daemon=True)
+    t.start()
+
+
+def _tree_row_under_cursor(tree, event) -> str | None:
     try:
-        bbox = listbox.bbox(idx)
-        if bbox is None:
-            return False
-        # bbox returns (x, y, width, height) of the item
-        item_top = bbox[1]
-        item_bottom = bbox[1] + bbox[3]
-        return item_top <= event.y <= item_bottom
+        row_id = tree.identify_row(event.y)
+        return str(row_id) if row_id else None
     except Exception:
-        return False
+        return None
 
 
 def handle_history_hover(app: 'Main', event) -> None:
@@ -381,31 +655,70 @@ def handle_history_hover(app: 'Main', event) -> None:
         if history_zoom.zoom_enabled.get():
             history_zoom.zoom_enabled.set(False)
         return
-    # Check if hovering over an actual item, not empty space
-    if not _is_over_listbox_item(app.history_listbox, event):
+    tree = app.history_listbox
+    if not tree:
+        return
+    row_id = _tree_row_under_cursor(tree, event)
+    # Check if hovering over an actual row
+    if not row_id:
         if history_zoom.zoom_enabled.get():
             history_zoom.zoom_enabled.set(False)
         app.history_zoom_current_path = ""
         return
-    idx = app.history_listbox.nearest(event.y)
-    filename = app.history_listbox.get(idx)
-    path = _history_path_for_name(app, filename)
-    if not path or not _is_image_file(path):
+    path = _history_path_for_hover(app, row_id)
+    if not path:
+        if history_zoom.zoom_enabled.get():
+            history_zoom.zoom_enabled.set(False)
+        app.history_zoom_current_path = ""
+        return
+
+    is_image = _is_image_file(path)
+    is_video = _is_video_file(path) and bool(getattr(app, "ffmpeg_available", False))
+    if not (is_image or is_video):
         if history_zoom.zoom_enabled.get():
             history_zoom.zoom_enabled.set(False)
         app.history_zoom_current_path = ""
         return
     # Only reload image if path changed
     if app.history_zoom_current_path != path:
-        image_copy = _load_preview_image(path)
-        if not image_copy:
+        if is_image:
+            image_copy = _load_preview_image(path)
+            if not image_copy:
+                if history_zoom.zoom_enabled.get():
+                    history_zoom.zoom_enabled.set(False)
+                app.history_zoom_current_path = ""
+                app.log(f"Preview unavailable for {os.path.basename(path)}", mode="warning", verbose=3)
+                return
+            history_zoom.set_image(image_copy)
+            app.history_zoom_current_path = path
+        else:
+            # Video: use ffmpeg thumbnail if present; otherwise generate asynchronously.
+            app.history_zoom_current_path = path
+            try:
+                from main.utils import video_thumbnail
+
+                jpeg_bytes = video_thumbnail.get_video_thumbnail_jpeg_bytes(app, path)
+            except Exception:
+                jpeg_bytes = None
+
+            if jpeg_bytes:
+                image_copy = None
+                try:
+                    with Image.open(io.BytesIO(jpeg_bytes)) as img:
+                        image_copy = img.copy()
+                except Exception:
+                    image_copy = None
+                if image_copy:
+                    history_zoom.set_image(image_copy)
+                    if not history_zoom.zoom_enabled.get():
+                        history_zoom.zoom_enabled.set(True)
+                    return
+
+            # No thumbnail yet (or couldn't load). Kick off generation.
             if history_zoom.zoom_enabled.get():
                 history_zoom.zoom_enabled.set(False)
-            app.history_zoom_current_path = ""
-            app.log(f"Preview unavailable for {os.path.basename(path)}", mode="warning", verbose=3)
+            _ensure_video_thumb_async(app, path)
             return
-        history_zoom.set_image(image_copy)
-        app.history_zoom_current_path = path
     # Enable zoom only if not already enabled (avoid redundant sets)
     if not history_zoom.zoom_enabled.get():
         history_zoom.zoom_enabled.set(True)

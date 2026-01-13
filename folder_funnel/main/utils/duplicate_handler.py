@@ -7,7 +7,7 @@ import re
 import shutil
 import hashlib
 import threading
-from typing import List, Dict, Tuple, Optional
+from typing import List, Dict, Tuple, Optional, Any
 from difflib import SequenceMatcher
 
 # Third-Party
@@ -23,8 +23,17 @@ if TYPE_CHECKING:
 #region - Hash Cache
 
 
+class FileNotReadyError(Exception):
+    """Raised when a file can't be reliably read yet (locked / still being written)."""
+
+
+# Cache key shape:
+#   (norm_path, mtime, size, partial_size, partial_mode)
+# where partial_size=0 and partial_mode='full' represents full-file hashing.
+
+
 # Global hash cache: {(file_path, mtime, size): hash_value}
-_hash_cache: Dict[Tuple[str, float, int], str] = {}
+_hash_cache: Dict[Tuple[Any, ...], str] = {}
 _HASH_CACHE_MAX_SIZE = 10000  # Maximum number of cached hashes
 _hash_cache_lock = threading.Lock()
 
@@ -34,32 +43,35 @@ def get_file_key(filepath: str) -> Optional[Tuple[str, float, int]]:
     Returns None if file doesn't exist or can't be accessed."""
     try:
         stat = os.stat(filepath)
-        return (os.path.normpath(filepath), stat.st_mtime, stat.st_size)
+        # normcase is important on Windows to avoid duplicate entries due to path casing
+        return (os.path.normcase(os.path.normpath(filepath)), stat.st_mtime, stat.st_size)
     except (OSError, IOError):
         return None
 
 
-def get_cached_hash(filepath: str, partial_size: int = 0, chunk_size: int = 8192) -> Optional[str]:
-    """Get hash from cache if available and file hasn't changed.
-    Returns None if not cached or file has been modified."""
+def _make_hash_cache_key(filepath: str, partial_size: int, partial_mode: str) -> Optional[Tuple[Any, ...]]:
     key = get_file_key(filepath)
     if key is None:
         return None
-    # For partial hashes, include the partial_size in the key
     if partial_size > 0:
-        cache_key = (key[0], key[1], key[2], partial_size)
-    else:
-        cache_key = key
+        return (key[0], key[1], key[2], int(partial_size), str(partial_mode))
+    return (key[0], key[1], key[2], 0, "full")
+
+
+def get_cached_hash(filepath: str, partial_size: int = 0, chunk_size: int = 8192, partial_mode: str = "head_tail") -> Optional[str]:
+    """Get hash from cache if available and file hasn't changed.
+    Returns None if not cached or file has been modified."""
+    # chunk_size is intentionally not part of the cache key
+    cache_key = _make_hash_cache_key(filepath, partial_size, partial_mode)
+    if cache_key is None:
+        return None
     with _hash_cache_lock:
         return _hash_cache.get(cache_key)
 
 
-def set_cached_hash(filepath: str, hash_value: str, partial_size: int = 0) -> None:
+def set_cached_hash(filepath: str, hash_value: str, partial_size: int = 0, partial_mode: str = "head_tail") -> None:
     """Store a hash in the cache."""
     global _hash_cache
-    key = get_file_key(filepath)
-    if key is None:
-        return
     with _hash_cache_lock:
         # Evict oldest entries if cache is too large
         if len(_hash_cache) >= _HASH_CACHE_MAX_SIZE:
@@ -67,11 +79,9 @@ def set_cached_hash(filepath: str, hash_value: str, partial_size: int = 0) -> No
             to_remove = list(_hash_cache.keys())[:_HASH_CACHE_MAX_SIZE // 5]
             for k in to_remove:
                 del _hash_cache[k]
-        # For partial hashes, include the partial_size in the key
-        if partial_size > 0:
-            cache_key = (key[0], key[1], key[2], partial_size)
-        else:
-            cache_key = key
+        cache_key = _make_hash_cache_key(filepath, partial_size, partial_mode)
+        if cache_key is None:
+            return
         _hash_cache[cache_key] = hash_value
 
 
@@ -134,7 +144,13 @@ def invalidate_dir_cache(dir_path: str = None) -> None:
 #region - File Operations
 
 
-def get_md5(filename: str, chunk_size: int = 8192, partial_size: int = 0, use_cache: bool = True) -> str:
+def get_md5(
+    filename: str,
+    chunk_size: int = 8192,
+    partial_size: int = 0,
+    use_cache: bool = True,
+    partial_mode: str = "head_tail",
+) -> str:
     """Calculate MD5 hash of a file.
 
     Args:
@@ -148,31 +164,50 @@ def get_md5(filename: str, chunk_size: int = 8192, partial_size: int = 0, use_ca
     """
     # Try to get from cache first
     if use_cache:
-        cached = get_cached_hash(filename, partial_size, chunk_size)
+        cached = get_cached_hash(filename, partial_size, chunk_size, partial_mode=partial_mode)
         if cached:
             return cached
+    try:
+        file_size = os.path.getsize(filename)
+    except (OSError, IOError) as exc:
+        raise FileNotReadyError(str(exc)) from exc
     m = hashlib.md5()
-    bytes_read = 0
-    with open(filename, 'rb') as f:
-        while True:
-            # If partial_size is set, limit how much we read
+    try:
+        with open(filename, 'rb') as f:
             if partial_size > 0:
-                remaining = partial_size - bytes_read
-                if remaining <= 0:
-                    break
-                to_read = min(chunk_size, remaining)
+                # Head
+                remaining = min(int(partial_size), int(file_size))
+                bytes_read = 0
+                while remaining > 0:
+                    to_read = min(chunk_size, remaining)
+                    chunk = f.read(to_read)
+                    if not chunk:
+                        break
+                    m.update(chunk)
+                    bytes_read += len(chunk)
+                    remaining -= len(chunk)
+                # Tail (reduces collisions vs header-only; still cheap)
+                if partial_mode == "head_tail" and file_size > (2 * int(partial_size)):
+                    try:
+                        f.seek(-int(partial_size), os.SEEK_END)
+                        tail = f.read(int(partial_size))
+                        if tail:
+                            m.update(tail)
+                    except (OSError, IOError):
+                        # If seeking fails for any reason, fall back to header-only
+                        pass
             else:
-                to_read = chunk_size
-
-            chunk = f.read(to_read)
-            if not chunk:
-                break
-            m.update(chunk)
-            bytes_read += len(chunk)
+                while True:
+                    chunk = f.read(chunk_size)
+                    if not chunk:
+                        break
+                    m.update(chunk)
+    except (PermissionError, OSError, IOError) as exc:
+        raise FileNotReadyError(str(exc)) from exc
     hash_value = m.hexdigest()
     # Store in cache
     if use_cache:
-        set_cached_hash(filename, hash_value, partial_size)
+        set_cached_hash(filename, hash_value, partial_size, partial_mode=partial_mode)
     return hash_value
 
 
@@ -204,44 +239,72 @@ def are_files_identical(file1: str, file2: str, check_mode: str = "Similar",
         Tuple of (is_identical, matching_file_path)
     """
     try:
-        target_dir = os.path.dirname(file2)
         file1_size = get_file_size(file1)
         if file1_size < 0:
             return False, None
-        # Find similar files and check if limit was exceeded
-        # Pass source file size to pre-filter by size before max_files limit is applied
-        similar_files, was_truncated = find_similar_files(file1, target_dir, method, max_files, return_truncation_info=True, source_size=file1_size )
-        # Log warning if max_files limit was exceeded
+        target_dir = os.path.dirname(file2)
+        file1_partial_hash: Optional[str] = None
+        file1_full_hash: Optional[str] = None
+
+        def _partial_hash(path: str) -> str:
+            return get_md5(path, chunk_size, partial_size=partial_hash_size, partial_mode="head_tail")
+
+        def _full_hash(path: str) -> str:
+            return get_md5(path, chunk_size)
+
+        # Fast path: always check the exact destination file first (most likely candidate)
+        if os.path.exists(file2) and get_file_size(file2) == file1_size:
+            if partial_hash_size > 0:
+                if file1_partial_hash is None:
+                    file1_partial_hash = _partial_hash(file1)
+                if _partial_hash(file2) == file1_partial_hash:
+                    file1_full_hash = file1_full_hash or _full_hash(file1)
+                    if _full_hash(file2) == file1_full_hash:
+                        return True, file2
+            else:
+                file1_full_hash = file1_full_hash or _full_hash(file1)
+                if _full_hash(file2) == file1_full_hash:
+                    return True, file2
+        # Single mode: only check the exact destination file
+        if check_mode == "Single":
+            return False, None
+        # Find other similar files (name-first, then size filter) and check if limit was exceeded
+        similar_files, was_truncated = find_similar_files(file1, target_dir, method, max_files, return_truncation_info=True, source_size=file1_size)
         if was_truncated and app:
             app.log(f"Warning: max_files limit ({max_files}) reached in {os.path.basename(target_dir)}, some duplicates may be missed", mode="warning", verbose=2)
-        # Calculate source file hash (use partial hash first if enabled)
-        if partial_hash_size > 0:
-            file1_partial_hash = get_md5(file1, chunk_size, partial_size=partial_hash_size)
-        file1_full_hash = None  # Lazy compute full hash only if needed
-        for file in similar_files:
-            if not os.path.exists(file):
+        checked = 0
+        full_md5_computes = 0
+        for candidate in similar_files:
+            if candidate == file2:
+                continue  # already checked
+            if not os.path.exists(candidate):
                 continue
-            # Size already pre-filtered in find_similar_files, proceed to hash comparison
-            # If using partial hash, check that first
+            # Size is pre-filtered (when source_size >= 0)
             if partial_hash_size > 0:
-                file_partial_hash = get_md5(file, chunk_size, partial_size=partial_hash_size)
-                if file_partial_hash != file1_partial_hash:
+                if file1_partial_hash is None:
+                    file1_partial_hash = _partial_hash(file1)
+                try:
+                    if _partial_hash(candidate) != file1_partial_hash:
+                        continue
+                except FileNotReadyError:
                     continue
-            # Compute full hash for final comparison
             if file1_full_hash is None:
-                file1_full_hash = get_md5(file1, chunk_size)
-            if get_md5(file, chunk_size) == file1_full_hash:
-                return True, file
-        # Single mode: also check exact filename match
-        if check_mode == "Single" and os.path.exists(file2):
-            if get_file_size(file2) == file1_size:
-                if file1_full_hash is None:
-                    file1_full_hash = get_md5(file1, chunk_size)
-                if get_md5(file2, chunk_size) == file1_full_hash:
-                    return True, file2
+                file1_full_hash = _full_hash(file1)
+                full_md5_computes += 1
+            if _full_hash(candidate) == file1_full_hash:
+                return True, candidate
+            checked += 1
+        if app and getattr(app, "log_verbosity_var", None) and app.log_verbosity_var.get() >= 4:
+            app.log(f"Dupe check stats: candidates={len(similar_files)}, checked={checked}, full_md5_source={full_md5_computes}", mode="simple", verbose=4)
         return False, None
+    except FileNotReadyError:
+        # Let the caller decide how/when to retry.
+        raise
     except Exception as e:
-        print(f"Error comparing files: {e}")
+        if app:
+            app.log(f"Error comparing files: {e}", mode="warning", verbose=2)
+        else:
+            print(f"Error comparing files: {e}")
         return False, None
 
 
@@ -264,58 +327,84 @@ def find_similar_files(filename: str, target_dir: str, method: str = 'Strict',
         List of similar file paths, or tuple (files, was_truncated) if return_truncation_info=True
     """
     base_name = os.path.splitext(os.path.basename(filename))[0]
+    base_lower = base_name.lower()
     ext = os.path.splitext(filename)[1].lower()
-    similar_files = []
     # Use cached directory listing
     dir_contents = get_cached_dir_listing(target_dir)
-    if method == 'Strict':
-        # Match exact name or name with numeric suffixes like _1, (2), -3
-        pattern = re.escape(base_name) + r'([ _\-]\(\d+\)|[ _\-]\d+)?$'
-        for f in dir_contents:
-            full_path = os.path.join(target_dir, f)
-            if os.path.isfile(full_path):
-                f_base, f_ext = os.path.splitext(f)
-                if f_ext.lower() == ext and re.match(pattern, f_base, re.IGNORECASE):
-                    # Pre-filter by size if source_size is provided
-                    if source_size >= 0 and get_file_size(full_path) != source_size:
-                        continue
-                    similar_files.append(full_path)
-        similar_files.sort(key=lambda x: SequenceMatcher(None, base_name.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
-    elif method == 'Flexible':
-        # Clean the base name by removing trailing numeric suffixes
-        base_name_clean = base_name
+    exact: List[str] = []
+    suffix: List[str] = []
+    other: List[str] = []
+    # Flexible base cleanup is used only when method == 'Flexible'
+    base_name_clean = base_name
+    if method == 'Flexible':
         # Remove common suffix patterns: _1, _01, -1, (1), etc.
         base_name_clean = re.sub(r'[ _\-]?\(?\d+\)?$', '', base_name_clean)
-        # Also try removing last underscore segment if it looks like a suffix
+        # Only strip last underscore segment if it looks like a numeric suffix (avoid over-broad trimming)
         if '_' in base_name_clean:
             last_segment = base_name_clean.rsplit('_', 1)[-1]
-            if last_segment.isdigit() or len(last_segment) <= 3:
+            if last_segment.isdigit():
                 base_name_clean = base_name_clean.rsplit('_', 1)[0]
-        # Use prefix matching instead of substring matching to reduce false positives
-        # Also match files that start with the same prefix
-        for f in dir_contents:
-            full_path = os.path.join(target_dir, f)
-            if os.path.isfile(full_path):
-                f_base, f_ext = os.path.splitext(f)
-                if f_ext.lower() != ext:
+    base_clean_lower = base_name_clean.lower()
+
+    def _is_numeric_suffix(rest: str) -> bool:
+        if not rest:
+            return False
+        if rest.startswith((' ', '_', '-')):
+            rest = rest[1:]
+        if not rest:
+            return False
+        if rest.startswith('(') and rest.endswith(')'):
+            rest = rest[1:-1]
+        return rest.isdigit()
+
+    # First pass: cheap name-based filtering only
+    for f in dir_contents:
+        # Fast extension check
+        if not f.lower().endswith(ext):
+            continue
+        full_path = os.path.join(target_dir, f)
+        if not os.path.isfile(full_path):
+            continue
+        f_base, _ = os.path.splitext(f)
+        f_base_lower = f_base.lower()
+        if f_base_lower == base_lower:
+            exact.append(full_path)
+            continue
+        if method == 'Strict':
+            if f_base_lower.startswith(base_lower):
+                rest = f_base_lower[len(base_lower):]
+                if _is_numeric_suffix(rest):
+                    suffix.append(full_path)
                     continue
-                f_base_lower = f_base.lower()
-                base_clean_lower = base_name_clean.lower()
-                # Match if:
-                # 1. File starts with our base name (prefix match)
-                # 2. Our base name starts with file's base (reverse prefix)
-                # 3. High similarity ratio (for cases like small edits)
-                if (f_base_lower.startswith(base_clean_lower) or
-                    base_clean_lower.startswith(f_base_lower) or
-                    SequenceMatcher(None, base_clean_lower, f_base_lower).ratio() >= 0.8):
-                    # Pre-filter by size if source_size is provided
-                    if source_size >= 0 and get_file_size(full_path) != source_size:
-                        continue
-                    similar_files.append(full_path)
-        similar_files.sort(key=lambda x: SequenceMatcher(None, base_name_clean.lower(), os.path.basename(x).lower()).ratio(), reverse=True)
-    # Check if we're truncating results
-    was_truncated = len(similar_files) > max_files
-    result = similar_files[:max_files]
+        else:  # Flexible
+            if f_base_lower.startswith(base_clean_lower) or base_clean_lower.startswith(f_base_lower):
+                suffix.append(full_path)
+                continue
+            # Only compute similarity for plausible candidates
+            if f_base_lower[:3] == base_clean_lower[:3] and abs(len(f_base_lower) - len(base_clean_lower)) <= 12:
+                if SequenceMatcher(None, base_clean_lower, f_base_lower).ratio() >= 0.85:
+                    other.append(full_path)
+                    continue
+    # Size pre-filter (do it after name filtering to avoid stat'ing huge directories)
+    if source_size >= 0:
+        def _size_ok(p: str) -> bool:
+            return get_file_size(p) == source_size
+        exact = [p for p in exact if _size_ok(p)]
+        suffix = [p for p in suffix if _size_ok(p)]
+        other = [p for p in other if _size_ok(p)]
+    # Rank only the non-obvious candidates by similarity to keep things fast
+    ranked_other: List[str] = []
+    if other:
+        ranked_other = sorted(other, key=lambda x: SequenceMatcher(None, base_clean_lower, os.path.splitext(os.path.basename(x))[0].lower()).ratio(), reverse=True)
+    ordered: List[str] = []
+    seen: set[str] = set()
+    for group in (exact, suffix, ranked_other):
+        for p in group:
+            if p not in seen:
+                ordered.append(p)
+                seen.add(p)
+    was_truncated = len(ordered) > max_files
+    result = ordered[:max_files]
     if return_truncation_info:
         return result, was_truncated
     return result

@@ -14,13 +14,121 @@ import nenotk as ntk
 from . import duplicate_handler
 
 # Type checking
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from app import Main
 
 
 #endregion
 #region - Helper Functions
+
+
+class RetryableMoveError(Exception):
+    """Raised when a file can't be moved/processed yet (locked / still being written)."""
+
+
+_RETRY_BASE_DELAY_MS = 2000
+_RETRY_MAX_DELAY_MS = 60000
+_RETRY_MAX_ATTEMPTS = 8
+
+
+def _retry_state(app: 'Main'):
+    if not hasattr(app, "move_queue_retry_counts"):
+        app.move_queue_retry_counts = {}
+    if not hasattr(app, "move_queue_retry_due_ms"):
+        app.move_queue_retry_due_ms = {}
+    if not hasattr(app, "move_queue_last_stat"):
+        app.move_queue_last_stat = {}
+    return app.move_queue_retry_counts, app.move_queue_retry_due_ms, app.move_queue_last_stat
+
+
+def _now_ms() -> int:
+    return int(time.time() * 1000)
+
+
+def _is_due(app: 'Main', path: str) -> bool:
+    _, due_ms, _ = _retry_state(app)
+    due = due_ms.get(path)
+    if due is None:
+        return True
+    return _now_ms() >= int(due)
+
+
+def _mark_retry(app: 'Main', path: str, reason: str = "") -> Optional[int]:
+    """Increment retry count and compute next delay; returns delay_ms or None if giving up."""
+    counts, due_ms, last_stat = _retry_state(app)
+    attempts = int(counts.get(path, 0) or 0) + 1
+    counts[path] = attempts
+
+    if attempts > _RETRY_MAX_ATTEMPTS:
+        # Give up
+        counts.pop(path, None)
+        due_ms.pop(path, None)
+        last_stat.pop(path, None)
+        app.log(
+            f"Giving up on file after {attempts - 1} retries: {os.path.basename(path)}",
+            mode="warning",
+            verbose=1,
+        )
+        if reason:
+            app.log(f"Last retry reason: {reason}", mode="warning", verbose=3)
+        return None
+
+    delay = min(_RETRY_BASE_DELAY_MS * (2 ** (attempts - 1)), _RETRY_MAX_DELAY_MS)
+    due_ms[path] = _now_ms() + int(delay)
+    if reason:
+        app.log(
+            f"Retrying soon ({int(delay/1000)}s): {os.path.basename(path)} — {reason}",
+            mode="warning",
+            verbose=3,
+        )
+    return int(delay)
+
+
+def _clear_retry(app: 'Main', path: str) -> None:
+    counts, due_ms, last_stat = _retry_state(app)
+    counts.pop(path, None)
+    due_ms.pop(path, None)
+    last_stat.pop(path, None)
+
+
+def _is_file_stable(app: 'Main', path: str) -> bool:
+    """Returns True when file size/mtime are unchanged across attempts."""
+    _, _, last_stat = _retry_state(app)
+    try:
+        st = os.stat(path)
+        stat_key = (st.st_size, st.st_mtime)
+    except Exception:
+        return False
+    prev = last_stat.get(path)
+    last_stat[path] = stat_key
+    return prev is not None and prev == stat_key
+
+
+def _schedule_retry_pass(app: 'Main') -> None:
+    """Schedule the next queue processing based on earliest due time."""
+    _, due_ms, _ = _retry_state(app)
+    if not app.move_queue:
+        return
+    now = _now_ms()
+    next_due = None
+    for p in app.move_queue:
+        d = due_ms.get(p)
+        if d is None:
+            next_due = now
+            break
+        if next_due is None or int(d) < int(next_due):
+            next_due = int(d)
+    if next_due is None:
+        return
+    delay = max(250, int(next_due - now))
+    # Cancel any existing timer and schedule a retry processing pass
+    if app.queue_timer_id:
+        try:
+            app.root.after_cancel(app.queue_timer_id)
+        except Exception:
+            pass
+    app.queue_timer_id = app.root.after(delay, lambda: process_move_queue(app))
 
 
 def _is_empty_file(file_path):
@@ -199,24 +307,32 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
     """Handle a file that might be a duplicate."""
     # Get partial hash size (0 = disabled, otherwise bytes to read)
     partial_hash_size = app.dupe_partial_hash_size_var.get() if app.dupe_use_partial_hash_var.get() else 0
-    is_duplicate, matching_file_path = duplicate_handler.are_files_identical(
-        file1=source_path,
-        file2=dest_path,
-        check_mode=app.dupe_check_mode_var.get(),
-        method=app.dupe_filter_mode_var.get(),
-        max_files=app.dupe_max_files_var.get(),
-        partial_hash_size=partial_hash_size,
-        app=app
-    )
+    try:
+        is_duplicate, matching_file_path = duplicate_handler.are_files_identical(
+            file1=source_path,
+            file2=dest_path,
+            check_mode=app.dupe_check_mode_var.get(),
+            method=app.dupe_filter_mode_var.get(),
+            max_files=app.dupe_max_files_var.get(),
+            partial_hash_size=partial_hash_size,
+            app=app
+        )
+    except duplicate_handler.FileNotReadyError as exc:
+        raise RetryableMoveError(str(exc)) from exc
     if is_duplicate:
         # Files are identical, handle based on dupe_handle_mode
         filename = os.path.basename(source_path)
         duplicate_path = source_path
+        dupe_action = "Duplicate deleted"
         if app.dupe_handle_mode_var.get() == "Delete":
             # Delete the duplicate file
-            os.remove(source_path)
+            try:
+                os.remove(source_path)
+            except (PermissionError, OSError) as exc:
+                raise RetryableMoveError(str(exc)) from exc
             app.log(f"Duplicate deleted: {rel_path}", mode="info", verbose=1)
         else:  # "Move" mode
+            dupe_action = "Duplicate moved"
             if not app.duplicate_storage_path:
                 duplicate_handler.create_duplicate_storage_folder(app)
             # Ensure the directory structure exists in the duplicate folder
@@ -228,18 +344,25 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
             # Handle if file already exists in duplicate storage - use get_unique_filename
             dup_file_path = _get_unique_filename(dup_file_path)
             # Move the duplicate file
-            shutil.move(source_path, dup_file_path)
+            try:
+                shutil.move(source_path, dup_file_path)
+            except (PermissionError, OSError) as exc:
+                raise RetryableMoveError(str(exc)) from exc
             app.log(f"Duplicate moved: {rel_path} -> {os.path.relpath(dup_file_path, app.duplicate_storage_path)}", mode="info", verbose=1)
             duplicate_path = dup_file_path
         # Record the duplicate file, using the matching file path as source
         original_path = matching_file_path if matching_file_path else dest_path
-        app.history_order_counter += 1
-        app.duplicate_history_items[filename] = {"source": original_path, "duplicate": duplicate_path, "order": app.history_order_counter}
+        if hasattr(app, "add_history_duplicate"):
+            app.add_history_duplicate(rel_path=rel_path, source_path=original_path, duplicate_path=duplicate_path, action=dupe_action)
         app.duplicate_count += 1
         app.grand_duplicate_count += 1
         app.update_duplicate_count()
-        # Update history listbox
-        app.refresh_history_listbox()
+        # Keep legacy dict populated for safety
+        try:
+            app.history_order_counter += 1
+            app.duplicate_history_items[filename] = {"source": original_path, "duplicate": duplicate_path, "order": app.history_order_counter}
+        except Exception:
+            pass
         return True, None
     else:
         # Not a duplicate, find new name
@@ -250,6 +373,10 @@ def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_pat
 def _move_file(app: 'Main', source_path):
     """Internal method to move a file when the queue is ready."""
     try:
+        # If the file is still changing, wait for a later pass to avoid hashing/moving partial files.
+        if not _is_file_stable(app, source_path):
+            raise RetryableMoveError("file still being written")
+
         # Get the relative path from the watch folder
         rel_path = os.path.relpath(source_path, app.funnel_dir)
         # Calculate the destination path in the source folder
@@ -265,11 +392,16 @@ def _move_file(app: 'Main', source_path):
                 # Check for duplicates and get unique name if needed
                 is_duplicate, new_dest_path = _handle_possible_duplicate_file(app, source_path, dest_path, rel_path)
                 if is_duplicate:
+                    _clear_retry(app, source_path)
                     return True
                 if new_dest_path:
                     dest_path = new_dest_path
         # Move the file
-        shutil.move(source_path, dest_path)
+        try:
+            shutil.move(source_path, dest_path)
+        except (PermissionError, OSError) as exc:
+            raise RetryableMoveError(str(exc)) from exc
+        action = "Moved"
         app.log(f"Moved: {rel_path}", mode="info", verbose=1)
         # Handle ZIP extraction if enabled
         if app.auto_extract_zip_var.get() and _is_zip_file(dest_path):
@@ -278,15 +410,22 @@ def _move_file(app: 'Main', source_path):
             extract_dir = os.path.join(os.path.dirname(dest_path), zip_name)
             _extract_zip(app, dest_path, extract_dir)
         # Update history list with the new filename and full path
-        app.update_history_list(os.path.basename(dest_path), dest_path)
+        if hasattr(app, "add_history_moved"):
+            app.add_history_moved(dest_path=dest_path, rel_path=rel_path, action=action)
+        else:
+            app.update_history_list(os.path.basename(dest_path), dest_path)
         # Update counts
         app.move_count += 1
         app.grand_move_count += 1
         app.movecount_var.set(f"Moved: {ntk.number_commas(app.move_count)}")
         # Note: count_folders_and_files is called once after batch processing completes
+        _clear_retry(app, source_path)
         return True
+    except RetryableMoveError:
+        raise
     except Exception as e:
         app.log(f"Error moving file {source_path}: {str(e)}", mode="error", verbose=1)
+        _clear_retry(app, source_path)
         return False
 
 
@@ -330,20 +469,65 @@ def process_move_queue(app: 'Main'):
     stop_queue(app)  # Stop the queue timer and reset progress indicators
     if not app.move_queue:
         return
+    # Work on a snapshot so we can safely requeue failures.
+    pending = list(app.move_queue)
+    batch_total = len(pending)
+    start_moved = int(getattr(app, "move_count", 0) or 0)
+    start_dupes = int(getattr(app, "duplicate_count", 0) or 0)
     app.log(f"Processing {ntk.number_commas(len(app.move_queue))} queued file{'s' if len(app.move_queue) != 1 else ''}...", mode="info", verbose=2)
     success_count = 0
-    for source_path in app.move_queue:
-        if os.path.exists(source_path):  # Check if the file exists before moving
+    failed_paths = []
+    for source_path in pending:
+        if not os.path.exists(source_path):
+            _clear_retry(app, source_path)
+            app.log(f"File not found, skipping: {source_path}", mode="warning", verbose=2)
+            continue
+        if not _is_due(app, source_path):
+            failed_paths.append(source_path)
+            continue
+        try:
             if _move_file(app, source_path):
                 success_count += 1
-        else:
-            app.log(f"File not found, skipping: {source_path}", mode="warning", verbose=2)
-    if len(app.move_queue) == 1:
-        app.log(f"Move complete: {ntk.number_commas(success_count)}/1 file\n", mode="info", verbose=1)
-    else:
-        app.log(f"Batch complete: {ntk.number_commas(success_count)}/{ntk.number_commas(len(app.move_queue))} files moved\n", mode="info", verbose=1)
-    app.move_queue.clear()
+            else:
+                _clear_retry(app, source_path)
+        except RetryableMoveError as exc:
+            delay = _mark_retry(app, source_path, reason=str(exc))
+            if delay is not None:
+                failed_paths.append(source_path)
+
+    # Replace queue with failures for retry; successes are removed.
+    app.move_queue = failed_paths
     app.update_queue_count()
+
+    if batch_total == 1:
+        app.log(
+            f"Move pass complete: {ntk.number_commas(success_count)}/1 file ({ntk.number_commas(len(failed_paths))} pending)\n",
+            mode="info",
+            verbose=1,
+        )
+    else:
+        app.log(
+            f"Batch pass complete: {ntk.number_commas(success_count)}/{ntk.number_commas(batch_total)} files ({ntk.number_commas(len(failed_paths))} pending)\n",
+            mode="info",
+            verbose=1,
+        )
+
+    # Desktop notification (independent of minimize-to-tray)
+    # Only notify when the queue fully clears to avoid notification spam on retry passes.
+    if not app.move_queue:
+        try:
+            moved_delta = int(getattr(app, "move_count", 0) or 0) - start_moved
+            dupe_delta = int(getattr(app, "duplicate_count", 0) or 0) - start_dupes
+            title = "Folder-Funnel"
+            msg = f"Batch complete. Processed: {batch_total}. Moved: {moved_delta}. Duplicates: {dupe_delta}."
+            if hasattr(app, "notify"):
+                app.notify(msg, title=title)
+        except Exception:
+            pass
+
+    # If anything failed due to locks/partial writes, schedule the next pass.
+    if app.move_queue:
+        _schedule_retry_pass(app)
 
 
 def process_pending_moves(app: 'Main'):

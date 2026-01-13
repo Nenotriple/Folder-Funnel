@@ -29,8 +29,10 @@ if TYPE_CHECKING:
 def create_interface(app: 'Main'):
     _create_menubar(app)
     _create_control_row(app)
-    _create_main_frame(app)
+    # Pack message row BEFORE main frame so it reserves bottom space
+    # (main_frame uses expand=True which would otherwise push it out of view)
     _create_message_row(app)
+    _create_main_frame(app)
 
 
 #endregion
@@ -60,7 +62,7 @@ def _create_file_menu(app: 'Main', menubar: tk.Menu):
     file_menu.add_separator()
     file_menu.add_command(label="Reset App Settings", command=app.reset_settings)
     file_menu.add_separator()
-    file_menu.add_command(label="Exit", command=app.on_closing)
+    file_menu.add_command(label="Exit", command=app.exit_application)
     app.file_menu = file_menu
 
 
@@ -79,6 +81,37 @@ def _create_edit_menu(app: 'Main', menubar: tk.Menu):
 def _create_view_menu(app: 'Main', menubar: tk.Menu):
     view_menu = tk.Menu(menubar, tearoff=0)
     menubar.add_cascade(label="View", menu=view_menu)
+    # Layout options
+    layout_menu = tk.Menu(view_menu, tearoff=0)
+    view_menu.add_cascade(label="Layout", menu=layout_menu)
+    layout_menu.add_command(label="Layout Orientation", state="disabled")
+    layout_menu.add_radiobutton(
+        label="Side-by-side (Log | History)",
+        variable=app.main_pane_orient_var,
+        value="horizontal",
+        command=lambda: app.apply_main_pane_layout(user_action=True),
+    )
+    layout_menu.add_radiobutton(
+        label="Vertical (Top / Bottom)",
+        variable=app.main_pane_orient_var,
+        value="vertical",
+        command=lambda: app.apply_main_pane_layout(user_action=True),
+    )
+    layout_menu.add_separator()
+    layout_menu.add_command(label="Layout Order", state="disabled")
+    layout_menu.add_radiobutton(
+        label="Log First (Left/Top)",
+        variable=app.main_pane_order_var,
+        value="log_first",
+        command=lambda: app.apply_main_pane_layout(user_action=True),
+    )
+    layout_menu.add_radiobutton(
+        label="History First (Left/Top)",
+        variable=app.main_pane_order_var,
+        value="history_first",
+        command=lambda: app.apply_main_pane_layout(user_action=True),
+    )
+    view_menu.add_separator()
     # History Options
     view_menu.add_checkbutton(label="History: Image Preview on Hover", variable=app.history_image_preview_var, command=app.toggle_history_preview)
     view_menu.add_separator()
@@ -102,6 +135,7 @@ def _create_options_menu(app: 'Main', menubar: tk.Menu):
     menubar.add_cascade(label="Options", menu=options_menu)
     # System tray option
     options_menu.add_checkbutton(label="Minimize to Tray on Close", variable=app.minimize_to_tray_var)
+    options_menu.add_checkbutton(label="Desktop Notifications", variable=app.notifications_enabled_var)
     options_menu.add_separator()
     # File rules submenu
     file_rules_menu = tk.Menu(options_menu, tearoff=0)
@@ -217,14 +251,37 @@ def _create_main_frame(app: 'Main'):
     # paned window
     main_pane = tk.PanedWindow(main_frame, orient="horizontal", sashwidth=6, bg="#d0d0d0", bd=0)
     main_pane.pack(fill="both", expand=True)
+    app.main_pane = main_pane
     # Widgets
     _create_text_log(app, main_pane)
     _create_history_list(app, main_pane)
+
+    # Capture the initial/default sash position once geometry is computed.
+    try:
+        app.root.after(0, lambda: _capture_main_pane_default_sash(app))
+    except Exception:
+        pass
+
+
+def _capture_main_pane_default_sash(app: 'Main') -> None:
+    pane = getattr(app, "main_pane", None)
+    if not pane:
+        return
+    # Only capture once per app session
+    if getattr(app, "main_pane_default_sash_x", None) is not None:
+        return
+    try:
+        pane.update_idletasks()
+        x, _y = pane.sash_coord(0)
+        app.main_pane_default_sash_x = int(x)
+    except Exception:
+        return
 
 
 def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
     # Frame
     text_frame = tk.Frame(main_pane)
+    app.log_pane_frame = text_frame
     main_pane.add(text_frame, stretch="always")
     main_pane.paneconfigure(text_frame, minsize=200, width=400)
     text_frame.grid_rowconfigure(2, weight=1)
@@ -270,6 +327,7 @@ def _create_text_log(app: 'Main', main_pane: tk.PanedWindow):
 def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     # Frame
     list_frame = tk.Frame(main_pane)
+    app.history_pane_frame = list_frame
     main_pane.add(list_frame, stretch="never")
     main_pane.paneconfigure(list_frame, minsize=200, width=200)
     # Label/Menu
@@ -284,64 +342,116 @@ def _create_history_list(app: 'Main', main_pane: tk.PanedWindow):
     history_menu.add_radiobutton(label="History View: Moved", variable=app.history_mode_var, value="Moved", command=app.toggle_history_mode)
     history_menu.add_radiobutton(label="History View: Duplicate", variable=app.history_mode_var, value="Duplicate", command=app.toggle_history_mode)
     Tip(widget=app.history_menubutton, text="List of processed files", widget_anchor="sw", pady=2)
-    # Listbox
-    app.history_listbox = tk.Listbox(list_frame, width=1, height=1, font=("Consolas", 10))
-    app.history_listbox.pack(fill="both", expand=True)
+    # Treeview (replaces Listbox for richer history)
+    tree_frame = tk.Frame(list_frame)
+    tree_frame.pack(fill="both", expand=True)
+    tree_frame.grid_rowconfigure(0, weight=1)
+    tree_frame.grid_columnconfigure(0, weight=1)
+
+    columns = ("time", "type", "name", "rel", "action")
+    app.history_listbox = ttk.Treeview(tree_frame, columns=columns, show="headings", selectmode="browse")
+    app.history_listbox.grid(row=0, column=0, sticky="nsew")
+
+    vscroll = ttk.Scrollbar(tree_frame, orient="vertical", command=app.history_listbox.yview)
+    vscroll.grid(row=0, column=1, sticky="ns")
+    hscroll = ttk.Scrollbar(tree_frame, orient="horizontal", command=app.history_listbox.xview)
+    hscroll.grid(row=1, column=0, sticky="ew")
+    app.history_listbox.configure(yscrollcommand=vscroll.set, xscrollcommand=hscroll.set)
+
+    # Headings: clicking sorts by column (text + arrows updated in listbox_logic)
+    app.history_listbox.heading("time", text="Time", command=lambda c="time": app.sort_history_by_column(c))
+    app.history_listbox.heading("type", text="Type", command=lambda c="type": app.sort_history_by_column(c))
+    app.history_listbox.heading("name", text="Name", command=lambda c="name": app.sort_history_by_column(c))
+    app.history_listbox.heading("rel", text="Relative", command=lambda c="rel": app.sort_history_by_column(c))
+    app.history_listbox.heading("action", text="Action", command=lambda c="action": app.sort_history_by_column(c))
+
+    app.history_listbox.column("time", width=70, stretch=False, anchor="w")
+    app.history_listbox.column("type", width=70, stretch=False, anchor="w")
+    app.history_listbox.column("name", width=180, stretch=True, anchor="w")
+    app.history_listbox.column("rel", width=220, stretch=True, anchor="w")
+    app.history_listbox.column("action", width=120, stretch=False, anchor="w")
+
     app.history_listbox.bind("<Button-3>", app.show_history_context_menu)
     app.history_listbox.bind("<Motion>", lambda e: listbox_logic.handle_history_hover(app, e))
     app.history_listbox.bind("<Leave>", lambda e: listbox_logic.handle_history_leave(app, e))
+
     # Context menu
     create_history_context_menu(app)
+    create_history_header_context_menu(app)
     # Hover preview
     app.history_zoom = PopUpZoom(app.history_listbox, zoom_enabled=app.history_image_preview_var.get(), full_image_mode=True, popup_size=200)
 
+    # Initialize binds + initial render
+    try:
+        app.apply_history_column_visibility()
+        app.toggle_history_mode()
+    except Exception:
+        pass
 
-def create_history_context_menu(app: 'Main'):
-    app.history_menu = tk.Menu(app.history_listbox, tearoff=0)
-    mode = app.history_mode_var.get()
-    # For 'All' mode, determine the type of the selected item
-    if mode == "All":
-        # Determine selected item type
-        selection = app.history_listbox.curselection()
-        filename = app.history_listbox.get(selection[0]) if selection else None
-        item_type = None
-        if filename:
-            if filename in app.duplicate_history_items:
-                item_type = "duplicate"
-            elif filename in app.move_history_items:
-                item_type = "moved"
-        if item_type == "duplicate":
-            app.history_menu.add_command(label="Open: Duplicate", command=app.open_selected_duplicate_file)
-            app.history_menu.add_command(label="Show Duplicate in Explorer", command=app.show_selected_duplicate_in_explorer)
-            app.history_menu.add_separator()
-            app.history_menu.add_command(label="Open: Source", command=app.open_selected_source_file)
-            app.history_menu.add_command(label="Show Source in Explorer", command=app.show_selected_source_in_explorer)
-            app.history_menu.add_separator()
-            app.history_menu.add_command(label="Delete: Duplicate", command=app.delete_selected_duplicate_file)
-        elif item_type == "moved":
-            app.history_menu.add_command(label="Open", command=app.open_selected_file)
-            app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
-            app.history_menu.add_separator()
-            app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
+
+def create_history_header_context_menu(app: 'Main'):
+    """Build the history header right-click menu (column visibility toggles)."""
+    app.history_header_menu = tk.Menu(app.history_listbox, tearoff=0)
+    # Ensure Name stays visible
+    try:
+        app.history_column_visible_vars["name"].set(True)
+    except Exception:
+        pass
+    for col in getattr(app, "history_columns", ("time", "type", "name", "rel", "action")):
+        label = getattr(app, "history_column_labels", {}).get(col, col.title())
+        var = getattr(app, "history_column_visible_vars", {}).get(col)
+        if col == "name":
+            app.history_header_menu.add_checkbutton(
+                label=label,
+                variable=var,
+                command=lambda c=col: app.toggle_history_column(c),
+                state="disabled",
+            )
         else:
-            # Fallback: show smart actions if nothing is selected
-            app.history_menu.add_command(label="Open", command=app.open_selected_file_smart)
-            app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer_smart)
-            app.history_menu.add_separator()
-            app.history_menu.add_command(label="Delete", command=app.delete_selected_file_smart)
-    elif mode == "Moved":
-        app.history_menu.add_command(label="Open", command=app.open_selected_file)
-        app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
+            app.history_header_menu.add_checkbutton(
+                label=label,
+                variable=var,
+                command=lambda c=col: app.toggle_history_column(c),
+            )
+
+
+def create_history_context_menu(app: 'Main', entry: dict | None = None):
+    """Build the history context menu for the currently selected history entry."""
+    app.history_menu = tk.Menu(app.history_listbox, tearoff=0)
+    kind = (entry or {}).get("kind")
+
+    # Default to smart actions if entry isn't known
+    if not kind:
+        app.history_menu.add_command(label="Open", command=app.open_selected_file_smart)
+        app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer_smart)
         app.history_menu.add_separator()
-        app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
-    elif mode == "Duplicate":
+        app.history_menu.add_command(label="Copy Path", command=lambda: listbox_logic.copy_selected_path(app, target="smart"))
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Delete", command=app.delete_selected_file_smart)
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Remove From History", command=lambda: listbox_logic.remove_selected_history_entry(app))
+        return
+
+    if kind == "duplicate":
         app.history_menu.add_command(label="Open: Duplicate", command=app.open_selected_duplicate_file)
         app.history_menu.add_command(label="Show Duplicate in Explorer", command=app.show_selected_duplicate_in_explorer)
+        app.history_menu.add_command(label="Copy Duplicate Path", command=lambda: listbox_logic.copy_selected_path(app, target="duplicate"))
         app.history_menu.add_separator()
         app.history_menu.add_command(label="Open: Source", command=app.open_selected_source_file)
         app.history_menu.add_command(label="Show Source in Explorer", command=app.show_selected_source_in_explorer)
+        app.history_menu.add_command(label="Copy Source Path", command=lambda: listbox_logic.copy_selected_path(app, target="source"))
         app.history_menu.add_separator()
         app.history_menu.add_command(label="Delete: Duplicate", command=app.delete_selected_duplicate_file)
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Remove From History", command=lambda: listbox_logic.remove_selected_history_entry(app))
+    else:
+        app.history_menu.add_command(label="Open", command=app.open_selected_file)
+        app.history_menu.add_command(label="Show in File Explorer", command=app.show_selected_in_explorer)
+        app.history_menu.add_command(label="Copy Path", command=lambda: listbox_logic.copy_selected_path(app, target="default"))
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Delete", command=app.delete_selected_file)
+        app.history_menu.add_separator()
+        app.history_menu.add_command(label="Remove From History", command=lambda: listbox_logic.remove_selected_history_entry(app))
 
 
 #endregion

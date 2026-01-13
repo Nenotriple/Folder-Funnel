@@ -4,6 +4,9 @@
 import os
 
 # Standard GUI
+import tkinter as tk
+
+# Standard GUI
 from tkinter import filedialog
 
 # Third-Party
@@ -43,6 +46,11 @@ def select_working_dir(app: 'Main', path=None):
         path = os.path.normpath(path)
     if os.path.exists(path):
         app.source_dir_var.set(path)
+        # Track last-used directory for settings persistence + startup prompt
+        try:
+            app.last_working_directory = path
+        except Exception:
+            pass
         app.dir_entry_tooltip.config(text=path)
         app.log(f"\nSelected source folder: {path}\n", mode="system", verbose=1)
 
@@ -106,9 +114,22 @@ def clear_log(app: 'Main'):
 
 def clear_history(app: 'Main'):
     """Clear the history listbox and the underlying history list."""
-    app.history_listbox.delete(0, "end")
-    history_list = listbox_logic.get_history_list(app)
-    history_list.clear()
+    # Clear all history regardless of active mode
+    try:
+        from main.utils import history_manager
+        history_manager.clear(app)
+    except Exception:
+        # Fallback: clear legacy structures
+        try:
+            app.move_history_items.clear()
+            app.duplicate_history_items.clear()
+        except Exception:
+            pass
+    # Refresh the UI if present
+    try:
+        app.refresh_history_listbox()
+    except Exception:
+        pass
 
 
 def toggle_text_wrap(app: 'Main'):
@@ -229,3 +250,97 @@ def update_queue_count(app: 'Main'):
 def get_history_list(app: 'Main'):
     """Get the appropriate history list based on current mode."""
     return listbox_logic.get_history_list(app)
+
+
+def apply_main_pane_layout(app: 'Main', user_action: bool = False) -> None:
+    """Apply main pane orientation/order (Log/History) without rebuilding widgets.
+
+    Args:
+        app: The Main application instance.
+        user_action: If True, captures the current sash position before changing layout.
+            This is useful when the user toggles layout options via the menu.
+    """
+    pane = getattr(app, "main_pane", None)
+    log_frame = getattr(app, "log_pane_frame", None)
+    history_frame = getattr(app, "history_pane_frame", None)
+    if not pane or not log_frame or not history_frame:
+        return
+
+    def _normalize_orient(value) -> str:
+        s = str(value).lower().strip()
+        if s in ("vertical", str(tk.VERTICAL).lower()):
+            return "vertical"
+        return "horizontal"
+
+    def _pane_orient_now() -> str:
+        try:
+            return _normalize_orient(pane.cget("orient"))
+        except Exception:
+            return "horizontal"
+
+    # Capture current sash position only for explicit user actions.
+    try:
+        pane.update_idletasks()
+        cx, cy = pane.sash_coord(0)
+        current_orient = _pane_orient_now()
+        current_pos = int(cx) if current_orient == "horizontal" else int(cy)
+        if user_action or getattr(app, "main_pane_sash_pos", None) is None:
+            app.main_pane_sash_pos = current_pos
+    except Exception:
+        pass
+
+    desired_orient = _normalize_orient(getattr(app, "main_pane_orient_var", tk.StringVar(value="horizontal")).get())
+    desired_order = str(getattr(app, "main_pane_order_var", tk.StringVar(value="log_first")).get()).lower().strip()
+
+    try:
+        pane.configure(orient=tk.VERTICAL if desired_orient == "vertical" else tk.HORIZONTAL)
+    except Exception:
+        # Fallback: best-effort string orient
+        try:
+            pane.configure(orient=desired_orient)
+        except Exception:
+            pass
+
+    # Re-order panes
+    for child in (log_frame, history_frame):
+        try:
+            pane.forget(child)
+        except Exception:
+            pass
+
+    if desired_order == "history_first":
+        pane.add(history_frame, stretch="never")
+        pane.add(log_frame, stretch="always")
+    else:
+        pane.add(log_frame, stretch="always")
+        pane.add(history_frame, stretch="never")
+
+    # Re-apply size constraints (current UX defaults)
+    try:
+        pane.paneconfigure(log_frame, minsize=200, width=400)
+    except Exception:
+        pass
+    try:
+        pane.paneconfigure(history_frame, minsize=200, width=200)
+    except Exception:
+        pass
+
+    # Re-place sash using the single persisted position
+    def _place_sash() -> None:
+        try:
+            pane.update_idletasks()
+            cx, cy = pane.sash_coord(0)
+            pos = getattr(app, "main_pane_sash_pos", None)
+            if pos is None:
+                return
+            if desired_orient == "horizontal":
+                pane.sash_place(0, int(pos), int(cy))
+            else:
+                pane.sash_place(0, int(cx), int(pos))
+        except Exception:
+            return
+
+    try:
+        app.root.after(0, _place_sash)
+    except Exception:
+        _place_sash()

@@ -21,9 +21,7 @@ import tkinter as tk
 from tkinter import ttk, scrolledtext
 
 # Third-party
-import pystray
 import nenotk as ntk
-from PIL import Image
 
 # Custom
 from main.ui import interface
@@ -32,7 +30,11 @@ from main.ui import interface_logic
 from main.utils import move_queue
 from main.utils import folder_watcher
 from main.utils import duplicate_handler
+from main.utils import fast_discovery
 from main.utils import settings_manager
+from main.utils import history_manager
+from main.utils import video_thumbnail
+from main.utils import tray_manager
 
 
 #endregion
@@ -45,6 +47,7 @@ class Main:
         self.initialize_app_variables()
 
 
+
 #endregion
 #region - Variable Registration
 
@@ -52,6 +55,8 @@ class Main:
     def initialize_app_variables(self):
         # tk Variables
         self.source_dir_var = tk.StringVar(value="")  # The source folder
+        self.last_working_directory: str = "" # Persisted working directory (loaded from settings, updated on selection)
+        self._startup_reload_prompt_shown: bool = False # Startup state: ensure we only ask once per session
         self.status_label_var = tk.StringVar(value="Idle")  # App status
         self.status_state = "idle"  # Current status state
         self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
@@ -65,7 +70,7 @@ class Main:
         self.dupe_max_files_var = tk.IntVar(value=75)  # Max files to check for duplicates
         self.dupe_use_partial_hash_var = tk.BooleanVar(value=True)  # Use partial hash for faster initial comparison
         self.dupe_partial_hash_size_var = tk.IntVar(value=4096)  # Size in bytes for partial hash (default 4KB)
-        self.move_queue_length_var = tk.IntVar(value=15000)  # Timer length (ms) for move queue
+        self.move_queue_length_var = tk.IntVar(value=1000)  # Timer length (ms) for move queue
         self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
         self.log_verbosity_var = tk.IntVar(value=1)  # Log verbosity level (1-4): 1=Essential, 2=Extended, 3=Detailed, 4=Debug
         self.history_mode_var = tk.StringVar(value="All")  # History display mode ("All", "Moved", "Duplicate")
@@ -76,7 +81,18 @@ class Main:
         self.auto_extract_zip_var = tk.BooleanVar(value=False)  # Automatically extract zip files in the funnel folder
         self.auto_delete_zip_var = tk.BooleanVar(value=False)  # Delete zip files after extraction
         self.overwrite_on_conflict_var = tk.BooleanVar(value=False)  # Overwrite files with the same name in the source folder
-        self.minimize_to_tray_var = tk.BooleanVar(value=False)  # Minimize to system tray instead of closing
+
+        # Fast discovery (Windows NTFS USN / fallback scan). Default ON on Windows.
+        self.fast_discovery_enabled_var = tk.BooleanVar(value=(sys.platform == "win32"))
+
+        self.minimize_to_tray_var = tk.BooleanVar(value=True)  # Minimize to system tray instead of closing
+        self.minimize_to_tray_show_close_tip_var = tk.BooleanVar(value=True) # When minimize-to-tray is enabled, optionally show a one-time tip on first close.
+        self._minimize_to_tray_close_tip_shown: bool = False # Session flag for whether the close tip has been shown
+
+        # Desktop notifications (default ON). Independent of minimize-to-tray.
+        self.notifications_enabled_var = tk.BooleanVar(value=True)
+        self._last_notification_ms: float = 0.0
+        self._tray_status_text: str = "Idle"
 
         # System tray
         self.tray_icon = None  # pystray Icon instance
@@ -92,13 +108,31 @@ class Main:
         self.text_search: Optional[ntk.FindReplaceEntry] = None
         self.text_log: Optional[scrolledtext.ScrolledText] = None
         self.text_log_hscroll: Optional[ttk.Scrollbar] = None
+        self.main_pane: Optional[tk.PanedWindow] = None
+        self.main_pane_sash_x: Optional[int] = None
+        self.main_pane_default_sash_x: Optional[int] = None
+        # Main pane layout (Log + History)
+        self.main_pane_orient_var = tk.StringVar(value="vertical")  # "horizontal" or "vertical"
+        self.main_pane_order_var = tk.StringVar(value="history_first")  # "log_first" or "history_first"
+        self.main_pane_sash_pos: Optional[int] = 475  # x if horizontal, y if vertical
+        self.log_pane_frame: Optional[tk.Frame] = None
+        self.history_pane_frame: Optional[tk.Frame] = None
         self.history_menubutton: Optional[ttk.Menubutton] = None
         self.history_listbox: Optional[tk.Listbox] = None
         self.history_menu: Optional[tk.Menu] = None
+        self.history_header_menu: Optional[tk.Menu] = None
         self.history_zoom = None  # PopUpZoom instance for history preview
         self.history_zoom_current_path: str = ""
         self.file_menu: Optional[tk.Menu] = None
         self.queue_progressbar: Optional[ttk.Progressbar] = None
+
+        # Media thumbnails (video via ffmpeg)
+        self.ffmpeg_available: bool = False
+        self.ffmpeg_path: str = ""
+
+        # Window geometry persistence
+        self.window_geometry: str | None = None  # Persisted geometry string (e.g. "1000x480+10+10")
+        self.default_window_geometry: str | None = None  # Session default geometry (used for Reset)
 
         # App Path
         self.app_path = self.get_app_path()  # The application folder
@@ -116,6 +150,31 @@ class Main:
 
         # History
         self.max_history_entries = 100  # Maximum number of history items to store
+
+        # History (rich entries)
+        self.history_entries = {}  # {id: entry_dict}
+        self.history_order = []  # [id] chronological
+        self.history_entry_counter = 0
+
+        # History (Treeview UI state)
+        self.history_columns = ("time", "type", "name", "rel", "action")
+        self.history_column_labels = {
+            "time": "Time",
+            "type": "Type",
+            "name": "Name",
+            "rel": "Relative",
+            "action": "Action",
+        }
+        self.history_column_visible_vars = {c: tk.BooleanVar(value=True) for c in self.history_columns}
+        # Match shipped defaults: hide Action column by default
+        try:
+            self.history_column_visible_vars["action"].set(False)
+        except Exception:
+            pass
+        # Name column cannot be disabled
+        self.history_column_visible_vars["name"].set(True)
+        self.history_sort_column: str | None = "name"
+        self.history_sort_desc: bool = False
 
         # History items and count
         self.move_history_items = {}  # Store history of moved files and their final path as {filename: {"path": source_path, "order": int}}
@@ -166,6 +225,11 @@ class Main:
 
     def set_status(self, state: str, message: str | None = None):
         interface_logic.set_status(self, state, message)
+        # Cache for tray thread (avoid reading Tk vars from pystray thread)
+        try:
+            self._tray_status_text = str(self.status_label_var.get())
+        except Exception:
+            pass
 
     def toggle_text_wrap(self):
         interface_logic.toggle_text_wrap(self)
@@ -185,6 +249,9 @@ class Main:
     def update_queue_count(self):
         interface_logic.update_queue_count(self)
 
+    def apply_main_pane_layout(self, user_action: bool = False):
+        interface_logic.apply_main_pane_layout(self, user_action=user_action)
+
     def get_history_list(self):
         return interface_logic.get_history_list(self)
 
@@ -195,6 +262,15 @@ class Main:
 
     def clear_history(self):
         interface_logic.clear_history(self)
+
+    def add_history_moved(self, dest_path: str, rel_path: str, action: str = "Moved"):
+        history_manager.add_moved(self, dest_path=dest_path, rel_path=rel_path, action=action)
+
+    def add_history_duplicate(self, rel_path: str, source_path: str, duplicate_path: str, action: str):
+        history_manager.add_duplicate(self, rel_path=rel_path, source_path=source_path, duplicate_path=duplicate_path, action=action)
+
+    def remove_history_entry(self, entry_id: str):
+        history_manager.remove_entry(self, entry_id)
 
     def toggle_history_mode(self):
         listbox_logic.toggle_history_mode(self)
@@ -249,6 +325,15 @@ class Main:
 
     def toggle_history_preview(self):
         listbox_logic.toggle_history_preview(self)
+
+    def toggle_history_column(self, column: str):
+        listbox_logic.toggle_history_column(self, column)
+
+    def apply_history_column_visibility(self):
+        listbox_logic.apply_history_column_visibility(self)
+
+    def sort_history_by_column(self, column: str):
+        listbox_logic.sort_history_by_column(self, column)
 
 
 #endregion
@@ -307,29 +392,76 @@ class Main:
 
 
     def count_folders_and_files(self):
-        """Count the number of folders and files in the source folder, updating the progress bar."""
-        # Prevent re-entry if already counting
+        """Count the number of folders and files in the source folder.
+
+        Thread safety:
+            - This starts a background worker.
+            - UI updates are marshaled via root.after().
+
+        Notes:
+            Folder-Funnel relies on counts for informational UI; the live observers
+            maintain deltas via adjust_counts().
+        """
         if getattr(self, '_counting_in_progress', False):
             return
+        source_path = (self.source_dir_var.get() or "").strip()
+        if not source_path or not os.path.exists(source_path):
+            return
         self._counting_in_progress = True
-        try:
-            folder_count = 0
-            file_count = 0
-            i = 0
-            for root_dir, dirs, files in os.walk(self.source_dir_var.get()):
-                folder_count += len(dirs)
-                file_count += len(files)
-                i += 1
-                if i % 20 == 0:
-                    self.foldercount_var.set(f"Folders: {ntk.number_commas(folder_count)}")
-                    self.filecount_var.set(f"Files: {ntk.number_commas(file_count)}")
-                    self.root.update_idletasks()
-            self.folder_count = folder_count
-            self.file_count = file_count
-            self.foldercount_var.set(f"Folders: {ntk.number_commas(folder_count)}")
-            self.filecount_var.set(f"Files: {ntk.number_commas(file_count)}")
-        finally:
+
+        def _ui_set_counts(folder_count: int, file_count: int) -> None:
+            self.folder_count = int(folder_count)
+            self.file_count = int(file_count)
+            self.foldercount_var.set(f"Folders: {ntk.number_commas(self.folder_count)}")
+            self.filecount_var.set(f"Files: {ntk.number_commas(self.file_count)}")
+
+        def _ui_done() -> None:
             self._counting_in_progress = False
+
+        def _worker() -> None:
+            try:
+                if self.fast_discovery_enabled_var.get() and self.fast_discovery_available(path=source_path):
+                    folder_count, file_count = fast_discovery.get_counts_via_mft(source_path)
+                    self.root.after(0, lambda: _ui_set_counts(folder_count, file_count))
+                else:
+                    # Safe, portable scan with periodic UI updates.
+                    folder_count = 0
+                    file_count = 0
+                    i = 0
+                    for _root_dir, dirs, files in os.walk(source_path):
+                        folder_count += len(dirs)
+                        file_count += len(files)
+                        i += 1
+                        if i % 50 == 0:
+                            self.root.after(0, lambda fc=folder_count, fic=file_count: _ui_set_counts(fc, fic))
+                    self.root.after(0, lambda: _ui_set_counts(folder_count, file_count))
+            finally:
+                self.root.after(0, _ui_done)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+
+    def fast_discovery_available(self, path: str | None = None) -> bool:
+        """Return True when a fast discovery backend is available for path."""
+        try:
+            target = (path or self.source_dir_var.get() or "").strip()
+            if not target:
+                return False
+            mode = fast_discovery.detect_volume_support(target)
+            return mode in ("usn_journal", "ntfs_mft")
+        except Exception:
+            return False
+
+
+    def enumerate_with_fast_discovery(self, root_path: str, on_batch, include_dirs: bool = True, batch_size: int = 1000):
+        """Enumerate paths on a worker thread and deliver batches on the UI thread."""
+        def _worker() -> None:
+            try:
+                fast_discovery.enumerate_paths_via_mft(root_path, include_dirs=include_dirs, batch_size=batch_size, batch_callback=lambda batch: self.root.after(0, lambda b=batch: on_batch(b)))
+            except Exception:
+                # Fail safe: nothing to enumerate.
+                return
+        threading.Thread(target=_worker, daemon=True).start()
 
 
     def adjust_counts(self, folder_delta=0, file_delta=0):
@@ -353,6 +485,7 @@ class Main:
     def load_and_apply_settings(self):
         settings_manager.load_settings(self)
         settings_manager.apply_settings_to_ui(self)
+        self.check_ffmpeg()
 
 
     def save_settings(self):
@@ -383,9 +516,22 @@ class Main:
         self.root.minsize(WINDOW_MIN_WIDTH, WINDOW_MIN_HEIGHT)
         self.root.geometry(f'{WINDOW_WIDTH}x{WINDOW_HEIGHT}')
         ntk.center_window(self.root, to='screen')
+        # Capture the app's default geometry
+        try:
+            self.root.update_idletasks()
+            self.default_window_geometry = self.root.winfo_geometry()
+        except Exception:
+            self.default_window_geometry = None
         self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
-        # Load settings
-        self.root.after(100, lambda: self.load_and_apply_settings())
+
+
+    def check_ffmpeg(self) -> bool:
+        """Detect whether ffmpeg is available and prepare thumbnail cache."""
+        path = video_thumbnail.find_ffmpeg() or ""
+        self.ffmpeg_path = path
+        self.ffmpeg_available = bool(path)
+        self.log(f"ffmpeg discovery: path='{path}', available={self.ffmpeg_available}", mode="system", verbose=4)
+        return self.ffmpeg_available
 
 
     def set_appid(self):
@@ -415,16 +561,7 @@ class Main:
 
 
     def on_closing(self):
-        """Handle window close - minimize to tray or exit."""
-        if self.minimize_to_tray_var.get():
-            confirm = ntk.askyesnocancel("Minimize to Tray", "Minimize Folder-Funnel to the system tray?", detail="You can restore it later from the tray icon.", yes_text="Minimize", no_text="Cancel", cancel_text="Close Window")
-            if confirm is None: # User cancelled
-                self.exit_application()
-            elif confirm: # User confirmed
-                self.minimize_to_tray()
-            # User declined - do nothing
-        else:
-            self.exit_application()
+        tray_manager.on_closing(self)
 
 
     def exit_application(self):
@@ -440,60 +577,40 @@ class Main:
 
 
     def minimize_to_tray(self):
-        """Minimize the application to the system tray."""
-        self.log("Minimized to system tray", mode="system", verbose=2)
-        self.root.withdraw()
-        self.start_tray_icon()
+        tray_manager.minimize_to_tray(self)
 
 
     def reveal_from_tray(self):
-        """Restore the application window from the system tray."""
-        self.stop_tray_icon()
-        self.root.deiconify()
-        self.root.lift()
-        self.root.focus_force()
-        self.log("Restored from system tray", mode="system", verbose=2)
+        tray_manager.reveal_from_tray(self)
+
+
+    def notify(self, message: str, title: str = "Folder-Funnel") -> None:
+        tray_manager.notify(self, message=message, title=title)
 
 
     def start_tray_icon(self):
-        """Start the system tray icon."""
-        menu = pystray.Menu(
-            pystray.MenuItem("Reveal Folder-Funnel", lambda: self.root.after(0, self.reveal_from_tray), default=True),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem(lambda item: self.status_label_var.get(), None, enabled=False),
-            pystray.Menu.SEPARATOR,
-            pystray.MenuItem("Exit Folder-Funnel", lambda: self.root.after(0, self._tray_exit)),
-        )
-        # Load icon image
-        if os.path.exists(self.icon_path):
-            icon_image = Image.open(self.icon_path)
-        else:
-            # Fallback: create a simple colored icon
-            icon_image = Image.new('RGB', (64, 64), color='blue')
-        # Create and run tray icon
-        self.tray_icon = pystray.Icon("Folder-Funnel", icon_image, "Folder-Funnel", menu)
-        self.tray_thread = threading.Thread(target=self.tray_icon.run, daemon=True)
-        self.tray_thread.start()
+        tray_manager.start_tray_icon(self)
 
 
     def stop_tray_icon(self):
-        """Stop and remove the system tray icon."""
-        if self.tray_icon:
-            self.tray_icon.stop()
-            self.tray_icon = None
-            self.tray_thread = None
+        tray_manager.stop_tray_icon(self)
 
 
     def _tray_exit(self):
-        """Exit from tray - restore window first then exit."""
         self.stop_tray_icon()
         self.root.deiconify()
         self.exit_application()
 
 
-# Run the application
-root = tk.Tk()
-app = Main(root)
-interface.create_interface(app)
-app.setup_window()
-root.mainloop()
+def main() -> None:
+    """Entry point for running the GUI app."""
+    root = tk.Tk()
+    app = Main(root)
+    interface.create_interface(app)
+    app.setup_window()
+    app.root.after(100, lambda: app.load_and_apply_settings())
+    root.mainloop()
+
+
+if __name__ == "__main__":
+    main()

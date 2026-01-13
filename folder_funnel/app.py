@@ -54,38 +54,35 @@ class Main:
 
     def initialize_app_variables(self):
         # tk Variables
-        self.source_dir_var = tk.StringVar(value="")  # The source folder
+        self.source_dir_var = tk.StringVar(value="") # The source folder
         self.last_working_directory: str = "" # Persisted working directory (loaded from settings, updated on selection)
         self._startup_reload_prompt_shown: bool = False # Startup state: ensure we only ask once per session
-        self.status_label_var = tk.StringVar(value="Idle")  # App status
+        self.status_label_var = tk.StringVar(value="Idle") # App status
         self.status_state = "idle"  # Current status state
-        self.foldercount_var = tk.StringVar(value="Folders: 0")  # Folder count of source folder
-        self.filecount_var = tk.StringVar(value="Files: 0")  # File count of source folder
-        self.movecount_var = tk.StringVar(value="Moved: 0")  # Number of files moved to source folder
-        self.dupecount_var = tk.StringVar(value="Duplicates: 0")  # Display variable for duplicate count
-        self.queuecount_var = tk.StringVar(value="Queue: 0")  # Number of files in the move queue
-        self.dupe_handle_mode_var = tk.StringVar(value="Move")  # Method for handling duplicates ("Delete", "Move")
-        self.dupe_filter_mode_var = tk.StringVar(value="Flexible")  # Method for finding similar files to check ("Flexible", "Strict")
-        self.dupe_check_mode_var = tk.StringVar(value="Similar")  # Additional MD5 check criteria ("Similar", "Single")
-        self.dupe_max_files_var = tk.IntVar(value=75)  # Max files to check for duplicates
-        self.dupe_use_partial_hash_var = tk.BooleanVar(value=True)  # Use partial hash for faster initial comparison
-        self.dupe_partial_hash_size_var = tk.IntVar(value=4096)  # Size in bytes for partial hash (default 4KB)
-        self.move_queue_length_var = tk.IntVar(value=1000)  # Timer length (ms) for move queue
-        self.text_log_wrap_var = tk.BooleanVar(value=True)  # Wrap text in log window
-        self.log_verbosity_var = tk.IntVar(value=1)  # Log verbosity level (1-4): 1=Essential, 2=Extended, 3=Detailed, 4=Debug
-        self.history_mode_var = tk.StringVar(value="All")  # History display mode ("All", "Moved", "Duplicate")
-        self.history_image_preview_var = tk.BooleanVar(value=True)  # Enable hover preview for image history items
-        self.log_prefix_filter_var = tk.BooleanVar(value=True)  # Show log prefix (True=show, False=hide)
-        self.ignore_firefox_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files created by Firefox
-        self.ignore_temp_files_var = tk.BooleanVar(value=True)  # Ignore temporary files in the funnel folder
-        self.auto_extract_zip_var = tk.BooleanVar(value=False)  # Automatically extract zip files in the funnel folder
-        self.auto_delete_zip_var = tk.BooleanVar(value=False)  # Delete zip files after extraction
-        self.overwrite_on_conflict_var = tk.BooleanVar(value=False)  # Overwrite files with the same name in the source folder
-
-        # Fast discovery (Windows NTFS USN / fallback scan). Default ON on Windows.
-        self.fast_discovery_enabled_var = tk.BooleanVar(value=(sys.platform == "win32"))
-
-        self.minimize_to_tray_var = tk.BooleanVar(value=True)  # Minimize to system tray instead of closing
+        self.foldercount_var = tk.StringVar(value="Folders: 0") # Folder count of source folder
+        self.filecount_var = tk.StringVar(value="Files: 0") # File count of source folder
+        self.movecount_var = tk.StringVar(value="Moved: 0") # Number of files moved to source folder
+        self.dupecount_var = tk.StringVar(value="Duplicates: 0") # Display variable for duplicate count
+        self.queuecount_var = tk.StringVar(value="Queue: 0") # Number of files in the move queue
+        self.dupe_handle_mode_var = tk.StringVar(value="Move") # Method for handling duplicates ("Delete", "Move")
+        self.dupe_filter_mode_var = tk.StringVar(value="Flexible") # Method for finding similar files to check ("Flexible", "Strict")
+        self.dupe_check_mode_var = tk.StringVar(value="Similar") # Additional MD5 check criteria ("Similar", "Single")
+        self.dupe_max_files_var = tk.IntVar(value=75) # Max files to check for duplicates
+        self.dupe_use_partial_hash_var = tk.BooleanVar(value=True) # Use partial hash for faster initial comparison
+        self.dupe_partial_hash_size_var = tk.IntVar(value=4096) # Size in bytes for partial hash (default 4KB)
+        self.move_queue_length_var = tk.IntVar(value=1000) # Timer length (ms) for move queue
+        self.text_log_wrap_var = tk.BooleanVar(value=True) # Wrap text in log window
+        self.log_verbosity_var = tk.IntVar(value=1) # Log verbosity level (1-4): 1=Essential, 2=Extended, 3=Detailed, 4=Debug
+        self.history_mode_var = tk.StringVar(value="All") # History display mode ("All", "Moved", "Duplicate")
+        self.history_image_preview_var = tk.BooleanVar(value=True) # Enable hover preview for image history items
+        self.log_prefix_filter_var = tk.BooleanVar(value=True) # Show log prefix (True=show, False=hide)
+        self.ignore_firefox_temp_files_var = tk.BooleanVar(value=True) # Ignore temporary files created by Firefox
+        self.ignore_temp_files_var = tk.BooleanVar(value=True) # Ignore temporary files in the funnel folder
+        self.auto_extract_zip_var = tk.BooleanVar(value=False) # Automatically extract zip files in the funnel folder
+        self.auto_delete_zip_var = tk.BooleanVar(value=False) # Delete zip files after extraction
+        self.overwrite_on_conflict_var = tk.BooleanVar(value=False) # Overwrite files with the same name in the source folder
+        self.fast_discovery_enabled_var = tk.BooleanVar(value=True) # Fast discovery (Windows NTFS USN / fallback scan).
+        self.minimize_to_tray_var = tk.BooleanVar(value=True) # Minimize to system tray instead of closing
         self.minimize_to_tray_show_close_tip_var = tk.BooleanVar(value=True) # When minimize-to-tray is enabled, optionally show a one-time tip on first close.
         self._minimize_to_tray_close_tip_shown: bool = False # Session flag for whether the close tip has been shown
 
@@ -112,8 +109,8 @@ class Main:
         self.main_pane_sash_x: Optional[int] = None
         self.main_pane_default_sash_x: Optional[int] = None
         # Main pane layout (Log + History)
-        self.main_pane_orient_var = tk.StringVar(value="vertical")  # "horizontal" or "vertical"
-        self.main_pane_order_var = tk.StringVar(value="history_first")  # "log_first" or "history_first"
+        self.main_pane_orient_var = tk.StringVar(value="vertical") # "horizontal" or "vertical"
+        self.main_pane_order_var = tk.StringVar(value="history_first") # "log_first" or "history_first"
         self.main_pane_sash_pos: Optional[int] = 475  # x if horizontal, y if vertical
         self.log_pane_frame: Optional[tk.Frame] = None
         self.history_pane_frame: Optional[tk.Frame] = None
@@ -135,7 +132,7 @@ class Main:
         self.default_window_geometry: str | None = None  # Session default geometry (used for Reset)
 
         # App Path
-        self.app_path = self.get_app_path()  # The application folder
+        self.app_path = self.get_app_path() # The application folder
         self.icon_path = ""  # Path to the application icon
 
         # Funnel and Duplicate Folders

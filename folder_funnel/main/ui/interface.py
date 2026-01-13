@@ -85,32 +85,12 @@ def _create_view_menu(app: 'Main', menubar: tk.Menu):
     layout_menu = tk.Menu(view_menu, tearoff=0)
     view_menu.add_cascade(label="Layout", menu=layout_menu)
     layout_menu.add_command(label="Layout Orientation", state="disabled")
-    layout_menu.add_radiobutton(
-        label="Side-by-side (Log | History)",
-        variable=app.main_pane_orient_var,
-        value="horizontal",
-        command=lambda: app.apply_main_pane_layout(user_action=True),
-    )
-    layout_menu.add_radiobutton(
-        label="Vertical (Top / Bottom)",
-        variable=app.main_pane_orient_var,
-        value="vertical",
-        command=lambda: app.apply_main_pane_layout(user_action=True),
-    )
+    layout_menu.add_radiobutton(label="Side-by-side (Log | History)", variable=app.main_pane_orient_var, value="horizontal", command=lambda: app.apply_main_pane_layout(user_action=True))
+    layout_menu.add_radiobutton(label="Vertical (Top / Bottom)", variable=app.main_pane_orient_var, value="vertical", command=lambda: app.apply_main_pane_layout(user_action=True))
     layout_menu.add_separator()
     layout_menu.add_command(label="Layout Order", state="disabled")
-    layout_menu.add_radiobutton(
-        label="Log First (Left/Top)",
-        variable=app.main_pane_order_var,
-        value="log_first",
-        command=lambda: app.apply_main_pane_layout(user_action=True),
-    )
-    layout_menu.add_radiobutton(
-        label="History First (Left/Top)",
-        variable=app.main_pane_order_var,
-        value="history_first",
-        command=lambda: app.apply_main_pane_layout(user_action=True),
-    )
+    layout_menu.add_radiobutton(label="Log First (Left/Top)", variable=app.main_pane_order_var, value="log_first", command=lambda: app.apply_main_pane_layout(user_action=True))
+    layout_menu.add_radiobutton(label="History First (Left/Top)", variable=app.main_pane_order_var, value="history_first", command=lambda: app.apply_main_pane_layout(user_action=True))
     view_menu.add_separator()
     # History Options
     view_menu.add_checkbutton(label="History: Image Preview on Hover", variable=app.history_image_preview_var, command=app.toggle_history_preview)

@@ -163,6 +163,7 @@ REM ==============================================
 
 :LogOK
     echo %COLOR_OK%[OK] %~1%COLOR_RESET%
+    echo.
     goto :EOF
 
 

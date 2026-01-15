@@ -36,7 +36,6 @@ def start_folder_watcher(app: 'Main', auto_start=False):
     # Show activity during initialization (non-blocking)
     app.set_status("busy", "Counting files...")
     app.toggle_widgets_state(state="running")
-
     # Cancellation token for overlapping starts/stops
     init_token = object()
     app._init_run_token = init_token
@@ -61,7 +60,6 @@ def start_folder_watcher(app: 'Main', auto_start=False):
                     return fast_discovery.get_counts_via_mft(source_path)
         except Exception:
             pass
-
         folder_count = 0
         file_count = 0
         i = 0
@@ -93,30 +91,18 @@ def start_folder_watcher(app: 'Main', auto_start=False):
         if not existing_files:
             return
         file_count_str = ntk.number_commas(len(existing_files))
-        message = (
-            f"Found {file_count_str} pre-existing file{'s' if len(existing_files) != 1 else ''} in the funnel folder.\n\n"
-            f"Would you like to add {'them' if len(existing_files) != 1 else 'it'} to the move queue for processing?"
-        )
+        message = (f"Found {file_count_str} pre-existing file{'s' if len(existing_files) != 1 else ''} in the funnel folder.\n\n" f"Would you like to add {'them' if len(existing_files) != 1 else 'it'} to the move queue for processing?")
         confirm = ntk.askyesno("Pre-existing Files Found", message)
         if confirm:
             for file_path in existing_files:
                 if file_path not in app.move_queue:
                     app.move_queue.append(file_path)
             app.update_queue_count()
-            app.log(
-                f"Added {file_count_str} pre-existing file{'s' if len(existing_files) != 1 else ''} to the move queue",
-                mode="info",
-                verbose=2,
-            )
+            app.log(f"Added {file_count_str} pre-existing file{'s' if len(existing_files) != 1 else ''} to the move queue", mode="info", verbose=2)
             from .move_queue import start_queue
-
             start_queue(app)
         else:
-            app.log(
-                f"Ignored {file_count_str} pre-existing file{'s' if len(existing_files) != 1 else ''} in the funnel folder",
-                mode="info",
-                verbose=2,
-            )
+            app.log(f"Ignored {file_count_str} pre-existing file{'s' if len(existing_files) != 1 else ''} in the funnel folder", mode="info", verbose=2)
 
     def _finalize_startup(existing_files: list[str]) -> None:
         if _is_cancelled():
@@ -137,7 +123,6 @@ def start_folder_watcher(app: 'Main', auto_start=False):
             source_path = app.source_dir_var.get()
             if not source_path or not os.path.exists(source_path):
                 return
-
             folder_count, file_count = _compute_counts(source_path)
             if _is_cancelled():
                 return
@@ -148,19 +133,16 @@ def start_folder_watcher(app: 'Main', auto_start=False):
                 app.file_count = int(file_count)
             except Exception:
                 pass
-
             _ui(app.set_status, "busy", "Syncing folders...")
             # Synchronous sync on this worker thread (UI updates marshaled internally)
             sync_funnel_folders(app, silent="initial")
             if _is_cancelled():
                 return
-
             # Scan for pre-existing files (worker thread), prompt on UI thread
             existing_files = _scan_existing_files(getattr(app, "funnel_dir", ""))
             _ui(_finalize_startup, existing_files)
         except Exception as exc:
             _ui_log(f"Startup initialization failed: {exc}", mode="warning", verbose=1)
-
     threading.Thread(target=_worker, daemon=True).start()
 
 
@@ -265,7 +247,6 @@ def sync_funnel_folders(app: 'Main', silent=False):
         os.makedirs(app.funnel_dir, exist_ok=True)
         if not silent:
             _ui(app.log, "Initializing synced folder...", mode="system", verbose=2)
-
         # Create directories in funnel: prefer fast discovery when enabled.
         def _process_dirs_batch(batch: list[str]) -> None:
             nonlocal counter_created
@@ -284,7 +265,6 @@ def sync_funnel_folders(app: 'Main', silent=False):
                 item_counter += 1
                 if item_counter % 50 == 0:
                     _ui(_ui_tick)
-
         use_fast = False
         try:
             if getattr(app, "fast_discovery_enabled_var", None) is not None and app.fast_discovery_enabled_var.get():
@@ -292,14 +272,8 @@ def sync_funnel_folders(app: 'Main', silent=False):
                     use_fast = True
         except Exception:
             use_fast = False
-
         if use_fast:
-            fast_discovery.enumerate_paths_via_mft(
-                source_path,
-                include_dirs=True,
-                batch_size=2000,
-                batch_callback=_process_dirs_batch,
-            )
+            fast_discovery.enumerate_paths_via_mft(source_path, include_dirs=True, batch_size=2000, batch_callback=_process_dirs_batch)
         else:
             # Fallback: walk source and mirror directories.
             batch: list[str] = []
@@ -310,7 +284,6 @@ def sync_funnel_folders(app: 'Main', silent=False):
                     batch = []
             if batch:
                 _process_dirs_batch(batch)
-
         # Remove stale dirs from funnel (best-effort)
         item_counter = 0
         for dirpath, _dirnames, _filenames in os.walk(app.funnel_dir, topdown=False):
@@ -326,24 +299,13 @@ def sync_funnel_folders(app: 'Main', silent=False):
             item_counter += 1
             if item_counter % 200 == 0:
                 _ui(_ui_tick)
-
         if silent in [False, "semi"]:
-            _ui(
-                app.log,
-                f"Sync complete: Created {ntk.number_commas(counter_created)}, removed {ntk.number_commas(counter_removed)} directories",
-                mode="system",
-                verbose=2,
-            )
+            _ui(app.log, f"Sync complete: Created {ntk.number_commas(counter_created)}, removed {ntk.number_commas(counter_removed)} directories", mode="system", verbose=2)
         elif silent == "initial":
             try:
                 folder_count = re.split(" ", app.foldercount_var.get())
                 file_count = re.split(" ", app.filecount_var.get())
-                _ui(
-                    app.log,
-                    f"Watching: {ntk.number_commas(folder_count[1])} folders and {ntk.number_commas(file_count[1])} files",
-                    mode="system",
-                    verbose=2,
-                )
+                _ui(app.log, f"Watching: {ntk.number_commas(folder_count[1])} folders and {ntk.number_commas(file_count[1])} files", mode="system", verbose=2)
             except Exception:
                 pass
     except Exception as e:
@@ -352,43 +314,6 @@ def sync_funnel_folders(app: 'Main', silent=False):
     finally:
         _ui(app.queue_progressbar.__setitem__, 'value', 0)
         _ui(app.queue_progressbar.configure, mode="determinate")
-
-
-def _scan_for_existing_files(app: 'Main'):
-    """Scan the funnel folder for existing files and optionally queue them for processing"""
-    if not app.funnel_dir or not os.path.exists(app.funnel_dir):
-        return
-    existing_files = []
-    # Walk through the funnel folder to find all existing files
-    for dirpath, dirnames, filenames in os.walk(app.funnel_dir):
-        for filename in filenames:
-            file_path = os.path.join(dirpath, filename)
-            # Apply same filtering logic as the regular queue system
-            from .move_queue import _should_process_firefox_temp_files, _is_temp_file
-            # Check if file should be processed based on Firefox temp files setting
-            if not _should_process_firefox_temp_files(app, file_path):
-                continue
-            # Check if the file is a temporary file that should be ignored
-            if app.ignore_temp_files_var.get() and _is_temp_file(app, file_path):
-                continue
-            existing_files.append(file_path)
-    # If files exist, ask user what to do
-    if existing_files:
-        file_count = ntk.number_commas(len(existing_files))
-        message = f"Found {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder.\n\nWould you like to add {'them' if file_count != 1 else 'it'} to the move queue for processing?"
-        confirm = ntk.askyesno("Pre-existing Files Found", message)
-        if confirm:
-            # Add files to the move queue
-            for file_path in existing_files:
-                if file_path not in app.move_queue:
-                    app.move_queue.append(file_path)
-            app.update_queue_count()
-            app.log(f"Added {file_count} pre-existing file{'s' if file_count != 1 else ''} to the move queue", mode="info", verbose=2)
-            # Start the queue timer to process these files
-            from .move_queue import start_queue
-            start_queue(app)
-        else:
-            app.log(f"Ignored {file_count} pre-existing file{'s' if file_count != 1 else ''} in the funnel folder", mode="info", verbose=2)
 
 
 #endregion

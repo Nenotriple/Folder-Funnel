@@ -141,7 +141,8 @@ def get_video_thumbnail_jpeg_bytes(
         "pipe:1",
     ]
     try:
-        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, timeout=timeout_s)
+        creationflags = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=False, timeout=timeout_s, creationflags=creationflags)
         data = proc.stdout or b""
     except Exception:
         return None

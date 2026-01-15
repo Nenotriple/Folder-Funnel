@@ -5,6 +5,7 @@
 import io
 import os
 import re
+import subprocess
 import threading
 
 # Third-Party
@@ -357,7 +358,17 @@ def _perform_history_action(app: 'Main', target: str, action: str):
         os.startfile(filepath)
         return
     if action == "explore":
-        os.system(f'explorer /select,"{filepath}"')
+        try:
+            subprocess.Popen(
+                ["explorer", "/select,", filepath],
+                creationflags=subprocess.CREATE_NO_WINDOW,
+            )
+        except Exception:
+            # Fallback to os.startfile on the containing folder
+            try:
+                os.startfile(os.path.dirname(filepath))
+            except Exception:
+                pass
         return
     if action == "delete":
         prompt = _delete_prompt(target, item_type)

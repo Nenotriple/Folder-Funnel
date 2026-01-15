@@ -445,7 +445,7 @@ class Main:
             if not target:
                 return False
             mode = fast_discovery.detect_volume_support(target)
-            return mode in ("usn_journal", "ntfs_mft")
+            return mode != "unsupported"
         except Exception:
             return False
 

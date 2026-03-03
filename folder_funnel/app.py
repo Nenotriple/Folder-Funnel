@@ -552,9 +552,21 @@ class Main:
 
     def get_data_path(self):
         if getattr(sys, 'frozen', False):
-            return os.path.dirname(sys.executable)
-        else:
-            return os.path.dirname(__file__)
+            appdata = os.environ.get('APPDATA', '').strip()
+            localappdata = os.environ.get('LOCALAPPDATA', '').strip()
+            base_dir = appdata or localappdata
+            if not base_dir:
+                try:
+                    base_dir = os.path.expanduser('~')
+                except Exception:
+                    base_dir = os.path.dirname(sys.executable)
+            data_dir = os.path.join(base_dir, 'Folder-Funnel')
+            try:
+                os.makedirs(data_dir, exist_ok=True)
+            except Exception:
+                return os.path.dirname(sys.executable)
+            return data_dir
+        return os.path.dirname(__file__)
 
 
     def on_closing(self):

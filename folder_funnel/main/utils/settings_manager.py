@@ -133,6 +133,10 @@ def save_settings(app: 'Main'):
 def load_settings(app: 'Main'):
     """Load application settings from config file."""
     settings_path = os.path.join(app.get_data_path(), 'settings.cfg')
+    if not os.path.exists(settings_path) and getattr(sys, 'frozen', False):
+        legacy_path = os.path.join(os.path.dirname(sys.executable), 'settings.cfg')
+        if os.path.exists(legacy_path):
+            settings_path = legacy_path
     if not os.path.exists(settings_path):
         return False
     cfg = configparser.ConfigParser()

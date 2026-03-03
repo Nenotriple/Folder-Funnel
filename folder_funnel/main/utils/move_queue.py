@@ -456,12 +456,16 @@ def stop_queue(app: 'Main'):
 
 def queue_move_file(app: 'Main', source_path):
     """Add a file or folder to the move queue and start/restart the timer."""
+    queued_any = False
     if os.path.isdir(source_path):
+        before_len = len(app.move_queue)
         _handle_new_folder(app, source_path)
+        queued_any = len(app.move_queue) > before_len
     elif source_path not in app.move_queue:
-        _enqueue_file_if_allowed(app, source_path)
-    # Start or restart the queue timer
-    start_queue(app)
+        queued_any = _enqueue_file_if_allowed(app, source_path)
+    # Start/restart only when new work exists.
+    if queued_any or app.move_queue:
+        start_queue(app)
 
 
 def process_move_queue(app: 'Main'):

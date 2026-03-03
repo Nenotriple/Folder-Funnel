@@ -138,8 +138,14 @@ class FunnelFolderHandler(FileSystemEventHandler):
 
 
     def on_modified(self, event):
-        # We only care about new files, not modifications
-        pass
+        # Some downloads are created as placeholders (e.g., 0-byte/temp) and
+        # become valid only after subsequent writes/rename. Re-queue file
+        # modifications so temp-filtered creations can be picked up later.
+        if event.is_directory:
+            return
+        invalidate_dir_cache(os.path.dirname(event.src_path))
+        if os.path.exists(event.src_path):
+            queue_move_file(self.parent, event.src_path)
 
 
     def on_moved(self, event):

@@ -1,3 +1,11 @@
+# For watching files
 watchdog==6.0.0
+
+# For handling images
 Pillow==11.0.0
-git+https://github.com/Nenotriple/TkToolTip.git@v1.11
+
+# For minimizing to the system tray
+pystray
+
+# My UI helpers
+git+https://github.com/Nenotriple/NenoTk.git@main

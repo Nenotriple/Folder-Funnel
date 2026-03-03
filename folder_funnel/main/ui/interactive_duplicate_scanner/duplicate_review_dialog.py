@@ -8,18 +8,11 @@ from datetime import datetime
 
 # Standard GUI
 import tkinter as tk
-from tkinter import messagebox, ttk, filedialog
+from tkinter import ttk, filedialog
 
 # Third-party
-from TkToolTip import TkToolTip as Tip
-
-# Local imports
-from scalable_image_label import ScalableImageLabel
-
-# Set TkToolTip defaults
-Tip.DELAY = 250
-Tip.PADY = 25
-Tip.ORIGIN = "widget"
+import nenotk as ntk
+from nenotk import ToolTip as Tip
 
 
 #endregion
@@ -65,11 +58,11 @@ class InteractiveDuplicateReviewDialog:
         preview_combo = ttk.Combobox(preview_ctrl, textvariable=self.current_preview_size, values=list(self.preview_sizes.keys()), state="readonly", width=12)
         preview_combo.pack(side="left")
         preview_combo.bind("<<ComboboxSelected>>", self.on_preview_size_changed)
-        Tip(preview_combo, "Change the size of image previews")
+        Tip(widget=preview_combo, text="Change the size of image previews", widget_anchor="sw", pady=2)
         # Fast delete checkbutton
         fast_delete_cb = ttk.Checkbutton(top, text="Fast delete (no confirm/success)", variable=self.fast_delete_var)
         fast_delete_cb.grid(row=0, column=2, sticky="e", padx=(16, 0))
-        Tip(fast_delete_cb, "Delete files immediately without confirmation or success dialogs")
+        Tip(widget=fast_delete_cb, text="Delete files immediately without confirmation or success dialogs", widget_anchor="sw", pady=2)
 
         # --- Center ---
         center = ttk.Frame(self.dialog)
@@ -95,31 +88,24 @@ class InteractiveDuplicateReviewDialog:
         nav.grid(row=0, column=0, sticky="w")
         self.prev_button = ttk.Button(nav, text="◀ Prev", command=self.previous_group, width=10)
         self.prev_button.pack(side="left", padx=2)
-        Tip(self.prev_button, "Go to previous duplicate group")
+        Tip(widget=self.prev_button, text="Go to previous duplicate group", tooltip_anchor="sw", pady=-2)
         self.next_button = ttk.Button(nav, text="Next ▶", command=self.next_group, width=10)
         self.next_button.pack(side="left", padx=2)
-        Tip(self.next_button, "Go to next duplicate group")
+        Tip(widget=self.next_button, text="Go to next duplicate group", tooltip_anchor="sw", pady=-2)
         group_actions = ttk.Frame(bottom)
         group_actions.grid(row=0, column=1, sticky="e")
         skip_btn = ttk.Button(group_actions, text="Skip Group", command=self.skip_group, width=14)
         skip_btn.pack(side="left", padx=(0,4))
-        Tip(skip_btn, "Skip this group and review it later")
+        Tip(widget=skip_btn, text="Skip this group and review it later", tooltip_anchor="sw", pady=-2)
         keep_first_btn = ttk.Button(group_actions, text="Keep First, Delete Rest", command=self.delete_all_but_first, width=22)
         keep_first_btn.pack(side="left", padx=(0,4))
-        Tip(keep_first_btn, "Keep the first file and delete all others in this group")
+        Tip(widget=keep_first_btn, text="Keep the first file and delete all others in this group", tooltip_anchor="sw", pady=-2)
         close_btn = ttk.Button(group_actions, text="Close", command=self.on_close, width=10)
         close_btn.pack(side="left")
-        Tip(close_btn, "Close the duplicate review dialog")
-        self.center_dialog()
+        Tip(widget=close_btn, text="Close the duplicate review dialog", tooltip_anchor="sw", pady=-2)
+        ntk.center_window(self.dialog, to="parent")
+        self.app.log(f"Opened Interactive Review: {len(self.duplicate_groups)} groups", mode="info", verbose=2)
         self.show_current_group()
-
-
-    # --- Dialog positioning ---
-    def center_dialog(self):
-        self.dialog.update_idletasks()
-        x = (self.dialog.winfo_screenwidth() // 2) - (self.dialog.winfo_width() // 2)
-        y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
-        self.dialog.geometry(f"+{x}+{y}")
 
 
     # --- Canvas/scroll handling ---
@@ -193,7 +179,7 @@ class InteractiveDuplicateReviewDialog:
             image_frame = ttk.Frame(side_frame)
             image_frame.grid(row=0, column=0, sticky="nsew", pady=(0, 10))
             try:
-                image_label = ScalableImageLabel(image_frame, width=max_image_width, height=max_image_height, keep_aspect=True)
+                image_label = ntk.ImageScale(image_frame, width=max_image_width, height=max_image_height, keep_aspect=True)
                 image_label.pack(expand=True, fill="both")
                 image_label.set_image(file_path)
                 image_label.configure(cursor="hand2")
@@ -255,7 +241,7 @@ class InteractiveDuplicateReviewDialog:
             rel = rel_path if len(rel_path) <= 40 else "..." + rel_path[-37:]
             rel_label = ttk.Label(parent, text=rel, foreground="gray")
             rel_label.grid(row=2, column=0, sticky="w")
-            Tip(rel_label, rel_path)
+            Tip(widget=rel_label, text=rel_path, tooltip_anchor="sw", pady=-2)
         except (OSError, IOError):
             ttk.Label(parent, text="⚠ Error reading file", foreground="red").grid(row=0, column=0, sticky="w")
 
@@ -263,7 +249,7 @@ class InteractiveDuplicateReviewDialog:
     def create_image_preview_compact(self, parent, file_path):
         try:
             width, height = self.preview_sizes[self.current_preview_size.get()]
-            image_label = ScalableImageLabel(parent, width=width, height=height, keep_aspect=True)
+            image_label = ntk.ImageScale(parent, width=width, height=height, keep_aspect=True)
             image_label.pack()
             image_label.set_image(file_path)
             image_label.configure(cursor="hand2")
@@ -278,13 +264,13 @@ class InteractiveDuplicateReviewDialog:
     def create_action_buttons_compact(self, parent, file_path):
         delete_btn = ttk.Button(parent, text="Delete", command=lambda fp=file_path: self.delete_file(fp))
         delete_btn.pack(side="left", fill="x", expand=True, padx=1)
-        Tip(delete_btn, "Delete this file")
+        Tip(widget=delete_btn, text="Delete this file", tooltip_anchor="sw", pady=-2)
         move_btn = ttk.Button(parent, text="Move", command=lambda fp=file_path: self.move_file(fp))
         move_btn.pack(side="left", fill="x", expand=True, padx=1)
-        Tip(move_btn, "Move this file to another folder")
+        Tip(widget=move_btn, text="Move this file to another folder", tooltip_anchor="sw", pady=-2)
         skip_btn = ttk.Button(parent, text="Skip", command=lambda fp=file_path: self.ignore_file(fp))
         skip_btn.pack(side="left", fill="x", expand=True, padx=1)
-        Tip(skip_btn, "Ignore this file for now")
+        Tip(widget=skip_btn, text="Ignore this file for now", tooltip_anchor="sw", pady=-2)
 
 
     def on_preview_size_changed(self, event=None):
@@ -317,18 +303,20 @@ class InteractiveDuplicateReviewDialog:
             try:
                 os.remove(file_path)
                 self.remove_file_from_group(file_path)
-                self.app.log(f"Deleted duplicate: {filename}")
+                self.app.log(f"Deleted duplicate: {filename}", verbose=1)
             except Exception as e:
-                messagebox.showerror("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
+                self.app.log(f"Failed to delete: {filename} - {str(e)}", mode="error", verbose=1)
+                ntk.showinfo("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
         else:
-            if messagebox.askyesno("Confirm Delete", f"Delete this file?\n\n{filename}", parent=self.dialog):
+            if ntk.askyesno("Confirm Delete", prompt= "Delete file:", detail=filename, parent=self.dialog):
                 try:
                     os.remove(file_path)
                     self.remove_file_from_group(file_path)
-                    self.app.log(f"Deleted duplicate: {filename}")
-                    messagebox.showinfo("Success", f"Deleted: {filename}", parent=self.dialog)
+                    self.app.log(f"Deleted duplicate: {filename}", verbose=1)
+                    ntk.showinfo("Success", f"Deleted: {filename}", parent=self.dialog)
                 except Exception as e:
-                    messagebox.showerror("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
+                    self.app.log(f"Failed to delete: {filename} - {str(e)}", mode="error", verbose=1)
+                    ntk.showinfo("Error", f"Could not delete file:\n{str(e)}", parent=self.dialog)
 
 
     def move_file(self, file_path):
@@ -344,10 +332,11 @@ class InteractiveDuplicateReviewDialog:
                     counter += 1
                 shutil.move(file_path, dest_path)
                 self.remove_file_from_group(file_path)
-                self.app.log(f"Moved duplicate: {filename}")
-                messagebox.showinfo("Success", f"Moved to:\n{os.path.basename(dest_path)}", parent=self.dialog)
+                self.app.log(f"Moved duplicate: {filename}", verbose=1)
+                ntk.showinfo("Success", f"Moved to:\n{os.path.basename(dest_path)}", parent=self.dialog)
             except Exception as e:
-                messagebox.showerror("Error", f"Could not move file:\n{str(e)}", parent=self.dialog)
+                self.app.log(f"Failed to move: {filename} - {str(e)}", mode="error", verbose=1)
+                ntk.showinfo("Error", f"Could not move file:\n{str(e)}", parent=self.dialog)
 
 
     def ignore_file(self, file_path):
@@ -379,7 +368,7 @@ class InteractiveDuplicateReviewDialog:
                     os.remove(file_path)
                     current_group.remove(file_path)
                     deleted_count += 1
-                    self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}")
+                    self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}", verbose=1)
                 except Exception as e:
                     errors.append(f"{os.path.basename(file_path)}: {str(e)}")
             self.duplicate_groups.pop(self.current_group_index)
@@ -389,10 +378,10 @@ class InteractiveDuplicateReviewDialog:
                 error_msg = f"Deleted {deleted_count} files.\n\nErrors:\n" + "\n".join(errors[:3])
                 if len(errors) > 3:
                     error_msg += f"\n... and {len(errors) - 3} more"
-                messagebox.showwarning("Partial Success", error_msg, parent=self.dialog)
+                ntk.showinfo("Partial Success", error_msg, parent=self.dialog)
             self.show_current_group()
         else:
-            if messagebox.askyesno("Confirm Bulk Delete", f"Delete {len(files_to_delete)} files?\n\nKeeping: {first_file}", parent=self.dialog):
+            if ntk.askyesno("Confirm Bulk Delete", f"Delete {len(files_to_delete)} files?", detail=f"Keeping: {first_file}", parent=self.dialog):
                 deleted_count = 0
                 errors = []
                 for file_path in files_to_delete[:]:
@@ -400,7 +389,7 @@ class InteractiveDuplicateReviewDialog:
                         os.remove(file_path)
                         current_group.remove(file_path)
                         deleted_count += 1
-                        self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}")
+                        self.app.log(f"Deleted duplicate: {os.path.basename(file_path)}", verbose=1)
                     except Exception as e:
                         errors.append(f"{os.path.basename(file_path)}: {str(e)}")
                 self.duplicate_groups.pop(self.current_group_index)
@@ -410,9 +399,9 @@ class InteractiveDuplicateReviewDialog:
                     error_msg = f"Deleted {deleted_count} files.\n\nErrors:\n" + "\n".join(errors[:3])
                     if len(errors) > 3:
                         error_msg += f"\n... and {len(errors) - 3} more"
-                    messagebox.showwarning("Partial Success", error_msg, parent=self.dialog)
+                    ntk.showinfo("Partial Success", error_msg, parent=self.dialog)
                 else:
-                    messagebox.showinfo("Success", f"Deleted {deleted_count} files.", parent=self.dialog)
+                    ntk.showinfo("Success", f"Deleted {deleted_count} files.", parent=self.dialog)
                 self.show_current_group()
 
 
@@ -424,14 +413,14 @@ class InteractiveDuplicateReviewDialog:
         try:
             os.startfile(os.path.dirname(file_path))
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open location:\n{str(e)}", parent=self.dialog)
+            ntk.showinfo("Error", f"Could not open location:\n{str(e)}", parent=self.dialog)
 
 
     def open_image_file(self, file_path):
         try:
             os.startfile(file_path)
         except Exception as e:
-            messagebox.showerror("Error", f"Could not open image:\n{str(e)}", parent=self.dialog)
+            ntk.showinfo("Error", f"Could not open image:\n{str(e)}", parent=self.dialog)
 
 
     def previous_group(self):

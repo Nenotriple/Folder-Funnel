@@ -6,6 +6,7 @@ import os
 import time
 import shutil
 import zipfile
+import threading
 
 # Third-party
 import nenotk as ntk
@@ -27,9 +28,33 @@ class RetryableMoveError(Exception):
     """Raised when a file can't be moved/processed yet (locked / still being written)."""
 
 
+class DeferredMoveError(Exception):
+    """Raised when duplicate comparison is still running in the background."""
+
+
 _RETRY_BASE_DELAY_MS = 2000
 _RETRY_MAX_DELAY_MS = 60000
 _RETRY_MAX_ATTEMPTS = 8
+_DUPLICATE_COMPARE_MAX_WORKERS = 2
+_QUEUE_SLICE_MAX_FILES = 3
+_QUEUE_SLICE_RESUME_MS = 1
+
+
+class _StaticVerbosityVar:
+    def __init__(self, value: int):
+        self._value = int(value)
+
+    def get(self) -> int:
+        return self._value
+
+
+class _CompareLogProxy:
+    def __init__(self, verbosity: int):
+        self.messages = []
+        self.log_verbosity_var = _StaticVerbosityVar(verbosity)
+
+    def log(self, message, mode="simple", verbose=1):
+        self.messages.append((message, mode, verbose))
 
 
 def _retry_state(app: 'Main'):
@@ -40,6 +65,63 @@ def _retry_state(app: 'Main'):
     if not hasattr(app, "move_queue_last_stat"):
         app.move_queue_last_stat = {}
     return app.move_queue_retry_counts, app.move_queue_retry_due_ms, app.move_queue_last_stat
+
+
+def _get_queue_batch_state(app: 'Main') -> Optional[dict]:
+    return getattr(app, "_move_queue_batch_state", None)
+
+
+def _set_queue_batch_state(app: 'Main', state: Optional[dict]) -> None:
+    app._move_queue_batch_state = state
+
+
+def _queue_batch_active(app: 'Main') -> bool:
+    state = _get_queue_batch_state(app)
+    return bool(state and state.get("active"))
+
+
+def _duplicate_compare_state(app: 'Main') -> dict:
+    if not hasattr(app, "_duplicate_compare_state"):
+        app._duplicate_compare_state = {}
+    return app._duplicate_compare_state
+
+
+def _duplicate_compare_active_count(app: 'Main') -> int:
+    return int(getattr(app, "_duplicate_compare_active_count", 0) or 0)
+
+
+def _set_duplicate_compare_active_count(app: 'Main', count: int) -> None:
+    app._duplicate_compare_active_count = max(0, int(count))
+
+
+def _clear_duplicate_compare_entry(app: 'Main', path: str) -> None:
+    _duplicate_compare_state(app).pop(path, None)
+
+
+def _duplicate_compare_status(app: 'Main', path: str) -> Optional[str]:
+    entry = _duplicate_compare_state(app).get(path)
+    if not entry:
+        return None
+    return entry.get("status")
+
+
+def _has_pending_duplicate_compare(app: 'Main') -> bool:
+    for path in app.move_queue:
+        if _duplicate_compare_status(app, path) in {"queued", "pending"}:
+            return True
+    return False
+
+
+def _active_duplicate_compare_dirs(app: 'Main') -> set[str]:
+    active_dirs: set[str] = set()
+    for entry in _duplicate_compare_state(app).values():
+        if entry.get("status") != "pending":
+            continue
+        request = entry.get("request") or {}
+        target_dir = request.get("target_dir")
+        if target_dir:
+            active_dirs.add(target_dir)
+    return active_dirs
 
 
 def _now_ms() -> int:
@@ -122,13 +204,229 @@ def _schedule_retry_pass(app: 'Main') -> None:
     if next_due is None:
         return
     delay = max(250, int(next_due - now))
-    # Cancel any existing timer and schedule a retry processing pass
+    _schedule_queue_resume(app, delay)
+
+
+def _schedule_queue_resume(app: 'Main', delay: int = _QUEUE_SLICE_RESUME_MS) -> None:
+    """Schedule queue processing, replacing any existing queue timer."""
     if app.queue_timer_id:
         try:
             app.root.after_cancel(app.queue_timer_id)
         except Exception:
             pass
-    app.queue_timer_id = app.root.after(delay, lambda: process_move_queue(app))
+    app.queue_timer_id = app.root.after(max(1, int(delay)), lambda: process_move_queue(app))
+
+
+def _remove_from_queue(app: 'Main', path: str) -> None:
+    _clear_duplicate_compare_entry(app, path)
+    try:
+        app.move_queue.remove(path)
+    except ValueError:
+        pass
+
+
+def _has_ready_queue_work(app: 'Main') -> bool:
+    for path in app.move_queue:
+        if not _is_due(app, path):
+            continue
+        if _duplicate_compare_status(app, path) in {"queued", "pending"}:
+            continue
+        return True
+    return False
+
+
+def _has_retry_waiting_work(app: 'Main') -> bool:
+    for path in app.move_queue:
+        if not _is_due(app, path):
+            return True
+    return False
+
+
+def _build_duplicate_compare_request(app: 'Main', source_path: str, dest_path: str) -> dict:
+    target_dir = os.path.dirname(dest_path)
+    partial_hash_size = app.dupe_partial_hash_size_var.get() if app.dupe_use_partial_hash_var.get() else 0
+    check_mode = app.dupe_check_mode_var.get()
+    method = app.dupe_filter_mode_var.get()
+    max_files = app.dupe_max_files_var.get()
+    source_key = duplicate_handler.get_file_key(source_path)
+    dest_key = duplicate_handler.get_file_key(dest_path)
+    signature = (
+        source_path,
+        dest_path,
+        target_dir,
+        source_key,
+        dest_key,
+        check_mode,
+        method,
+        int(max_files),
+        int(partial_hash_size),
+    )
+    verbosity = 1
+    try:
+        verbosity = int(app.log_verbosity_var.get())
+    except Exception:
+        pass
+    return {
+        "source_path": source_path,
+        "dest_path": dest_path,
+        "target_dir": target_dir,
+        "partial_hash_size": int(partial_hash_size),
+        "check_mode": check_mode,
+        "method": method,
+        "max_files": int(max_files),
+        "signature": signature,
+        "log_verbosity": verbosity,
+    }
+
+
+def _run_duplicate_compare(request: dict) -> dict:
+    log_proxy = _CompareLogProxy(request.get("log_verbosity", 1))
+    try:
+        result = duplicate_handler.are_files_identical(
+            file1=request["source_path"],
+            file2=request["dest_path"],
+            check_mode=request["check_mode"],
+            method=request["method"],
+            max_files=request["max_files"],
+            partial_hash_size=request["partial_hash_size"],
+            app=log_proxy,
+            dir_entries=request.get("dir_entries"),
+            dir_index=request.get("dir_index"),
+            batch_hash_cache=request.get("batch_hash_cache"),
+        )
+        return {
+            "signature": request["signature"],
+            "result": result,
+            "retryable_error": None,
+            "logs": log_proxy.messages,
+        }
+    except duplicate_handler.FileNotReadyError as exc:
+        return {
+            "signature": request["signature"],
+            "result": None,
+            "retryable_error": str(exc),
+            "logs": log_proxy.messages,
+        }
+    except Exception as exc:
+        log_proxy.log(f"Error comparing files: {exc}", mode="warning", verbose=2)
+        return {
+            "signature": request["signature"],
+            "result": (False, None),
+            "retryable_error": None,
+            "logs": log_proxy.messages,
+        }
+
+
+def _run_duplicate_compare_batch(requests: list[dict]) -> dict[str, dict]:
+    results: dict[str, dict] = {}
+    if not requests:
+        return results
+    target_dir = requests[0].get("target_dir", "")
+    dir_entries = duplicate_handler.get_cached_dir_entries(target_dir)
+    dir_index = duplicate_handler.get_cached_dir_index(target_dir)
+    batch_hash_cache: dict[tuple, str] = {}
+    for request in requests:
+        batch_request = dict(request)
+        batch_request["dir_entries"] = dir_entries
+        batch_request["dir_index"] = dir_index
+        batch_request["batch_hash_cache"] = batch_hash_cache
+        results[request["source_path"]] = _run_duplicate_compare(batch_request)
+    return results
+
+
+def _start_queued_duplicate_compare(app: 'Main') -> None:
+    compare_state = _duplicate_compare_state(app)
+    active = _duplicate_compare_active_count(app)
+    if active >= _DUPLICATE_COMPARE_MAX_WORKERS:
+        return
+    active_dirs = _active_duplicate_compare_dirs(app)
+    grouped_requests: dict[str, list[tuple[str, dict]]] = {}
+    for source_path, entry in list(compare_state.items()):
+        if entry.get("status") != "queued":
+            continue
+        request = entry.get("request")
+        if not request:
+            compare_state.pop(source_path, None)
+            continue
+        grouped_requests.setdefault(request.get("target_dir", ""), []).append((source_path, entry))
+    for _target_dir, entries in grouped_requests.items():
+        if active >= _DUPLICATE_COMPARE_MAX_WORKERS:
+            break
+        if _target_dir and _target_dir in active_dirs:
+            continue
+        requests: list[dict] = []
+        source_paths: list[str] = []
+        for source_path, entry in entries:
+            entry["status"] = "pending"
+            source_paths.append(source_path)
+            requests.append(entry["request"])
+        active += 1
+        if _target_dir:
+            active_dirs.add(_target_dir)
+        _set_duplicate_compare_active_count(app, active)
+        worker = threading.Thread(
+            target=_run_duplicate_compare_batch_thread,
+            args=(app, source_paths, requests),
+            daemon=True,
+        )
+        for _source_path, entry in entries:
+            entry["worker"] = worker
+        worker.start()
+
+
+def _run_duplicate_compare_batch_thread(app: 'Main', source_paths: list[str], requests: list[dict]) -> None:
+    outcomes = _run_duplicate_compare_batch(requests)
+    try:
+        app.root.after(0, lambda: _complete_duplicate_compare_batch(app, source_paths, outcomes))
+    except Exception:
+        return
+
+
+def _complete_duplicate_compare_batch(app: 'Main', source_paths: list[str], outcomes: dict[str, dict]) -> None:
+    _set_duplicate_compare_active_count(app, _duplicate_compare_active_count(app) - 1)
+    should_resume = False
+    for source_path in source_paths:
+        outcome = outcomes.get(source_path)
+        if outcome is None:
+            continue
+        for message, mode, verbose in outcome.get("logs", []):
+            app.log(message, mode=mode, verbose=verbose)
+        entry = _duplicate_compare_state(app).get(source_path)
+        if entry and entry.get("signature") == outcome.get("signature"):
+            entry["status"] = "done"
+            entry["worker"] = None
+            entry["result"] = outcome.get("result")
+            entry["retryable_error"] = outcome.get("retryable_error")
+        if source_path in app.move_queue:
+            should_resume = True
+    _start_queued_duplicate_compare(app)
+    if should_resume and not _queue_batch_active(app):
+        _schedule_queue_resume(app)
+
+
+def _resolve_duplicate_compare(app: 'Main', source_path: str, dest_path: str):
+    request = _build_duplicate_compare_request(app, source_path, dest_path)
+    compare_state = _duplicate_compare_state(app)
+    entry = compare_state.get(source_path)
+    if entry and entry.get("signature") == request["signature"]:
+        status = entry.get("status")
+        if status in {"queued", "pending"}:
+            raise DeferredMoveError("duplicate comparison pending")
+        _clear_duplicate_compare_entry(app, source_path)
+        retryable_error = entry.get("retryable_error")
+        if retryable_error:
+            raise RetryableMoveError(retryable_error)
+        return entry.get("result") or (False, None)
+    compare_state[source_path] = {
+        "status": "queued",
+        "signature": request["signature"],
+        "request": request,
+        "result": None,
+        "retryable_error": None,
+        "worker": None,
+    }
+    _start_queued_duplicate_compare(app)
+    raise DeferredMoveError("duplicate comparison pending")
 
 
 def _is_empty_file(file_path):
@@ -305,20 +603,7 @@ def _handle_new_folder(app: 'Main', source_path):
 
 def _handle_possible_duplicate_file(app: 'Main', source_path, dest_path, rel_path):
     """Handle a file that might be a duplicate."""
-    # Get partial hash size (0 = disabled, otherwise bytes to read)
-    partial_hash_size = app.dupe_partial_hash_size_var.get() if app.dupe_use_partial_hash_var.get() else 0
-    try:
-        is_duplicate, matching_file_path = duplicate_handler.are_files_identical(
-            file1=source_path,
-            file2=dest_path,
-            check_mode=app.dupe_check_mode_var.get(),
-            method=app.dupe_filter_mode_var.get(),
-            max_files=app.dupe_max_files_var.get(),
-            partial_hash_size=partial_hash_size,
-            app=app
-        )
-    except duplicate_handler.FileNotReadyError as exc:
-        raise RetryableMoveError(str(exc)) from exc
+    is_duplicate, matching_file_path = _resolve_duplicate_compare(app, source_path, dest_path)
     if is_duplicate:
         # Files are identical, handle based on dupe_handle_mode
         filename = os.path.basename(source_path)
@@ -421,6 +706,8 @@ def _move_file(app: 'Main', source_path):
         # Note: count_folders_and_files is called once after batch processing completes
         _clear_retry(app, source_path)
         return True
+    except DeferredMoveError:
+        raise
     except RetryableMoveError:
         raise
     except Exception as e:
@@ -435,6 +722,8 @@ def _move_file(app: 'Main', source_path):
 
 def start_queue(app: 'Main'):
     """Start/restart the queue timer and progress bar updates."""
+    if _queue_batch_active(app):
+        return
     # Cancel any existing timer
     if app.queue_timer_id:
         app.root.after_cancel(app.queue_timer_id)
@@ -469,77 +758,121 @@ def queue_move_file(app: 'Main', source_path):
 
 
 def process_move_queue(app: 'Main'):
-    """Process all queued file moves."""
-    stop_queue(app)  # Stop the queue timer and reset progress indicators
-    if not app.move_queue:
-        return
-    # Work on a snapshot so we can safely requeue failures.
-    pending = list(app.move_queue)
-    batch_total = len(pending)
-    start_moved = int(getattr(app, "move_count", 0) or 0)
-    start_dupes = int(getattr(app, "duplicate_count", 0) or 0)
-    app.log(f"Processing {ntk.number_commas(len(app.move_queue))} queued file{'s' if len(app.move_queue) != 1 else ''}...", mode="info", verbose=2)
-    success_count = 0
-    failed_paths = []
-    for source_path in pending:
+    """Process queued moves in small UI-friendly slices."""
+    batch_state = _get_queue_batch_state(app)
+    if batch_state is None:
+        stop_queue(app)  # Stop the queue timer and reset progress indicators
+        if not app.move_queue:
+            return
+        batch_state = {
+            "active": True,
+            "pending": list(app.move_queue),
+            "index": 0,
+            "batch_total": len(app.move_queue),
+            "start_moved": int(getattr(app, "move_count", 0) or 0),
+            "start_dupes": int(getattr(app, "duplicate_count", 0) or 0),
+            "success_count": 0,
+        }
+        _set_queue_batch_state(app, batch_state)
+        app.log(
+            f"Processing {ntk.number_commas(len(app.move_queue))} queued file{'s' if len(app.move_queue) != 1 else ''}...",
+            mode="info",
+            verbose=2,
+        )
+
+    processed_in_slice = 0
+    pending = batch_state["pending"]
+    while batch_state["index"] < len(pending) and processed_in_slice < _QUEUE_SLICE_MAX_FILES:
+        source_path = pending[batch_state["index"]]
+        batch_state["index"] += 1
+        processed_in_slice += 1
         if not os.path.exists(source_path):
             _clear_retry(app, source_path)
+            _remove_from_queue(app, source_path)
             app.log(f"File not found, skipping: {source_path}", mode="warning", verbose=2)
             continue
         if not _is_due(app, source_path):
-            failed_paths.append(source_path)
             continue
         try:
             if _move_file(app, source_path):
-                success_count += 1
+                batch_state["success_count"] += 1
+                _remove_from_queue(app, source_path)
             else:
                 _clear_retry(app, source_path)
+                _remove_from_queue(app, source_path)
+        except DeferredMoveError:
+            continue
         except RetryableMoveError as exc:
             delay = _mark_retry(app, source_path, reason=str(exc))
-            if delay is not None:
-                failed_paths.append(source_path)
+            if delay is None:
+                _remove_from_queue(app, source_path)
 
-    # Replace queue with failures for retry; successes are removed.
-    app.move_queue = failed_paths
     app.update_queue_count()
+
+    if batch_state["index"] < len(pending):
+        _schedule_queue_resume(app)
+        return
+
+    pending_count = len(app.move_queue)
+    batch_total = int(batch_state["batch_total"])
+    success_count = int(batch_state["success_count"])
+    moved_delta = int(getattr(app, "move_count", 0) or 0) - int(batch_state["start_moved"])
+    dupe_delta = int(getattr(app, "duplicate_count", 0) or 0) - int(batch_state["start_dupes"])
+    _set_queue_batch_state(app, None)
+    app.queue_timer_id = None
 
     if batch_total == 1:
         app.log(
-            f"Move pass complete: {ntk.number_commas(success_count)}/1 file ({ntk.number_commas(len(failed_paths))} pending)\n",
+            f"Move pass complete: {ntk.number_commas(success_count)}/1 file ({ntk.number_commas(pending_count)} pending)\n",
             mode="info",
             verbose=1,
         )
     else:
         app.log(
-            f"Batch pass complete: {ntk.number_commas(success_count)}/{ntk.number_commas(batch_total)} files ({ntk.number_commas(len(failed_paths))} pending)\n",
+            f"Batch pass complete: {ntk.number_commas(success_count)}/{ntk.number_commas(batch_total)} files ({ntk.number_commas(pending_count)} pending)\n",
             mode="info",
             verbose=1,
         )
 
-    # Desktop notification (independent of minimize-to-tray)
-    # Only notify when the queue fully clears to avoid notification spam on retry passes.
     if not app.move_queue:
         try:
-            moved_delta = int(getattr(app, "move_count", 0) or 0) - start_moved
-            dupe_delta = int(getattr(app, "duplicate_count", 0) or 0) - start_dupes
             title = "Folder-Funnel"
             msg = f"Batch complete. Processed: {batch_total}. Moved: {moved_delta}. Duplicates: {dupe_delta}."
             if hasattr(app, "notify"):
                 app.notify(msg, title=title)
         except Exception:
             pass
+        return
 
-    # If anything failed due to locks/partial writes, schedule the next pass.
-    if app.move_queue:
+    if _has_ready_queue_work(app):
+        _schedule_queue_resume(app)
+    elif _has_retry_waiting_work(app):
         _schedule_retry_pass(app)
+    else:
+        app.queue_timer_id = None
 
 
-def process_pending_moves(app: 'Main'):
+def process_pending_moves(app: 'Main', wait: bool = False):
     """Process any remaining files in the move queue."""
     if app.move_queue:
         process_move_queue(app)
     elif app.queue_timer_id:
         stop_queue(app)
+    if not wait:
+        return
+    deadline = time.time() + 15.0
+    while time.time() < deadline:
+        if not (_queue_batch_active(app) or _has_ready_queue_work(app) or _has_pending_duplicate_compare(app)):
+            break
+        if not _queue_batch_active(app) and _has_ready_queue_work(app):
+            process_move_queue(app)
+        try:
+            app.root.update_idletasks()
+            app.root.update()
+        except Exception:
+            break
+        if _has_pending_duplicate_compare(app) and not _has_ready_queue_work(app) and not _queue_batch_active(app):
+            time.sleep(0.01)
 
 
 #endregion
@@ -551,6 +884,7 @@ def handle_rename_event(app: 'Main', old_path, new_path):
     try:
         if old_path in app.move_queue:
             app.move_queue.remove(old_path)
+            _clear_duplicate_compare_entry(app, old_path)
             app.log(f"Removed renamed file from queue: {os.path.basename(old_path)}", mode="info", verbose=3)
         if not os.path.isdir(new_path) and new_path not in app.move_queue:
             queue_move_file(app, new_path)

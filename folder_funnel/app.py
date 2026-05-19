@@ -368,8 +368,8 @@ class Main:
     def handle_rename_event(self, old_path, new_path):
         move_queue.handle_rename_event(self, old_path, new_path)
 
-    def process_pending_moves(self):
-        move_queue.process_pending_moves(self)
+    def process_pending_moves(self, wait: bool = False):
+        move_queue.process_pending_moves(self, wait=wait)
 
 
 #endregion
@@ -575,7 +575,7 @@ class Main:
 
     def exit_application(self):
         """Fully exit the application."""
-        self.process_pending_moves()
+        self.process_pending_moves(wait=True)
         if not self.stop_folder_watcher():
             return
         if not duplicate_handler.confirm_duplicate_storage_removal(self):

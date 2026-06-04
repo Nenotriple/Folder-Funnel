@@ -722,6 +722,8 @@ def _move_file(app: 'Main', source_path):
 
 def start_queue(app: 'Main'):
     """Start/restart the queue timer and progress bar updates."""
+    if getattr(app, "watch_paths_missing", False):
+        return
     if _queue_batch_active(app):
         return
     # Cancel any existing timer
@@ -759,6 +761,10 @@ def queue_move_file(app: 'Main', source_path):
 
 def process_move_queue(app: 'Main'):
     """Process queued moves in small UI-friendly slices."""
+    if getattr(app, "watch_paths_missing", False):
+        stop_queue(app)
+        _set_queue_batch_state(app, None)
+        return
     batch_state = _get_queue_batch_state(app)
     if batch_state is None:
         stop_queue(app)  # Stop the queue timer and reset progress indicators
@@ -787,6 +793,14 @@ def process_move_queue(app: 'Main'):
         batch_state["index"] += 1
         processed_in_slice += 1
         if not os.path.exists(source_path):
+            try:
+                from . import folder_watcher
+                if not folder_watcher.watch_paths_available(app):
+                    _set_queue_batch_state(app, None)
+                    folder_watcher._handle_missing_watch_paths(app, folder_watcher.get_watch_path_state(app)[1])
+                    return
+            except Exception:
+                pass
             _clear_retry(app, source_path)
             _remove_from_queue(app, source_path)
             app.log(f"File not found, skipping: {source_path}", mode="warning", verbose=2)

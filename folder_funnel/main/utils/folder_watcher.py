@@ -25,6 +25,223 @@ if TYPE_CHECKING:
 #region - Folder Watcher Functions
 
 
+WATCH_PATH_AVAILABLE = "available"
+WATCH_PATH_NO_SOURCE = "no_source"
+WATCH_PATH_SOURCE_DRIVE_MISSING = "source_drive_missing"
+WATCH_PATH_SOURCE_FOLDER_MISSING = "source_folder_missing"
+WATCH_PATH_FUNNEL_PARENT_MISSING = "funnel_parent_missing"
+
+
+def _watcher_active_requested(app: 'Main') -> bool:
+    return bool(getattr(app, "watch_active_requested", False))
+
+
+def _monitor_interval(app: 'Main') -> int:
+    return max(250, int(getattr(app, "watch_monitor_interval_ms", 2000) or 2000))
+
+
+def _path_anchor(path: str) -> str:
+    norm_path = os.path.normpath(path or "")
+    if not norm_path:
+        return ""
+    drive, _tail = os.path.splitdrive(norm_path)
+    if drive:
+        return drive + os.sep
+    if norm_path.startswith(os.sep):
+        return os.sep
+    return ""
+
+
+def _expected_funnel_dir(source_path: str, funnel_dir: str = "", funnel_prefix: str = "#FUNNEL#_") -> str:
+    if funnel_dir:
+        return os.path.normpath(funnel_dir)
+    source_path = os.path.normpath(source_path or "")
+    if not source_path:
+        return ""
+    return os.path.normpath(os.path.join(os.path.dirname(source_path), f"{funnel_prefix}{os.path.basename(source_path)}"))
+
+
+def classify_watch_paths(source_path: str, funnel_dir: str = "", funnel_prefix: str = "#FUNNEL#_") -> tuple[str, str]:
+    """Classify whether the active source/funnel paths can be watched."""
+    source_path = os.path.normpath((source_path or "").strip())
+    if not source_path:
+        return WATCH_PATH_NO_SOURCE, "No source folder selected"
+
+    expected_funnel = _expected_funnel_dir(source_path, funnel_dir, funnel_prefix)
+    funnel_parent = os.path.dirname(expected_funnel) if expected_funnel else os.path.dirname(source_path)
+
+    if os.path.exists(source_path):
+        if funnel_parent and not os.path.exists(funnel_parent):
+            return WATCH_PATH_FUNNEL_PARENT_MISSING, f"Funnel parent is unavailable: {funnel_parent}"
+        return WATCH_PATH_AVAILABLE, "Available"
+
+    anchor = _path_anchor(source_path)
+    if anchor and not os.path.exists(anchor):
+        return WATCH_PATH_SOURCE_DRIVE_MISSING, f"Source drive is unavailable: {anchor}"
+    return WATCH_PATH_SOURCE_FOLDER_MISSING, f"Source folder is unavailable: {source_path}"
+
+
+def get_watch_path_state(app: 'Main') -> tuple[str, str]:
+    return classify_watch_paths(
+        app.source_dir_var.get(),
+        getattr(app, "funnel_dir", ""),
+        getattr(app, "funnel_name_prefix", "#FUNNEL#_"),
+    )
+
+
+def watch_paths_available(app: 'Main') -> bool:
+    state, _reason = get_watch_path_state(app)
+    return state == WATCH_PATH_AVAILABLE
+
+
+def _start_watch_monitor(app: 'Main') -> None:
+    if not _watcher_active_requested(app):
+        return
+    _cancel_watch_monitor(app)
+    app.watch_monitor_timer_id = app.root.after(_monitor_interval(app), lambda: _watch_monitor_tick(app))
+
+
+def _cancel_watch_monitor(app: 'Main') -> None:
+    timer_id = getattr(app, "watch_monitor_timer_id", None)
+    if timer_id:
+        try:
+            app.root.after_cancel(timer_id)
+        except Exception:
+            pass
+    app.watch_monitor_timer_id = None
+
+
+def _watch_monitor_tick(app: 'Main') -> None:
+    app.watch_monitor_timer_id = None
+    if not _watcher_active_requested(app):
+        return
+    state, reason = get_watch_path_state(app)
+    if state == WATCH_PATH_AVAILABLE:
+        if getattr(app, "watch_paths_missing", False):
+            _recover_available_watch_paths(app)
+    else:
+        _handle_missing_watch_paths(app, reason)
+    _start_watch_monitor(app)
+
+
+def _pause_queue_for_missing_paths(app: 'Main') -> None:
+    try:
+        from . import move_queue
+        move_queue.stop_queue(app)
+        move_queue._set_queue_batch_state(app, None)
+    except Exception:
+        try:
+            if getattr(app, "queue_timer_id", None):
+                app.root.after_cancel(app.queue_timer_id)
+        except Exception:
+            pass
+        app.queue_timer_id = None
+        app.queue_start_time = None
+        try:
+            app.queue_progressbar['value'] = 0
+        except Exception:
+            pass
+
+
+def _handle_missing_watch_paths(app: 'Main', reason: str) -> None:
+    if getattr(app, "watch_paths_missing", False):
+        return
+    app.watch_paths_missing = True
+    app.watch_missing_reason = reason
+    _stop_folder_watcher(app)
+    _pause_queue_for_missing_paths(app)
+    app.toggle_widgets_state(state="missing")
+    app.set_status("missing")
+    source_path = app.source_dir_var.get()
+    app.log(f"Watched drive unavailable; pausing Folder-Funnel. Source: {source_path}", mode="warning", verbose=1)
+    if reason:
+        app.log(reason, mode="warning", verbose=2)
+    try:
+        if hasattr(app, "notify"):
+            app.notify("Watched drive unavailable; Folder-Funnel is paused.", title="Folder-Funnel")
+    except Exception:
+        pass
+
+
+def _enqueue_existing_files(app: 'Main', file_paths: list[str]) -> int:
+    count = 0
+    for file_path in file_paths:
+        if file_path not in app.move_queue:
+            app.move_queue.append(file_path)
+            count += 1
+    if count:
+        app.update_queue_count()
+    return count
+
+
+def _recover_available_watch_paths(app: 'Main') -> None:
+    if getattr(app, "watch_recovery_in_progress", False):
+        return
+    app.watch_recovery_in_progress = True
+    app.set_status("busy", "Reconnecting...")
+    app.log("Watched drive reconnected; rebuilding funnel and resuming.", mode="system", verbose=1)
+
+    def _worker() -> None:
+        try:
+            if not sync_funnel_folders(app, silent="recovery"):
+                raise RuntimeError("Funnel sync did not complete")
+            existing_files = _scan_existing_files(app, getattr(app, "funnel_dir", ""))
+
+            def _finish() -> None:
+                try:
+                    if not _watcher_active_requested(app):
+                        return
+                    if not watch_paths_available(app):
+                        state, reason = get_watch_path_state(app)
+                        _handle_missing_watch_paths(app, reason or state)
+                        return
+                    queued = _enqueue_existing_files(app, existing_files)
+                    if queued:
+                        app.log(f"Queued {ntk.number_commas(queued)} file{'s' if queued != 1 else ''} after reconnect", mode="info", verbose=2)
+                    if _start_folder_watcher(app):
+                        app.watch_paths_missing = False
+                        app.watch_missing_reason = ""
+                        app.toggle_widgets_state(state="running")
+                        app.set_status("running")
+                        app.count_folders_and_files()
+                        if app.move_queue:
+                            from . import move_queue
+                            move_queue.start_queue(app)
+                        app.log("Recovery complete. Folder-Funnel is running.", mode="system", verbose=1)
+                finally:
+                    app.watch_recovery_in_progress = False
+
+            app.root.after(0, _finish)
+        except Exception as exc:
+            def _fail() -> None:
+                if not _watcher_active_requested(app):
+                    return
+                app.watch_recovery_in_progress = False
+                app.log(f"Reconnect recovery failed: {exc}", mode="warning", verbose=1)
+            try:
+                app.root.after(0, _fail)
+            except Exception:
+                pass
+
+    threading.Thread(target=_worker, daemon=True).start()
+
+
+def _scan_existing_files(app: 'Main', funnel_dir: str) -> list[str]:
+    if not funnel_dir or not os.path.exists(funnel_dir):
+        return []
+    existing_files: list[str] = []
+    from .move_queue import _should_process_firefox_temp_files, _is_temp_file
+    for dirpath, _dirnames, filenames in os.walk(funnel_dir):
+        for filename in filenames:
+            file_path = os.path.join(dirpath, filename)
+            if not _should_process_firefox_temp_files(app, file_path):
+                continue
+            if app.ignore_temp_files_var.get() and _is_temp_file(app, file_path):
+                continue
+            existing_files.append(os.path.normpath(file_path))
+    return existing_files
+
+
 def start_folder_watcher(app: 'Main', auto_start=False):
     """Start the folder watching process after verification"""
     if not app.check_working_dir_exists():
@@ -34,8 +251,12 @@ def start_folder_watcher(app: 'Main', auto_start=False):
         if not confirm:
             return
     # Show activity during initialization (non-blocking)
+    app.watch_active_requested = True
+    app.watch_paths_missing = False
+    app.watch_missing_reason = ""
     app.set_status("busy", "Counting files...")
     app.toggle_widgets_state(state="running")
+    _start_watch_monitor(app)
     # Cancellation token for overlapping starts/stops
     init_token = object()
     app._init_run_token = init_token
@@ -72,21 +293,6 @@ def start_folder_watcher(app: 'Main', auto_start=False):
                 _ui(app.filecount_var.set, f"Files: {ntk.number_commas(file_count)}")
         return folder_count, file_count
 
-    def _scan_existing_files(funnel_dir: str) -> list[str]:
-        if not funnel_dir or not os.path.exists(funnel_dir):
-            return []
-        existing_files: list[str] = []
-        from .move_queue import _should_process_firefox_temp_files, _is_temp_file
-        for dirpath, _dirnames, filenames in os.walk(funnel_dir):
-            for filename in filenames:
-                file_path = os.path.join(dirpath, filename)
-                if not _should_process_firefox_temp_files(app, file_path):
-                    continue
-                if app.ignore_temp_files_var.get() and _is_temp_file(app, file_path):
-                    continue
-                existing_files.append(os.path.normpath(file_path))
-        return existing_files
-
     def _prompt_existing_files(existing_files: list[str]) -> None:
         if not existing_files:
             return
@@ -111,8 +317,10 @@ def start_folder_watcher(app: 'Main', auto_start=False):
             _prompt_existing_files(existing_files)
         except Exception:
             pass
-        _start_folder_watcher(app)
-        app.set_status("running")
+        if not _start_folder_watcher(app):
+            return
+        if not getattr(app, "watch_paths_missing", False):
+            app.set_status("running")
         app.move_count = 0
         app.movecount_var.set("Moved: 0")
         app.duplicate_count = 0
@@ -135,11 +343,15 @@ def start_folder_watcher(app: 'Main', auto_start=False):
                 pass
             _ui(app.set_status, "busy", "Syncing folders...")
             # Synchronous sync on this worker thread (UI updates marshaled internally)
-            sync_funnel_folders(app, silent="initial")
+            if not sync_funnel_folders(app, silent="initial"):
+                state, reason = get_watch_path_state(app)
+                if state != WATCH_PATH_AVAILABLE:
+                    _ui(_handle_missing_watch_paths, app, reason)
+                return
             if _is_cancelled():
                 return
             # Scan for pre-existing files (worker thread), prompt on UI thread
-            existing_files = _scan_existing_files(getattr(app, "funnel_dir", ""))
+            existing_files = _scan_existing_files(app, getattr(app, "funnel_dir", ""))
             _ui(_finalize_startup, existing_files)
         except Exception as exc:
             _ui_log(f"Startup initialization failed: {exc}", mode="warning", verbose=1)
@@ -159,39 +371,58 @@ def _start_folder_watcher(app: 'Main'):
     """Start watching both the watch folder and source folder for changes"""
     # Stop any existing observers
     _stop_folder_watcher(app)
-    # Set up funnel folder observer
-    app.funnel_observer = Observer()
-    funnel_handler = FunnelFolderHandler(app)
-    app.funnel_observer.schedule(funnel_handler, path=app.funnel_dir, recursive=True)
-    app.funnel_observer.start()
-    # Set up source folder observer
-    app.source_observer = Observer()
-    source_handler = SourceFolderHandler(app)
-    app.source_observer.schedule(source_handler, path=app.source_dir_var.get(), recursive=True)
-    app.source_observer.start()
+    state, reason = get_watch_path_state(app)
+    if state != WATCH_PATH_AVAILABLE:
+        _handle_missing_watch_paths(app, reason)
+        return False
+    try:
+        # Set up funnel folder observer
+        app.funnel_observer = Observer()
+        funnel_handler = FunnelFolderHandler(app)
+        app.funnel_observer.schedule(funnel_handler, path=app.funnel_dir, recursive=True)
+        app.funnel_observer.start()
+        # Set up source folder observer
+        app.source_observer = Observer()
+        source_handler = SourceFolderHandler(app)
+        app.source_observer.schedule(source_handler, path=app.source_dir_var.get(), recursive=True)
+        app.source_observer.start()
+    except Exception as exc:
+        _stop_folder_watcher(app)
+        state, reason = get_watch_path_state(app)
+        _handle_missing_watch_paths(app, reason if state != WATCH_PATH_AVAILABLE else str(exc))
+        return False
     app.log("Ready!\n", mode="system", verbose=1)
+    return True
 
 
 def stop_folder_watcher(app: 'Main'):
     """Stop the folder watching process with confirmation"""
-    if not (app.funnel_observer or app.source_observer):
+    if not (app.funnel_observer or app.source_observer or _watcher_active_requested(app)):
         return True
     confirm = ntk.askokcancel("Stop Process?", "This will stop the Folder-Funnel process and remove the funnel folder.\n\nContinue?")
     if not confirm:
         return False
+    app.watch_active_requested = False
+    app.watch_paths_missing = False
+    app.watch_recovery_in_progress = False
+    app.watch_missing_reason = ""
+    _cancel_watch_monitor(app)
     # Cancel any in-progress initialization.
     try:
         app._init_run_token = None
     except Exception:
         pass
     _stop_folder_watcher(app)
+    _pause_queue_for_missing_paths(app)
     app.log("Stopping Folder-Funnel process...", mode="system", verbose=1)
     if app.funnel_dir and os.path.exists(app.funnel_dir):
         try:
             shutil.rmtree(app.funnel_dir)
+            app.log(f"Removed funnel folder: {app.funnel_dir}", mode="system", verbose=1)
         except Exception as exc:
             app.log(f"Failed to remove funnel folder {app.funnel_dir}: {exc}", mode="warning", verbose=2)
-    app.log(f"Removed funnel folder: {app.funnel_dir}", mode="system", verbose=1)
+    elif app.funnel_dir:
+        app.log(f"Funnel folder unavailable or already removed: {app.funnel_dir}", mode="warning", verbose=2)
     app.reset_status_row()
     app.clear_history()
     app.toggle_widgets_state(state="idle")
@@ -217,8 +448,14 @@ def _stop_folder_watcher(app: 'Main'):
 def sync_funnel_folders(app: 'Main', silent=False):
     """Create or update the watch folder structure to match the source folder"""
     source_path = app.source_dir_var.get()
-    if not app.check_working_dir_exists():
-        return
+    runtime_silent = silent in ("initial", "recovery")
+    if runtime_silent:
+        state, reason = get_watch_path_state(app)
+        if state != WATCH_PATH_AVAILABLE:
+            app.log(reason, mode="warning", verbose=2)
+            return False
+    elif not app.check_working_dir_exists():
+        return False
     source_folder_name = os.path.basename(source_path)
     parent_dir = os.path.dirname(source_path)
     app.funnel_dir_name = f"{app.funnel_name_prefix}{source_folder_name}"
@@ -309,11 +546,14 @@ def sync_funnel_folders(app: 'Main', silent=False):
             except Exception:
                 pass
     except Exception as e:
-        _ui(ntk.showinfo, "Error: sync_funnel_folders()", f"{str(e)}")
+        if not runtime_silent:
+            _ui(ntk.showinfo, "Error: sync_funnel_folders()", f"{str(e)}")
         _ui(app.log, f"Error syncing funnel folders: {str(e)}", mode="error", verbose=1)
+        return False
     finally:
         _ui(app.queue_progressbar.__setitem__, 'value', 0)
         _ui(app.queue_progressbar.configure, mode="determinate")
+    return True
 
 
 #endregion

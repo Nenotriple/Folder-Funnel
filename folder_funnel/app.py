@@ -193,6 +193,12 @@ class Main:
         # Observers for file watching
         self.funnel_observer = None
         self.source_observer = None
+        self.watch_active_requested = False
+        self.watch_paths_missing = False
+        self.watch_monitor_timer_id = None
+        self.watch_recovery_in_progress = False
+        self.watch_monitor_interval_ms = 2000
+        self.watch_missing_reason = ""
 
         # Temporary filetypes
         self.temp_filetypes = [".tmp", ".temp", ".part", ".crdownload", ".partial", ".bak"]

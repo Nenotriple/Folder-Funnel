@@ -150,8 +150,7 @@ def load_settings(app: 'Main'):
             # Record last-used working directory (prompted later, after UI/settings apply)
             try:
                 wd = (cfg['General'].get('working_directory') or '').strip()
-                if wd and os.path.exists(wd):
-                    app.last_working_directory = wd
+                app.last_working_directory = wd
             except Exception:
                 app.last_working_directory = ""
             if 'text_log_wrap' in cfg['General']:

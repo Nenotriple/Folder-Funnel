@@ -30,6 +30,7 @@ STATUS_STYLES = {
     "idle": {"text": "Idle", "color": "#9e9e9e"},
     "busy": {"text": "Busy", "color": "#d8801f"},
     "running": {"text": "Running", "color": "#2f9e44"},
+    "missing": {"text": "Drive unavailable", "color": "#c92a2a"},
 }
 
 
@@ -168,6 +169,14 @@ def toggle_widgets_state(app: 'Main', state="idle"):
             dir_entry.configure(state="normal")
         if file_menu:
             file_menu.entryconfig("Select Source Path...", state="normal")
+    elif state == "missing":
+        button.configure(text="Stop", command=app.stop_folder_watcher, state="normal")
+        if browse:
+            browse.configure(state="disabled")
+        if dir_entry:
+            dir_entry.configure(state="disabled")
+        if file_menu:
+            file_menu.entryconfig("Select Source Path...", state="disabled")
     elif state == "disabled":
         button.configure(state=state)
         if browse:

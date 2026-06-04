@@ -2,7 +2,7 @@
 watchdog==6.0.0
 
 # For handling images
-Pillow==11.0.0
+Pillow==12.0.0
 
 # For minimizing to the system tray
 pystray
